@@ -1,0 +1,13 @@
+{
+	"name": "dqmake",
+	"authors": [
+		"Alexander Kamyshnikov"
+	],
+	"description": "Qt qmake D language port",
+	"homepage": "github.com",
+	"copyright": "Copyright © 2017, Alexander Kamyshnikov",
+	"license": "MIT",
+	"dependencies": {
+	    "pegged": "*"
+	}
+}
