@@ -58,6 +58,14 @@ static string preprocessLines(string[] strLinesArray)
             lineIndex = j;
             strLine = strMultiLine;
         }
+        
+        // FIXME: workaround for grammar ambiguity - cannot distingush AND-colon and scope statement expression end colon
+        // Replace last colon (":") with "@"
+        auto lastColonIndex = strLine.lastIndexOf(':');
+        if (lastColonIndex != -1)
+        {
+            strLine.replaceInPlace(lastColonIndex, lastColonIndex + 1, "@");
+        }
 
         if (isMultiLine)
             writeln("Multi-line " ~ std.conv.to!string(startLineIndex + 1) ~ " - " ~ std.conv.to!string(endLineIndex + 1) ~ ": |" ~ strLine ~ "|");
@@ -81,7 +89,7 @@ void main()
         EmptyStatement <- eps
 
         # Code block
-        Block <- :space* :"{" :space* :eol+ :space* (FunctionCall)+ :space* :"}" :space* :eol*
+        Block <- :space* "{" :space* :eol+ :space* (Statement)+ :space* "}" :space* :eol*
 
         # Comment, single-line and multi-line (extension)
         Comment                         <~ MultiLineComment / SingleLineComment
@@ -105,28 +113,27 @@ void main()
         FunctionArgumentList < FunctionArgumentString (:"," FunctionArgumentString)*
         FunctionArgumentString <- EnquotedString | RegularFunctionArgumentString
         RegularFunctionArgumentString <- ~(RegularFunctionArgumentStringChar+)
-        RegularFunctionArgumentStringChar <- !(blank / "," / ")" ) SourceCharacter
+        RegularFunctionArgumentStringChar <- !(blank / "," / ")" / quote / doublequote ) SourceCharacter
         
         # Conditional statement
         # E.g.:
         # CONFIG(debug, debug|release):buildmode = debug
-        Scope       < BooleanExpression (":" Statement | Block) ElsePart*
-        ElsePart    < ("else:" Statement | "else" Block)
+        Scope       < BooleanExpression ("@" Statement | Block) ElsePart*
+        ElsePart    < "else@" Statement | "else" Block
 
-        BooleanExpression <- FunctionCall | Identifier
+        # E.g.:
+        # var1: message("scope 1.1")
+        # !exists($$QMAKE_QT_CONFIG)|!include($$QMAKE_QT_CONFIG, "", true) {
+        BooleanExpression           <- LogicalORExpression
+        LogicalORExpression         <- LogicalANDExpression (:space* "|" :space* LogicalANDExpression)*
+        LogicalANDExpression        <- LogicalNOTExpression (:space* ":" :space* LogicalNOTExpression)*
+        LogicalNOTExpression        <- (:space* "!" :space*)? PrimaryBooleanExpression
+        PrimaryBooleanExpression    <- '(' BooleanExpression ')'
+                                     / BooleanAtom
 
-#
-#        BooleanExpression           < LogicalORExpression ('?' Expression ':' BooleanExpression)?
-#        LogicalORExpression         < LogicalANDExpression ("|" LogicalORExpression)*
-#        LogicalANDExpression        < EqualityExpression (":" LogicalANDExpression)*
-#        EqualityExpression          < RelationalExpression (("==" / "!=") EqualityExpression)*
-#        RelationalExpression        < ShiftExpression (("<=" / ">=" / "<" / ">") RelationalExpression)*
-#        ShiftExpression             < AdditiveExpression (("<<" / ">>") ShiftExpression)*
-#        AdditiveExpression          < MultiplicativeExpression ([-+] AdditiveExpression)*
-#        MultiplicativeExpression    < CastExpression ([*%/] MultiplicativeExpression)*
-#        UnaryOperator <- [-&*+~!]
-#        CastExpression < UnaryExpression
-#                       / '(' TypeName ')' CastExpression
+        BooleanAtom                 <- Identifier | FunctionCall | BooleanConst
+        BooleanConst                <- "true" | "false"
+
 
         Expression <- RawString
 
@@ -135,10 +142,10 @@ void main()
         RawStringChars  <- ~(RawStringChar+)
         RawStringChar   <- !LineTerminator SourceCharacter
 
-        # Regular string: can contain any character except of spacing/EOL
+        # Regular string: can contain any character except of spacing/EOL/quotes
         RegularString       <- RegularStringChars?
         RegularStringChars  <- ~(RegularStringChar+)
-        RegularStringChar   <- !blank SourceCharacter
+        RegularStringChar   <- !(blank / quote / doublequote) SourceCharacter
 
         # Enquoted string: can contain any character except of quote
         EnquotedString            <- DoubleEnquotedString / SingleEnquotedString
@@ -157,10 +164,16 @@ void main()
 
     // Runtime parsing
     writeln("Reading project file...");
-    auto proFileContents = std.file.readText("/home/eraxillan/Projects/bankirureader_cmake/rubankireader.pro");
+    auto proFileContents = std.file.readText("/home/eraxillan/Qt/5.9.1/gcc_64/mkspecs/features/qt_config.prf");
+//    auto proFileContents = std.file.readText("/home/eraxillan/Projects/bankirureader_cmake/rubankireader.pro");
     proFileContents = preprocessLines(splitLines(proFileContents));
     
     auto parseTree = QMakeProject(proFileContents);
+    if (parseTree.successful)
+        writeln("Parse tree '" ~ parseTree.name ~ "':\n");
+    else
+        writeln("Project parsing failed: ");
+
     writeln(parseTree);
 }
 
