@@ -3,11 +3,34 @@
 	"authors": [
 		"Alexander Kamyshnikov"
 	],
-	"description": "Qt qmake D language port",
+	"description": "Qt qmake build system port to the D language",
 	"homepage": "github.com",
 	"copyright": "Copyright © 2017, Alexander Kamyshnikov",
 	"license": "MIT",
+
 	"dependencies": {
 	    "pegged": "*"
-	}
+	},
+	
+	"preGenerateCommands": [
+        "rdmd -I$PEGGED_PACKAGE_DIR source/make.d"
+    ],
+    "excludedSourceFiles": [
+        "source/make.d",
+        "source/qmakegrammar.d"
+    ],
+    "configurations": [
+        {
+            "name": "default",
+            "targetType": "executable"
+        },
+        {
+            "name": "tracer",
+            "targetType": "executable",
+            "versions": ["tracer"],
+            "subConfigurations": {
+                "pegged": "tracer"
+            }
+        }
+    ]
 }

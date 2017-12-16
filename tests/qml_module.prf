@@ -1,0 +1,29 @@
+builtin_resources {
+    URITARGET = $$replace(URI, "\\.", "_")
+    # Ensure the QML files are included in the resources. In static builds,
+    # the QML engine reads also the qmldir file from the resources.
+    $${URITARGET}.files = $$qmldir_file $$fq_qml_files
+    # qt-project.org/imports is the path used for locating imports inside the resources
+    $${URITARGET}.prefix = /qt-project.org/imports/$$TARGETPATH
+    RESOURCES += $${URITARGET}
+}
+
+# Install rules
+qmldir.base = $$_PRO_FILE_PWD_
+# Tools need qmldir and plugins.qmltypes always installed on the file system
+qmldir.files = $$qmldir_file $$fq_aux_qml_files
+!builtin_resources: qmldir.files += $$fq_qml_files
+qmldir.path = $$instbase/$$TARGETPATH
+INSTALLS += qmldir
+
+!debug_and_release|!build_all|CONFIG(release, debug|release) {
+    !prefix_build {
+        COPIES += qmldir
+    } else {
+        # For non-installed static builds, tools need qmldir and plugins.qmltypes
+        # files in the build dir
+        qmldir2build.files = $$qmldir_file $$fq_aux_qml_files
+        qmldir2build.path = $$DESTDIR
+        COPIES += qmldir2build
+    }
+}
