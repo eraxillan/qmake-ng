@@ -3,7 +3,7 @@ module qmakegrammar;
 enum QMakeGrammar = `
     QMakeProject:
         Project <- Statement+ eoi
-        Statement <- Block | Comment | Assignment | TestFunctionCall | Scope | EmptyStatement
+        Statement <- Scope / Block / TestFunctionCall / Assignment / Comment / EmptyStatement
 
         # No input
         EmptyStatement <- eps eol*
@@ -11,7 +11,7 @@ enum QMakeGrammar = `
         # Code block
         Block           <- SingleLineBlock / MultiLineBlock
         SingleLineBlock <- :space* "@" :space* Statement
-        MultiLineBlock  <- :space* "{" :space* :eol+ :space* (Statement)* :space* :eol* "}" :space* :eol*
+        MultiLineBlock  <- :space* "{" :space* :eol+ :space* Statement+ :space* :eol* "}" :space* :eol*
 
         # Comment, single-line and multi-line (extension)
         Comment                         <~ MultiLineComment / SingleLineComment
@@ -38,28 +38,30 @@ enum QMakeGrammar = `
         # Test function call
         # E.g.:
         # message("Starting project build...")
-        TestFunctionCall <- Identifier :space* "(" :space* FunctionArgumentList? :space* ")" :space* eol* # EndOfFunction
-        FunctionArgumentList < FunctionArgumentString ((:"," FunctionArgumentString)* | (:blank* FunctionArgumentString)*)
-        FunctionArgumentString <- EnquotedString | RegularFunctionArgumentString | ReplaceFunctionCall | TestFunctionCall
-        RegularFunctionArgumentString <- ~(RegularFunctionArgumentStringChar+)
-        RegularFunctionArgumentStringChar <- !(blank / "," / ")" / quote / doublequote ) SourceCharacter
-#        RegularFunctionArgumentStringChar <- !(EndOfFunction / blank / "," / quote / doublequote) SourceCharacter
-
-# FIXME: function arguments can contain "("/")" themselves, so we need special rule to detect function argument list end
-#        EndOfFunction <- ")" :space* (eoi | eol+ | "," | "@" | "{" | ":" | "|")
+        TestFunctionCall <- FunctionCall
 
         # Replace function call (must be rvalue only)
         # E.g.:
         # $$escape_expand("One\nTwo\nThree")
-        ReplaceFunctionCall < "$$" Identifier "(" FunctionArgumentList? ")"
+        ReplaceFunctionCall <- "$$" FunctionCall
         
+        FunctionCall <- Identifier :space* "(" :space* FunctionArgumentList? :space* ")" :space* :eol*
+        FunctionArgumentList    <- WhitespaceSeparatedList / CommaSeparatedList / FunctionArgumentString
+        CommaSeparatedList      <- FunctionArgumentString (:space* "," :space* FunctionArgumentString)+
+        WhitespaceSeparatedList <- FunctionArgumentString (:space+             FunctionArgumentString)+
+        FunctionArgumentString  <- ReplaceFunctionCall / TestFunctionCall / EnquotedString / RegularFunctionArgumentString        
+        RegularFunctionArgumentString <- ~(RegularFunctionArgumentStringChar+)
+        RegularFunctionArgumentStringChar <- !(space / "," / quote / doublequote / EndOfFunction) SourceCharacter
+
+        # NOTE: function arguments can contain "("/")" themselves, so we need special rule to detect function argument list end
+        EndOfFunction <- ")" :space* (eoi / eol / "," / "(" / ")" / "$$" / "@" / "{" / ":" / "|")
+
         # Conditional statement
         # E.g.:
         # CONFIG(debug, debug|release):buildmode = debug
         Scope            <- BooleanExpression ScopeTrueBranch ScopeFalseBranch*
         ScopeTrueBranch  <- Block
         ScopeFalseBranch <- "else" :space* Block
-#        ScopeFalseBranch <- ("else" :space* "@" :space* Statement) | ("else" :space* Block)
 
         # E.g.:
         # var1: message("scope 1.1")
@@ -99,8 +101,8 @@ enum QMakeGrammar = `
         SingleEnquotedString      <- quote ~(NonSingleQuoteCharacter*) quote
         NonSingleQuoteCharacter   <- !quote .
 
-        Identifier <- identifier
-        # Identifier  <~ [a-zA-Z_] [a-zA-Z_0-9]*
+        #Identifier <- identifier
+        Identifier  <~ [a-zA-Z_] [a-zA-Z_0-9\-]*
         QMakeIdentifier <~ [a-zA-Z_0-9]*
         QualifiedIdentifier <~ (Identifier / ExpandStatement) ('.' (QMakeIdentifier / ExpandStatement))*
 
