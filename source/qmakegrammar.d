@@ -3,7 +3,7 @@ module qmakegrammar;
 enum QMakeGrammar = `
     QMakeProject:
         Project <- Statement+ eoi
-        Statement <- Scope / Block / TestFunctionCall / Assignment / Comment / EmptyStatement
+        Statement <- Scope | Block | BooleanExpression | TestFunctionCall | Assignment | Comment | EmptyStatement
 
         # No input
         EmptyStatement <- eps eol*
@@ -26,7 +26,6 @@ enum QMakeGrammar = `
         StringList              <- String (:space* String)*
         String                  <- StringChars?
         StringChars             <- ~(StringChar+)
-        #StringChar              <- !(blank / LineTerminator / "#" / "," / "(" / ")" / quote / doublequote ) SourceCharacter
         StringChar              <- !(blank / LineTerminator) SourceCharacter
         
         DirectAssignment        <- QualifiedIdentifier :space* "="  :space* StringList? :eol*
@@ -38,7 +37,7 @@ enum QMakeGrammar = `
         # Test function call
         # E.g.:
         # message("Starting project build...")
-        TestFunctionCall <- EvalTestFunctionCall / FunctionCall
+        TestFunctionCall <- EvalTestFunctionCall / CacheTestFunctionCall / FunctionCall
 
         # Replace function call (must be rvalue only)
         # E.g.:
@@ -80,10 +79,13 @@ enum QMakeGrammar = `
         BooleanConst                 <- "true" | "false"
 
         # FIXME: move built-in test and replace function to separate module
-        EvalTestFunctionCall <- "eval" :space* "(" :space* EvalString :space* ")"
-        EvalString      <- Statement ### EvalStringChars
-        EvalStringChars <- ~(EvalStringChar+)
-        EvalStringChar  <- !EndOfFunction SourceCharacter
+        
+        # eval(string)
+        EvalTestFunctionCall <- "eval" :space* "(" :space* Statement :space* ")"
+        
+        # cache(variablename, [set|add|sub] [transient] [super|stash], [source variablename])
+        CacheTestFunctionCall <- "cache" OPEN_PAR_WS LValue (COMMA_WS CacheTestFunctionParam2)? (COMMA_WS LValue)? CLOSE_PAR_WS
+        CacheTestFunctionParam2 <- ("set" / "add" / "sub")? :space* ("transient")? :space* ("super" / "stash")?
 
         Expression <- EmptyStatement | RawString
         
@@ -114,6 +116,10 @@ enum QMakeGrammar = `
         QualifiedIdentifier <~ LValue ('.' LValue)*
         
         EXPAND_MARKER <- "$$" / "\\$\\$"
+    
+        COMMA_WS     <- :space* "," :space*
+        OPEN_PAR_WS  <- :space* "(" :space*
+        CLOSE_PAR_WS <- :space* ")"
 
         SourceCharacter <- [\u0000-\uFFFC]
         LineTerminator  <- "\u000A" / "\u000D" / "\u2028" / "\u2029"
