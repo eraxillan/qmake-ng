@@ -11,7 +11,7 @@ enum QMakeGrammar = `
         # Code block
         Block           <- SingleLineBlock / MultiLineBlock
         SingleLineBlock <- :space* "@" :space* Statement
-        MultiLineBlock  <- :space* "{" :space* :eol+ :space* Statement+ :space* :eol* "}" :space* :eol*
+        MultiLineBlock  <- :space* "{" :space* :eol* :space* Statement+ :space* :eol* "}" :space* :eol*
 
         # Comment, single-line and multi-line (extension)
         Comment                         <~ MultiLineComment / SingleLineComment
@@ -38,12 +38,12 @@ enum QMakeGrammar = `
         # Test function call
         # E.g.:
         # message("Starting project build...")
-        TestFunctionCall <- FunctionCall
+        TestFunctionCall <- EvalTestFunctionCall / FunctionCall
 
         # Replace function call (must be rvalue only)
         # E.g.:
         # $$escape_expand("One\nTwo\nThree")
-        ReplaceFunctionCall <- "$$" FunctionCall
+        ReplaceFunctionCall <- EXPAND_MARKER FunctionCall
         
         FunctionCall <- Identifier :space* "(" :space* FunctionArgumentList? :space* ")" :space* :eol*
         FunctionArgumentList    <- WhitespaceSeparatedList / CommaSeparatedList / FunctionArgumentString
@@ -54,7 +54,7 @@ enum QMakeGrammar = `
         RegularFunctionArgumentStringChar <- !(space / "," / quote / doublequote / EndOfFunction) SourceCharacter
 
         # NOTE: function arguments can contain "("/")" themselves, so we need special rule to detect function argument list end
-        EndOfFunction <- ")" :space* (eoi / eol / "," / "(" / ")" / "$$" / "@" / "{" / ":" / "|")
+        EndOfFunction <- ")" :space* (eoi / eol / "," / "(" / ")" / EXPAND_MARKER / "@" / "{" / ":" / "|")
 
         # Conditional statement
         # E.g.:
@@ -79,10 +79,15 @@ enum QMakeGrammar = `
         BooleanAtom                  <- Identifier | ExpandStatement | TestFunctionCall | BooleanConst
         BooleanConst                 <- "true" | "false"
 
+        # FIXME: move built-in test and replace function to separate module
+        EvalTestFunctionCall <- "eval" :space* "(" :space* EvalString :space* ")"
+        EvalString      <- Statement ### EvalStringChars
+        EvalStringChars <- ~(EvalStringChar+)
+        EvalStringChar  <- !EndOfFunction SourceCharacter
 
         Expression <- EmptyStatement | RawString
         
-        ExpandStatement <- "$$" :space* QualifiedIdentifier / "$$" :space* "{" :space* QualifiedIdentifier :space* "}"
+        ExpandStatement <- EXPAND_MARKER :space* QualifiedIdentifier / EXPAND_MARKER :space* "{" :space* QualifiedIdentifier :space* "}"
 
         # Raw string: can contain any character except of EOL
         RawString       <- RawStringChars?
@@ -101,10 +106,14 @@ enum QMakeGrammar = `
         SingleEnquotedString      <- quote ~(NonSingleQuoteCharacter*) quote
         NonSingleQuoteCharacter   <- !quote .
 
+        # NOTE: "a-b" and "c++11" are valid identifiers too
         #Identifier <- identifier
-        Identifier  <~ [a-zA-Z_] [a-zA-Z_0-9\-]*
-        QMakeIdentifier <~ [a-zA-Z_0-9]*
-        QualifiedIdentifier <~ (Identifier / ExpandStatement) ('.' (QMakeIdentifier / ExpandStatement))*
+        Identifier  <~ [a-zA-Z_] [a-zA-Z_0-9\-\+]*
+        QMakeIdentifier <~ [a-zA-Z_0-9\-\+]+
+        LValue <- (QMakeIdentifier / ExpandStatement) (QMakeIdentifier / ExpandStatement)*
+        QualifiedIdentifier <~ LValue ('.' LValue)*
+        
+        EXPAND_MARKER <- "$$" / "\\$\\$"
 
         SourceCharacter <- [\u0000-\uFFFC]
         LineTerminator  <- "\u000A" / "\u000D" / "\u2028" / "\u2029"
