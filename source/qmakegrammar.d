@@ -43,15 +43,21 @@ enum QMakeGrammar = `
         # E.g.:
         # $$escape_expand("One\nTwo\nThree")
         ReplaceFunctionCall <- EXPAND_MARKER FunctionCall
-        
+
         FunctionCall <- Identifier OPEN_PAR_WS FunctionArgumentList? CLOSE_PAR_WS :space* :eol*
-        FunctionArgumentList    <- WhitespaceSeparatedList / CommaSeparatedList / FunctionArgumentString
-        CommaSeparatedList      <- FunctionArgumentString (COMMA_WS FunctionArgumentString)+
-        WhitespaceSeparatedList <- FunctionArgumentString (:space+  FunctionArgumentString)+
-        FunctionArgumentString  <- ReplaceFunctionCall / TestFunctionCall / EnquotedString / RegularFunctionArgumentString        
-        RegularFunctionArgumentString <- ~(RegularFunctionArgumentStringChar+)
-        RegularFunctionArgumentStringChar <- !(space / "," / quote / doublequote / BACKSLASH / EndOfFunction) SourceCharacter
+
+        FunctionArgumentList       <- List(COMMA_WS, COMMA) / List(:space+, space) / FunctionFirstArgument
+        List(delimRule, delimChar) <- FunctionFirstArgument (delimRule FunctionNextArgument(delimChar))+
+        
+        FunctionFirstArgument           <- ReplaceFunctionCall / TestFunctionCall / EnquotedString / FunctionFirstArgumentString
+        FunctionFirstArgumentString     <- ~(FunctionFirstArgumentStringChar+)
+        FunctionFirstArgumentStringChar <- !(space / COMMA / quote / doublequote / BACKSLASH / EndOfFunction) SourceCharacter
                                            / BACKSLASH EscapeSequence
+        
+        FunctionNextArgument(delim)           <- ReplaceFunctionCall / TestFunctionCall / EnquotedString / FunctionNextArgumentString(delim)
+        FunctionNextArgumentString(delim)     <- ~(FunctionNextArgumentStringChar(delim)+)
+        FunctionNextArgumentStringChar(delim) <- !(delim / quote / doublequote / BACKSLASH / EndOfFunction) SourceCharacter
+                                               / BACKSLASH EscapeSequence
 
         # NOTE: function arguments can contain "("/")" themselves, so we need special rule to detect function argument list end
         EndOfFunction <- ")" :space* (eoi / eol / "," / "(" / ")" / EXPAND_MARKER / "@" / "{" / ":" / "|")
@@ -140,6 +146,7 @@ enum QMakeGrammar = `
         # FIXME: implement second rule as escape sequence
         EXPAND_MARKER <- "$$" / "\\$\\$"
 
+        COMMA        <- ","
         COMMA_WS     <- :space* "," :space*
         OPEN_PAR_WS  <- :space* "(" :space*
         CLOSE_PAR_WS <- :space* ")"
