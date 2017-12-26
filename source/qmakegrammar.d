@@ -44,13 +44,14 @@ enum QMakeGrammar = `
         # $$escape_expand("One\nTwo\nThree")
         ReplaceFunctionCall <- EXPAND_MARKER FunctionCall
         
-        FunctionCall <- Identifier :space* "(" :space* FunctionArgumentList? :space* ")" :space* :eol*
+        FunctionCall <- Identifier OPEN_PAR_WS FunctionArgumentList? CLOSE_PAR_WS :space* :eol*
         FunctionArgumentList    <- WhitespaceSeparatedList / CommaSeparatedList / FunctionArgumentString
-        CommaSeparatedList      <- FunctionArgumentString (:space* "," :space* FunctionArgumentString)+
-        WhitespaceSeparatedList <- FunctionArgumentString (:space+             FunctionArgumentString)+
+        CommaSeparatedList      <- FunctionArgumentString (COMMA_WS FunctionArgumentString)+
+        WhitespaceSeparatedList <- FunctionArgumentString (:space+  FunctionArgumentString)+
         FunctionArgumentString  <- ReplaceFunctionCall / TestFunctionCall / EnquotedString / RegularFunctionArgumentString        
         RegularFunctionArgumentString <- ~(RegularFunctionArgumentStringChar+)
-        RegularFunctionArgumentStringChar <- !(space / "," / quote / doublequote / EndOfFunction) SourceCharacter
+        RegularFunctionArgumentStringChar <- !(space / "," / quote / doublequote / BACKSLASH / EndOfFunction) SourceCharacter
+                                           / BACKSLASH EscapeSequence
 
         # NOTE: function arguments can contain "("/")" themselves, so we need special rule to detect function argument list end
         EndOfFunction <- ")" :space* (eoi / eol / "," / "(" / ")" / EXPAND_MARKER / "@" / "{" / ":" / "|")
@@ -104,22 +105,46 @@ enum QMakeGrammar = `
         # Enquoted string: can contain any character except of quote
         EnquotedString            <- DoubleEnquotedString / SingleEnquotedString
         DoubleEnquotedString      <- doublequote ~(NonDoubleQuoteCharacter*) doublequote
-        NonDoubleQuoteCharacter   <- !doublequote .
+        NonDoubleQuoteCharacter   <- !(doublequote / BACKSLASH) SourceCharacter / BACKSLASH EscapeSequence
         SingleEnquotedString      <- quote ~(NonSingleQuoteCharacter*) quote
-        NonSingleQuoteCharacter   <- !quote .
+        NonSingleQuoteCharacter   <- !(quote / BACKSLASH) SourceCharacter / BACKSLASH EscapeSequence
 
-        # NOTE: "a-b" and "c++11" are valid identifiers too
+        # NOTE: "a-b" and "c++11" are valid qmake identifiers too
         #Identifier <- identifier
         Identifier  <~ [a-zA-Z_] [a-zA-Z_0-9\-\+]*
         QMakeIdentifier <~ [a-zA-Z_0-9\-\+]+
         LValue <- (QMakeIdentifier / ExpandStatement) (QMakeIdentifier / ExpandStatement)*
         QualifiedIdentifier <~ LValue ('.' LValue)*
-        
+
+        EscapeSequence
+           <- quote
+            / doublequote
+            / BACKSLASH
+            / "$"   # FIXME: test
+            / "?"
+            / "a"
+            / "x" ~(HexDigit HexDigit HexDigit HexDigit)
+            / ~(OctDigit OctDigit OctDigit)
+            / "x" ~(HexDigit HexDigit)
+            / "b"
+            / "f"
+            / "n"
+            / "r"
+            / "t"
+            / "v"
+
+        OctDigit <- [0-7]
+        DecDigit <- [0-9]
+        HexDigit <- [0-9a-fA-F]
+
+        # FIXME: implement second rule as escape sequence
         EXPAND_MARKER <- "$$" / "\\$\\$"
-    
+
         COMMA_WS     <- :space* "," :space*
         OPEN_PAR_WS  <- :space* "(" :space*
         CLOSE_PAR_WS <- :space* ")"
+        
+        BACKSLASH <- "\\"
 
         SourceCharacter <- [\u0000-\uFFFC]
         LineTerminator  <- "\u000A" / "\u000D" / "\u2028" / "\u2029"
