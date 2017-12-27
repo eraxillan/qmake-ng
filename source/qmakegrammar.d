@@ -3,7 +3,7 @@ module qmakegrammar;
 enum QMakeGrammar = `
     QMakeProject:
         Project <- Statement+ eoi
-        Statement <- Scope | Block | BooleanExpression | TestFunctionCall | Assignment | Comment | EmptyStatement
+        Statement <- Scope | Block | BooleanExpression | ReplaceFunctionCall | TestFunctionCall | Assignment | Comment | EmptyStatement
 
         # No input
         EmptyStatement <- eps eol*
@@ -47,20 +47,26 @@ enum QMakeGrammar = `
         FunctionCall <- Identifier OPEN_PAR_WS FunctionArgumentList? CLOSE_PAR_WS :space* :eol*
 
         FunctionArgumentList       <- List(COMMA_WS, COMMA) / List(:space+, space) / FunctionFirstArgument
-        List(delimRule, delimChar) <- FunctionFirstArgument (delimRule FunctionNextArgument(delimChar))+
+        List(delimRule, delimChar) <- FunctionFirstArgument (delimRule (FunctionNextArgument(delimChar))?)+
         
-        FunctionFirstArgument           <- ReplaceFunctionCall / TestFunctionCall / EnquotedString / FunctionFirstArgumentString
+        FunctionFirstArgument           <- FunctionFirstArgumentImpl FunctionFirstArgumentImpl*
+        FunctionFirstArgumentImpl       <- ReplaceFunctionCall / ExpandStatement_2 / TestFunctionCall / EnquotedString / FunctionFirstArgumentString
         FunctionFirstArgumentString     <- ~(FunctionFirstArgumentStringChar+)
-        FunctionFirstArgumentStringChar <- !(space / COMMA / quote / doublequote / BACKSLASH / EndOfFunction) SourceCharacter
+        FunctionFirstArgumentStringChar <- !(EXPAND_MARKER / space / COMMA / quote / doublequote / BACKSLASH / EndOfFunction) SourceCharacter
                                            / BACKSLASH EscapeSequence
-        
-        FunctionNextArgument(delim)           <- ReplaceFunctionCall / TestFunctionCall / EnquotedString / FunctionNextArgumentString(delim)
+
+        FunctionNextArgument(delim)           <- FunctionNextArgumentImpl(delim) (FunctionNextArgumentImpl(delim))*
+        FunctionNextArgumentImpl(delim)       <- ReplaceFunctionCall / ExpandStatement_2 /TestFunctionCall / EnquotedString / FunctionNextArgumentString(delim)
         FunctionNextArgumentString(delim)     <- ~(FunctionNextArgumentStringChar(delim)+)
-        FunctionNextArgumentStringChar(delim) <- !(delim / quote / doublequote / BACKSLASH / EndOfFunction) SourceCharacter
+        FunctionNextArgumentStringChar(delim) <- !(EXPAND_MARKER / delim / quote / doublequote / BACKSLASH / EndOfFunction) SourceCharacter
                                                / BACKSLASH EscapeSequence
 
         # NOTE: function arguments can contain "("/")" themselves, so we need special rule to detect function argument list end
-        EndOfFunction <- ")" :space* (eoi / eol / "," / "(" / ")" / EXPAND_MARKER / "@" / "{" / ":" / "|")
+        EndOfFunction <- ")" :space* (
+            eoi / eol
+            / "=" / "+=" / "*=" / "-=" / "~="
+            / "," / "." / "_" / "(" / ")" / EXPAND_MARKER / "@" / "{" / "}" / ":" / "|"
+        )
 
         # Conditional statement
         # E.g.:
@@ -82,13 +88,13 @@ enum QMakeGrammar = `
         ParenthesedBooleanExpression <- '(' BooleanExpression ')'
 # FIXME: support CONFIG test function
         IfTestFunctionCall           <- "if" :space* "(" :space* BooleanExpression :space* ")"
-        BooleanAtom                  <- Identifier | ExpandStatement | TestFunctionCall | BooleanConst
+        BooleanAtom                  <- QMakeIdentifier | ReplaceFunctionCall | ExpandStatement | TestFunctionCall | BooleanConst
         BooleanConst                 <- "true" | "false"
 
         # FIXME: move built-in test and replace function to separate module
         
         # eval(string)
-        EvalTestFunctionCall <- "eval" :space* "(" :space* Statement :space* ")"
+        EvalTestFunctionCall <- "eval" OPEN_PAR_WS Statement CLOSE_PAR_WS
         
         # cache(variablename, [set|add|sub] [transient] [super|stash], [source variablename])
         CacheTestFunctionCall <- "cache" OPEN_PAR_WS LValue (COMMA_WS CacheTestFunctionParam2)? (COMMA_WS LValue)? CLOSE_PAR_WS
@@ -96,7 +102,7 @@ enum QMakeGrammar = `
 
         Expression <- EmptyStatement | RawString
         
-        ExpandStatement <- EXPAND_MARKER :space* QualifiedIdentifier / EXPAND_MARKER :space* "{" :space* QualifiedIdentifier :space* "}"
+        
 
         # Raw string: can contain any character except of EOL
         RawString       <- RawStringChars?
@@ -117,16 +123,25 @@ enum QMakeGrammar = `
 
         # NOTE: "a-b" and "c++11" are valid qmake identifiers too
         #Identifier <- identifier
-        Identifier  <~ [a-zA-Z_] [a-zA-Z_0-9\-\+]*
-        QMakeIdentifier <~ [a-zA-Z_0-9\-\+]+
-        LValue <- (QMakeIdentifier / ExpandStatement) (QMakeIdentifier / ExpandStatement)*
-        QualifiedIdentifier <~ LValue ('.' LValue)*
+        Identifier      <~ [a-zA-Z_] [a-zA-Z_0-9\-\+\*]*
+        QMakeIdentifier <~ [a-zA-Z_0-9\-\+\*]+
+
+        ExpandStatement   <- EXPAND_MARKER :space* QualifiedIdentifier / EXPAND_MARKER :space* "{" :space* QualifiedIdentifier :space* "}"
+#####        ExpandStatement_2 <- EXPAND_MARKER :space*     QMakeIdentifier / EXPAND_MARKER :space* "{" :space*     QMakeIdentifier :space* "}"
+        ExpandStatement_2 <- ExpandStatement
+
+        # lvalue
+        LValueImpl <- ReplaceFunctionCall / ExpandStatement / QMakeIdentifier
+        LValue     <- LValueImpl LValueImpl*
+
+        QualifiedIdentifier <~ LValue ("." LValue)*
 
         EscapeSequence
            <- quote
             / doublequote
             / BACKSLASH
-            / "$"   # FIXME: test
+#            / "$"   # FIXME: test
+            / "."
             / "?"
             / "a"
             / "x" ~(HexDigit HexDigit HexDigit HexDigit)
