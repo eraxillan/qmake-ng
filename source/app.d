@@ -8,83 +8,8 @@ import std.getopt;
 import std.path;
 import std.string;
 
+import preprocessor;
 import qmakeparser;
-
-static string preprocessLines(string[] strLinesArray)
-{
-    const auto STR_HASH = "#";
-    const auto STR_BACKSLASH = "\\";
-    
-    string[] result;
-    for (int lineIndex = 0; lineIndex < strLinesArray.length; lineIndex++)
-    {
-        auto strLine = strLinesArray[lineIndex];
-        strLine = strip(strLine);
-
-        auto hashIndex = indexOf(strLine, STR_HASH);
-        if (hashIndex >= 0)
-        {
-            if (hashIndex == 0)
-                writeln("ProParser::preprocessLines: skip comment line");
-            else
-                writeln("ProParser::preprocessLines: cutting off inline comment");
-
-            strLine = strLine[0 .. hashIndex];
-            strLine = strip(strLine);
-        }
-
-        bool isMultiLine = false;
-        int startLineIndex = -1;
-        int endLineIndex = -1;
-        if (strLine.endsWith(STR_BACKSLASH))
-        {
-            isMultiLine = true;
-
-            auto strMultiLine = strip(strLine[0 .. strLine.length - 1]);
-            auto j = lineIndex + 1;
-            for ( ; j < strLinesArray.length; j++)
-            {
-                strLine = strLinesArray[j];
-                strLine = strip(strLine);
-
-                bool endsWithBackslash = strLine.endsWith("\\");
-                strMultiLine ~= endsWithBackslash ? " " ~ strip(strLine[0 .. strLine.length - 1]) : " " ~ strLine;
-
-                if (!endsWithBackslash)
-                    break;
-            }
-
-            startLineIndex = lineIndex;
-            endLineIndex = j;
-            lineIndex = j;
-            strLine = strMultiLine;
-        }
-        
-        // FIXME: workaround for grammar ambiguity - cannot distingush AND-colon and scope statement expression end colon
-        // Replace last colon (":") with "@";
-        // Exceptions:
-        // - there is an "{" on this line
-        // - (TODO) the colon is inside quotes/doublequotes
-        auto lastColonIndex = strLine.lastIndexOf(':');
-        if ((lastColonIndex != -1) && !strLine.endsWith("{"))
-        {
-            strLine.replaceInPlace(lastColonIndex, lastColonIndex + 1, "@");
-        }
-        // Replace "else:" with "else@"
-        // FIXME: cover all cases!
-        strLine = strLine.replace("else:", "else@");
-
-        if (isMultiLine)
-            writeln("Multi-line " ~ std.conv.to!string(startLineIndex + 1) ~ " - " ~ std.conv.to!string(endLineIndex + 1) ~ ": |" ~ strLine ~ "|");
-        else
-            writeln("Line " ~ std.conv.to!string(lineIndex + 1) ~ ": |" ~ strLine ~ "|");
-
-//        if (!strLine.empty())
-            result ~= strLine;
-    }
-
-    return result.join("\n");
-}
 
 bool tryParseProject(string fileName)
 {
@@ -102,6 +27,9 @@ bool tryParseProject(string fileName)
 
 unittest
 {
+    assert(!isInsideQuotes("abc \"123\" a:b xyz \"567\"", ":", 11));
+    assert(isInsideQuotes("abc \"123\" \"x:y\" xyz \"567\"", ":", 12));
+
     assert(tryParseProject("tests/linux-clang-qmake.conf"));
 }
 
@@ -110,30 +38,100 @@ void main()
     version (tracer)
     {
         traceAll();
-    }
+        //setTraceConditionFunction(function(string ruleName, const ref ParseTree p) {return ruleName.startsWith("QMakeProject.");});
+    }    
 
-    if (!tryParseProject("tests/android-base-head.conf"))
+    if (!tryParseProject("tests/test_function_call_1.pro"))
+    {
+        writeln("Test tests/test_function_call_1.pro FAILED\n\n");
         return;
-    writeln("Test tests/android-base-head.conf passed\n\n");
+    }
+    writeln("Test tests/test_function_call_1.pro passed\n\n");
+    
+    if (!tryParseProject("tests/block_1.pro"))
+    {
+        writeln("Test tests/block_1.pro FAILED\n\n");
+        return;
+    }
+    writeln("Test tests/block_1.pro passed\n\n");
+    if (!tryParseProject("tests/block_2.pro"))
+    {
+        writeln("Test tests/block_2.pro FAILED\n\n");
+        return;
+    }
+    writeln("Test tests/block_2.pro passed\n\n");
+    if (!tryParseProject("tests/block_3.pro"))
+    {
+        writeln("Test tests/block_3.pro FAILED\n\n");
+        return;
+    }
+    writeln("Test tests/block_3.pro passed\n\n");
+    if (!tryParseProject("tests/block_4.pro"))
+    {
+        writeln("Test tests/block_4.pro FAILED\n\n");
+        return;
+    }
+    writeln("Test tests/block_4.pro passed\n\n");
+    
     if (!tryParseProject("tests/scope_1.pro"))
+    {
+        writeln("Test tests/scope_1.pro FAILED\n\n");
         return;
+    }
     writeln("Test tests/scope_1.pro passed\n\n");
     if (!tryParseProject("tests/scope_2.pro"))
+    {
+        writeln("Test tests/scope_2.pro FAILED\n\n");
         return;
+    }
     writeln("Test tests/scope_2.pro passed\n\n");
     if (!tryParseProject("tests/scope_3.pro"))
+    {
+        writeln("Test tests/scope_3.pro FAILED\n\n");
         return;
+    }
     writeln("Test tests/scope_3.pro passed\n\n");
     if (!tryParseProject("tests/scope_4.pro"))
+    {
+        writeln("Test tests/scope_4.pro FAILED\n\n");
         return;
+    }
     writeln("Test tests/scope_4.pro passed\n\n");
-    if (!tryParseProject("tests/qml_module.prf"))
+    if (!tryParseProject("tests/scope_5.pro"))
+    {
+        writeln("Test tests/scope_5.pro FAILED\n\n");
         return;
-    writeln("Test tests/qml_module.prf passed\n\n");
+    }
+    writeln("Test tests/scope_5.pro passed\n\n");
+    if (!tryParseProject("tests/scope_6.pro"))
+    {
+        writeln("Test tests/scope_6.pro FAILED\n\n");
+        return;
+    }
+    writeln("Test tests/scope_6.pro passed\n\n");
+
+    if (!tryParseProject("/home/eraxillan/Qt/5.10.0/gcc_64/mkspecs/features/default_post.prf"))
+    {
+        writeln("Test features/default_post.prf FAILED\n\n");
+        return;
+    }
+    writeln("Test qt_parts.prf passed\n\n");
+    if (!tryParseProject("tests/qml_module.prf"))
+    {
+        writeln("Test features/qml_module.prf FAILED\n\n");
+        return;
+    }
+    writeln("Test tests/qml_module.prf passed\n\n");    
+    if (!tryParseProject("tests/android-base-head.conf"))
+    {
+        writeln("Test tests/android-base-head.conf FAILED\n\n");
+        return;
+    }        
+    writeln("Test tests/android-base-head.conf passed\n\n");
 
     // Runtime parsing
     // Iterate over all *.d files in current directory ("") and all its subdirectories
-    auto projectFiles = dirEntries("/home/eraxillan/Qt/5.9.1/gcc_64/mkspecs", SpanMode.depth).filter!(
+    auto projectFiles = dirEntries("/home/eraxillan/Qt/5.10.0/gcc_64/mkspecs", SpanMode.depth).filter!(
         f => f.name.endsWith(".pro") || f.name.endsWith(".pri") || f.name.endsWith(".prf") || f.name.endsWith(".conf")
     );
     int successfulCount = 0, failedCount = 0;
@@ -146,11 +144,13 @@ void main()
         {
             successfulCount++;
             writeln("SUCCESS");
-        } else failedCount++;
+        // } else failedCount++;
+        } else break;
     }
     
     int totalCount = successfulCount + failedCount;
+    writeln("Total file count: " ~ std.conv.to!string(totalCount));
     writeln("Successfully parsed: " ~ std.conv.to!string(successfulCount));
-    writeln("Failed to parse: " ~ std.conv.to!string(failedCount));
+    writeln("Failed to parse: " ~ std.conv.to!string(failedCount) ~ " or " ~ std.conv.to!string(100 * failedCount / totalCount) ~ "%");
 }
 
