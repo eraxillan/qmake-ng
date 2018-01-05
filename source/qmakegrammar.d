@@ -148,7 +148,7 @@ enum QMakeGrammar = `
                                             # E.g. result = \$\$"$$call"
                                             / EXPAND_MARKER doublequote ExpandStatement doublequote
         EnvironmentVariableExpandStatement <- (EXPAND_MARKER / SINGLE_EXPAND_MARKER) OPEN_PAR_WS QualifiedIdentifier CLOSE_PAR_WS
-        PropertyVariableExpandStatement    <- EXPAND_MARKER :space* "[" :space* QualifiedIdentifier :space* "]"
+        PropertyVariableExpandStatement    <- EXPAND_MARKER :space* "[" :space* QualifiedIdentifier ("/get")? :space* "]"
 
         # lvalue
         LValueImpl          <- ExpandStatement / QMakeIdentifier
