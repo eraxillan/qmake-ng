@@ -55,18 +55,19 @@ enum QMakeGrammar = `
         FunctionFirstArgument           <- FunctionFirstArgumentImpl FunctionFirstArgumentImpl*
         FunctionFirstArgumentImpl       <- ReplaceFunctionCall / ExpandStatement / TestFunctionCall / EnquotedString / FunctionFirstArgumentString
         FunctionFirstArgumentString     <- ~(FunctionFirstArgumentStringChar+)
-        FunctionFirstArgumentStringChar <- !(EXPAND_MARKER / space / COMMA / quote / doublequote / BACKSLASH / EndOfFunction) SourceCharacter
+        FunctionFirstArgumentStringChar <- !(eol / EXPAND_MARKER / space / COMMA / quote / doublequote / BACKSLASH / EndOfFunction) SourceCharacter
                                            / BACKSLASH EscapeSequence
 
         FunctionNextArgument(delim)           <- FunctionNextArgumentImpl(delim) (FunctionNextArgumentImpl(delim))*
         FunctionNextArgumentImpl(delim)       <- ReplaceFunctionCall / ExpandStatement / TestFunctionCall / EnquotedString / FunctionNextArgumentString(delim)
         FunctionNextArgumentString(delim)     <- ~(FunctionNextArgumentStringChar(delim)+)
-        FunctionNextArgumentStringChar(delim) <- !(EXPAND_MARKER / delim / quote / doublequote / BACKSLASH / EndOfFunction) SourceCharacter
+        FunctionNextArgumentStringChar(delim) <- !(eol / EXPAND_MARKER / delim / quote / doublequote / BACKSLASH / EndOfFunction) SourceCharacter
                                                / BACKSLASH EscapeSequence
 
         # NOTE: function arguments can contain "("/")" themselves, so we need special rule to detect function argument list end
         EndOfFunction <- ")" :space* (
-            eoi / eol
+            [a-zA-Z_0-9\-\+\*]
+            / eoi / eol
             / "=" / "+=" / "*=" / "-=" / "~="
             / "," / "." / "_"
             / "(" / ")"
