@@ -39,7 +39,43 @@ void main()
     {
         traceAll();
         //setTraceConditionFunction(function(string ruleName, const ref ParseTree p) {return ruleName.startsWith("QMakeProject.");});
-    }    
+    }
+    
+    if (!tryParseProject("tests/contains.pro"))
+    {
+        writeln("Test tests/contains.pro FAILED\n\n");
+        return;
+    }
+    writeln("Test tests/contains.pro passed\n\n");
+    
+    if (!tryParseProject("tests/eval.pro"))
+    {
+        writeln("Test tests/eval.pro FAILED\n\n");
+        return;
+    }
+    writeln("Test tests/eval.pro passed\n\n");
+    
+    if (!tryParseProject("/home/eraxillan/Qt/5.10.0/gcc_64/mkspecs/features/qt_module_headers.prf"))
+    {
+        writeln("Test features/qt_module_headers.prf FAILED\n\n");
+        return;
+    }
+    writeln("Test qt_module_headers.prf passed\n\n");
+    
+    if (!tryParseProject("/home/eraxillan/Qt/5.10.0/gcc_64/mkspecs/features/qt_functions.prf"))
+    {
+        writeln("Test features/qt_functions.prf FAILED\n\n");
+        return;
+    }
+    writeln("Test qt_functions.prf passed\n\n");
+    
+    if (!tryParseProject("/home/eraxillan/Qt/5.10.0/gcc_64/mkspecs/features/uikit/qt.prf"))
+    {
+        writeln("Test features/uikit/qt.prf FAILED\n\n");
+        return;
+    }
+    writeln("Test uikit/qt.prf passed\n\n");
+    
 
     if (!tryParseProject("tests/test_function_call_1.pro"))
     {
