@@ -104,8 +104,9 @@ enum QMakeGrammar = `
         EvalArg <- (QualifiedIdentifier :space* "=" :space* Statement) / Statement
         
         # cache(variablename, [set|add|sub] [transient] [super|stash], [source variablename])
-        CacheTestFunctionCall <- "cache" OPEN_PAR_WS QualifiedIdentifier (COMMA_WS CacheTestFunctionParam2)? (COMMA_WS LValue)? CLOSE_PAR_WS
-        CacheTestFunctionParam2 <- ("set" / "add" / "sub")? :space* ("transient")? :space* ("super" / "stash")?
+        CacheTestFunctionCall       <- "cache" OPEN_PAR_WS CacheTestFunctionCallParams? CLOSE_PAR_WS
+        CacheTestFunctionCallParams <- QualifiedIdentifier (COMMA_WS CacheTestFunctionParam2)? (COMMA_WS QualifiedIdentifier)?
+        CacheTestFunctionParam2     <- ("set" / "add" / "sub")? :space* ("transient")? :space* ("super" / "stash")?
         
         # contains(variablename, value)
         ContainsTestFunctionCall <- "contains" OPEN_PAR_WS QualifiedIdentifier (COMMA_WS (EnquotedString / ContainsTestFunctionParam2)) CLOSE_PAR_WS
