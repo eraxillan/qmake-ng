@@ -29,7 +29,7 @@ static QuotesInfo detectPairedCharacter(char openChar, char closeChar, string st
 {    
     int[] stack;
     
-    // Search for opening double quote: skip paired DQs until we find unpaired one
+    // Search for opening separator: skip paired characters until we find unpaired one
     for (auto i = index - 1; i >= 0; i--)
     {
         if (strLine[i] == openChar)
@@ -37,7 +37,7 @@ static QuotesInfo detectPairedCharacter(char openChar, char closeChar, string st
     }
     if (stack.empty || (stack.length % 2 == 0))
         return QuotesInfo(-1, -1, false);
-    auto indexOpen = stack[$ - 1];
+    auto indexOpen = stack[0];
     stack = [];
 
     // Search for closing double quote (unpaired)
@@ -102,7 +102,6 @@ static string enquoteContainsArgument(string strLine)
         containsIndex = strLine.indexOf(CONTAINS_STR, containsIndex);
         if (containsIndex == -1)
         {
-            // strLine[secondArgumentEndIndex + 2 .. $]
             result ~= strLine[newContainsEndIndex == -1 ? 0 : newContainsEndIndex .. $];
             break;
         }
@@ -213,10 +212,16 @@ static string preprocessLines(string[] strLinesArray)
             {
                 if (strLine[i] == STR_COLON)
                 {
+                    writeln("ProParser::preprocessLines: colon detected at index " ~ std.conv.to!string(i));
+
                     auto info1 = detectPairedCharacter(STR_DQUOTE, STR_DQUOTE, strLine, "" ~ STR_COLON, i);
                     if (info1.success)
                     {
                         i = info1.indexOpen - 1;
+                        writeln("ProParser::preprocessLines: quote begin = " ~ std.conv.to!string(info1.indexOpen));
+                        writeln("ProParser::preprocessLines: quote end = " ~ std.conv.to!string(info1.indexClose));
+                        writeln("ProParser::preprocessLines: colon inside quotes detected, go back to index " ~ std.conv.to!string(i));
+                        writeln("ProParser::preprocessLines: colon inside quotes detected, go back to index " ~ std.conv.to!string(i));
                         continue;
                     }
                     
