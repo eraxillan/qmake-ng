@@ -2,7 +2,7 @@ module qmakegrammar;
 
 enum QMakeGrammar = `
     QMakeProject:
-        Project <- Statement+ eoi
+        Project <- Statement* eoi
         Statement <- Scope | Block | BooleanExpression | ReplaceFunctionCall | TestFunctionCall | Assignment | Comment | EmptyStatement
 
         # No input
@@ -110,19 +110,8 @@ enum QMakeGrammar = `
         CacheTestFunctionParam2     <- ("set" / "add" / "sub")? :space* ("transient")? :space* ("super" / "stash")?
         
         # contains(variablename, value)
-        ContainsTestFunctionCall <- "contains" OPEN_PAR_WS QualifiedIdentifier (COMMA_WS (EnquotedString / ContainsTestFunctionParam2)) CLOSE_PAR_WS
-        ContainsTestFunctionParam2 <- ContainsTestFunctionParam2Chars
-        ContainsTestFunctionParam2Chars <- ~(ContainsTestFunctionParam2Char+)
-        ContainsTestFunctionParam2Char <- !EndOfContainsFunction SourceCharacter
-        EndOfContainsFunction <- ")" :space* (
-            eoi / eol
-            / "=" / "+=" / "*=" / "-=" / "~="
-            / "," / "." / "_"
-#            / "(" / ")"
-            / EXPAND_MARKER
-            / "@" / "{" / "}" / ":" / "|"
-        )
-        
+        ContainsTestFunctionCall <- "contains" OPEN_PAR_WS QualifiedIdentifier (COMMA_WS EnquotedString) CLOSE_PAR_WS
+
         # return(expression)
         ReturnFunctionCall <- "return" OPEN_PAR_WS (FunctionFirstArgument / Statement)? CLOSE_PAR_WS
 
@@ -173,6 +162,15 @@ enum QMakeGrammar = `
             / "r"
             / "t"
             / "v"
+            / "+"
+            / "-"
+            / "*"
+            / "("
+            / ")"
+            / "["
+            / "]"
+            / "{"
+            / "}"
 
         OctDigit <- [0-7]
         DecDigit <- [0-9]
