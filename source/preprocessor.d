@@ -20,14 +20,67 @@ const auto STR_BACKSLASH = '\\';
 
 struct QuotesInfo
 {
-    int indexOpen;
-    int indexClose;
+    long indexOpen;
+    long indexClose;
     bool success;
 };
 
-static QuotesInfo detectPairedCharacter(char openChar, char closeChar, string strLine, string subStr, int index)
+static QuotesInfo detectFunctionArgument(string functionName, string strLine, string subStr, long index)
+{
+    long[] parenthesisStack;
+
+    for (long i = 0; i < index; i++)
+    {
+        if (strLine[i] == '(')
+            parenthesisStack ~= i;
+        else if (strLine[i] == ')')
+        {
+            if (!parenthesisStack.empty)
+                parenthesisStack.popBack();
+        }
+    }
+    if (parenthesisStack.length != 1)
+    {
+        writeln("detectFunctionArgument: no open parenthesis found, stack.length = " ~ std.conv.to!string(parenthesisStack.length));
+        return QuotesInfo(-1, -1, false);
+    }
+    auto indexOpen = parenthesisStack[0];
+    parenthesisStack = [];
+    assert(parenthesisStack.length == 0);
+    
+    for (long i = index + 1; i < strLine.length; i++)
+    {
+        if (strLine[i] == '(')
+            parenthesisStack ~= i;
+        else if (strLine[i] == ')')
+        {
+            if (!parenthesisStack.empty)
+                parenthesisStack.popBack();
+            
+            parenthesisStack ~= i;
+        }
+    }
+    if (parenthesisStack.length != 1)
+    {
+        writeln("detectFunctionArgument: no close parenthesis found, stack.length = " ~ std.conv.to!string(parenthesisStack.length));
+        return QuotesInfo(-1, -1, false);
+    }
+    auto indexClose = parenthesisStack[0];
+    parenthesisStack = [];
+    
+    auto thisFunctionName = strLine[indexOpen - functionName.length .. indexOpen];
+    if (thisFunctionName != functionName)
+    {
+        writeln("detectFunctionArgument: another function name = " ~ thisFunctionName);
+        return QuotesInfo(-1, -1, false);
+    }
+    
+    return QuotesInfo(indexOpen, indexClose, true);
+}
+
+static QuotesInfo detectPairedCharacter(char openChar, char closeChar, string strLine, string subStr, long index)
 {    
-    int[] stack;
+    long[] stack;
     
     // Search for opening separator: skip paired characters until we find unpaired one
     for (auto i = index - 1; i >= 0; i--)
@@ -36,7 +89,11 @@ static QuotesInfo detectPairedCharacter(char openChar, char closeChar, string st
             stack ~= i;
     }
     if (stack.empty || (stack.length % 2 == 0))
+    {
+        writeln("detectPairedCharacter: no open char '" ~ openChar ~ "' before index " ~ std.conv.to!string(index)
+                ~ ", stack.length = " ~ std.conv.to!string(stack.length));
         return QuotesInfo(-1, -1, false);
+    }
     auto indexOpen = stack[0];
     stack = [];
 
@@ -47,7 +104,11 @@ static QuotesInfo detectPairedCharacter(char openChar, char closeChar, string st
             stack ~= i;
     }
     if (stack.empty || (stack.length % 2 == 0))
+    {
+        writeln("detectPairedCharacter: no close char '" ~ closeChar ~ "' before index " ~ std.conv.to!string(index)
+                ~ ", stack.length = " ~ std.conv.to!string(stack.length));
         return QuotesInfo(-1, -1, false);
+    }
     auto indexClose = stack[0];
     stack = [];
 
@@ -208,7 +269,7 @@ static string preprocessLines(string[] strLinesArray)
         // - the colon is a part of assignment operator
         if (!strLine.empty && !strLine.endsWith(STR_OPEN_CURLY_BRACE))
         {
-            for (int i = cast(int)strLine.length - 1; i >= 0; i--)
+            for (long i = strLine.length - 1; i >= 0; i--)
             {
                 if (strLine[i] == STR_COLON)
                 {
@@ -221,7 +282,15 @@ static string preprocessLines(string[] strLinesArray)
                         writeln("ProParser::preprocessLines: quote begin = " ~ std.conv.to!string(info1.indexOpen));
                         writeln("ProParser::preprocessLines: quote end = " ~ std.conv.to!string(info1.indexClose));
                         writeln("ProParser::preprocessLines: colon inside quotes detected, go back to index " ~ std.conv.to!string(i));
-                        writeln("ProParser::preprocessLines: colon inside quotes detected, go back to index " ~ std.conv.to!string(i));
+                        continue;
+                    }
+                    
+                    auto info2 = detectFunctionArgument("requires", strLine, "" ~ STR_COLON, i);
+                    if (info2.success)
+                    {
+                        i = info2.indexOpen - 1;
+                        writeln("ProParser::preprocessLines: function begin = " ~ std.conv.to!string(info2.indexOpen));
+                        writeln("ProParser::preprocessLines: function end = " ~ std.conv.to!string(info2.indexClose));
                         continue;
                     }
                     

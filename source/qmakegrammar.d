@@ -37,7 +37,9 @@ enum QMakeGrammar = `
         # Test function call
         # E.g.:
         # message("Starting project build...")
-        TestFunctionCall <- EvalTestFunctionCall / CacheTestFunctionCall / ContainsTestFunctionCall / ReturnFunctionCall / FunctionCall
+        TestFunctionCall <- EvalTestFunctionCall / CacheTestFunctionCall / ContainsTestFunctionCall
+                          / ReturnFunctionCall / RequiresFunctionCall
+                          / FunctionCall
 
         # Replace function call
         # E.g.:
@@ -47,7 +49,7 @@ enum QMakeGrammar = `
         # NOTE: "$${call}($$opt, $$val, $$nextok)" is also a valid function call statement;
         #       also is \$\$"$$call"()
         FunctionCall <- FunctionId OPEN_PAR_WS FunctionArgumentList? CLOSE_PAR_WS :space* :eol*
-        FunctionId   <- (!("eval" / "cache" / "contains" / "return") (QualifiedIdentifier / EnquotedString))
+        FunctionId   <- (!("eval" / "cache" / "contains" / "return" / "requires") (QualifiedIdentifier / EnquotedString))
 
         FunctionArgumentList       <- List(:COMMA_WS, :COMMA) / List(:space+, :space) / FunctionFirstArgument
         List(delimRule, delimChar) <- FunctionFirstArgument (delimRule (FunctionNextArgument(delimChar))?)+
@@ -66,7 +68,7 @@ enum QMakeGrammar = `
 
         # NOTE: function arguments can contain "("/")" themselves, so we need special rule to detect function argument list end
         EndOfFunction <- ")" :space* (
-            [a-zA-Z_0-9\-\+\*]
+            [a-zA-Z_0-9\-\+\*/]
             / eoi / eol
             / "=" / "+=" / "*=" / "-=" / "~="
             / "," / "." / "_"
@@ -94,9 +96,10 @@ enum QMakeGrammar = `
                                       / BooleanAtom
         ParenthesedBooleanExpression <- '(' BooleanExpression ')'
 # FIXME: support CONFIG test function
-        IfTestFunctionCall           <- "if" :space* "(" :space* BooleanExpression :space* ")"
+        IfTestFunctionCall           <- "if" OPEN_PAR_WS BooleanExpression CLOSE_PAR_WS
+# FIXME: try to replace longest match "|" with "/"
         BooleanAtom                  <- QualifiedIdentifier | ReplaceFunctionCall | ExpandStatement | TestFunctionCall | BooleanConst
-        BooleanConst                 <- "true" | "false"
+        BooleanConst                 <- "true" / "false"
 
         # FIXME: move built-in test and replace function to separate module
         
@@ -105,15 +108,20 @@ enum QMakeGrammar = `
         EvalArg <- (QualifiedIdentifier :space* "=" :space* Statement) / Statement
         
         # cache(variablename, [set|add|sub] [transient] [super|stash], [source variablename])
+        # Special case:
+        # cache(, super)
         CacheTestFunctionCall       <- "cache" OPEN_PAR_WS CacheTestFunctionCallParams? CLOSE_PAR_WS
-        CacheTestFunctionCallParams <- QualifiedIdentifier (COMMA_WS CacheTestFunctionParam2)? (COMMA_WS QualifiedIdentifier)?
+        CacheTestFunctionCallParams <- QualifiedIdentifier? (COMMA_WS CacheTestFunctionParam2)? (COMMA_WS QualifiedIdentifier)?
         CacheTestFunctionParam2     <- ("set" / "add" / "sub")? :space* ("transient")? :space* ("super" / "stash")?
         
         # contains(variablename, value)
         ContainsTestFunctionCall <- "contains" OPEN_PAR_WS QualifiedIdentifier (COMMA_WS EnquotedString) CLOSE_PAR_WS
 
         # return(expression)
-        ReturnFunctionCall <- "return" OPEN_PAR_WS (FunctionFirstArgument / Statement)? CLOSE_PAR_WS
+        ReturnFunctionCall <- "return" OPEN_PAR_WS (List(:space+, :space) / FunctionFirstArgument / Statement)? CLOSE_PAR_WS
+        
+        # requires(condition)
+        RequiresFunctionCall <- "requires" OPEN_PAR_WS BooleanExpression CLOSE_PAR_WS
 
         # Regular string: can contain any character except of spacing/EOL/quotes
         RegularString       <- RegularStringChars?
