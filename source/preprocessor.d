@@ -15,8 +15,12 @@ const auto STR_HASH = '#';
 const auto STR_DQUOTE = '"';
 const auto STR_OPEN_CURLY_BRACE = '{';
 const auto STR_COLON = ':';
+const auto STR_COMMA = ',';
 const auto STR_DOG = '@';
 const auto STR_BACKSLASH = '\\';
+
+const auto CONTAINS_STR = "contains(";
+const auto QTCONFIG_STR = "qtConfig(";
 
 struct QuotesInfo
 {
@@ -148,42 +152,58 @@ static bool isWhitespace(char c)
     return (c == ' ') || (c == '\t');
 }
 
-static string enquoteContainsArgument(string strLine)
+// qtConfig(opengl(es1|es2)?)
+// contains(var, regex)
+static string enquoteFunctionArgument(string functionName, int argumentIndex, string strLine)
 {
-    const auto CONTAINS_STR = "contains(";
-
     string result;
 
     // contains(id, regex)
     // NOTE: regex may contain paired parenthesis
-    long containsIndex = 0, newContainsEndIndex = -1;
+    long functionIndex = 0, newFunctionEndIndex = -1;
     while (true)
     {
         // FIXME: implement regex search using "contains\\s*\\("
-        containsIndex = strLine.indexOf(CONTAINS_STR, containsIndex);
-        if (containsIndex == -1)
+        functionIndex = strLine.indexOf(functionName, functionIndex);
+        if (functionIndex == -1)
         {
-            result ~= strLine[newContainsEndIndex == -1 ? 0 : newContainsEndIndex .. $];
+            result ~= strLine[newFunctionEndIndex == -1 ? 0 : newFunctionEndIndex .. $];
             break;
         }
         
-//        writeln("containsIndex = " ~ std.conv.to!string(containsIndex));
+//        writeln("functionIndex = " ~ std.conv.to!string(functionIndex));
 
-        containsIndex += CONTAINS_STR.length;
+        functionIndex += functionName.length;
         
-        // Find first argument end
-        auto commaIndex = strLine.indexOf(",", containsIndex);
-        if (commaIndex == -1)
+        // Skip previous arguments
+        auto commaIndex = functionIndex;
+        auto currentArgumentIndex = 1;
+        while (currentArgumentIndex < argumentIndex)
         {
-            assert(0);
-            //continue;
-        }
-        // Skip whitespaces
+            commaIndex = strLine.indexOf(STR_COMMA, commaIndex);
+            if (commaIndex == -1)
+            {
+                writeln("enquoteFunctionArgument: function '" ~ functionName ~ "' argument count is " ~ std.conv.to!string(currentArgumentIndex));
+                break;
+            }
+            
+            currentArgumentIndex++;
+        }        
+        assert(commaIndex >= 0);
+        
+        // Skip whitespaces between comma and next argument value
+        // FIXME: move this code to separate function
+        writeln("enquoteFunctionArgument: strLine[commaIndex] = '" ~ strLine[commaIndex] ~ "'");
+        if (argumentIndex >= 2)
+            commaIndex++;
+        
         auto secondArgumentBeginIndex = commaIndex;
-        do { secondArgumentBeginIndex++; } while (isWhitespace(strLine[secondArgumentBeginIndex]) && (secondArgumentBeginIndex < strLine.length));
+        while (isWhitespace(strLine[secondArgumentBeginIndex]) && (secondArgumentBeginIndex < strLine.length))
+            secondArgumentBeginIndex++;
 
         // Search for second argument end - skip paired parenthesis
         auto secondArgumentEndIndex = secondArgumentBeginIndex;
+        writeln("enquoteFunctionArgument: strLine[secondArgumentEndIndex] = '" ~ strLine[secondArgumentEndIndex] ~ "'");
         long[] parenthesisStack;
         for (auto i = secondArgumentBeginIndex; i < strLine.length; i++)
         {
@@ -193,28 +213,30 @@ static string enquoteContainsArgument(string strLine)
             {
                 if (parenthesisStack.empty)
                 {
-                    secondArgumentEndIndex = i - 1;
+                    secondArgumentEndIndex = i;
                     break;
                 }
                 
                 parenthesisStack.popBack();
             }
         }
-        if (secondArgumentEndIndex == secondArgumentBeginIndex)
-        {
-            assert(0);
-            //continue;
-        }
         
-        // Enquote second argument value
-        auto secondArgument = strLine[secondArgumentBeginIndex .. secondArgumentEndIndex + 1];
+        string wsSuffix = "";
+        if (argumentIndex >= 2)
+            wsSuffix = " ";
+        
+        // Enquote specified argument value
+        auto secondArgument = strLine[secondArgumentBeginIndex .. secondArgumentEndIndex];
         auto secondArgumentQuoted = secondArgument;
         if (secondArgument[0] != '"' && secondArgument[$-1] != '"')
             secondArgumentQuoted = '"' ~ secondArgument ~ '"';
-        result ~= strLine[newContainsEndIndex == -1 ? 0 : newContainsEndIndex .. commaIndex + 1] ~ " ";
+        result ~= strLine[newFunctionEndIndex == -1 ? 0 : newFunctionEndIndex .. commaIndex] ~ wsSuffix;
         result ~= secondArgumentQuoted ~ ")";
         
-        newContainsEndIndex = secondArgumentEndIndex + 2;
+        writeln("enquoteFunctionArgument: secondArgument = '" ~ secondArgument ~ "'");
+        writeln("enquoteFunctionArgument: secondArgumentQuoted = '" ~ secondArgumentQuoted ~ "'");
+        
+        newFunctionEndIndex = secondArgumentEndIndex + 1;
     }
     
     return result;
@@ -330,7 +352,10 @@ static string preprocessLines(string[] strLinesArray)
         strLine = strLine.replace("else:", "else" ~ STR_DOG);
         
         // Enquote contains test function second argument
-        strLine = enquoteContainsArgument(strLine);
+        strLine = enquoteFunctionArgument(CONTAINS_STR, 2, strLine);
+        
+        // Enquote qtConfig test function first argument
+        strLine = enquoteFunctionArgument(QTCONFIG_STR, 1, strLine);
 
         if (isMultiLine)
             writeln("Multi-line " ~ std.conv.to!string(startLineIndex + 1) ~ " - " ~ std.conv.to!string(endLineIndex + 1) ~ ": |" ~ strLine ~ "|");
