@@ -1,20 +1,19 @@
 {
-	"name": "dqmake",
+	"name": "qmake-ng",
 	"authors": [
-		"Alexander Kamyshnikov"
+		"Alexander Kamyshnikov <axill777@gmail.com>"
 	],
-	"description": "Qt qmake build system port to the D language",
-	"homepage": "github.com",
-	"copyright": "Copyright © 2017, Alexander Kamyshnikov",
-	"license": "MIT",
-
+	"description": "Qt qmake build tool replacement, implemented in the D programming language using Pegged parser generator",
+	"homepage": "https://www.github.com/eraxillan/qmake-ng",
+	"copyright": "Copyright © 2018, Alexander Kamyshnikov <axill777@gmail.com>",
+	"license": "GPL-3.0",
 	"dependencies": {
 	    "pegged": "*"
 	},
-	
 	"preGenerateCommands": [
         "rdmd -I$PEGGED_PACKAGE_DIR source/make.d"
     ],
+    "mainSourceFile": "source/app.d",
     "excludedSourceFiles": [
         "source/make.d",
         "source/qmakegrammar.d"
