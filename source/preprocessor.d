@@ -24,6 +24,8 @@ module preprocessor;
 
 import std.typecons : No;
 
+import std.experimental.logger;
+
 import std.algorithm;
 import std.conv;
 import std.stdio;
@@ -36,6 +38,8 @@ import std.range;
 const auto STR_HASH = '#';
 const auto STR_DQUOTE = '"';
 const auto STR_OPEN_CURLY_BRACE = '{';
+const auto STR_OPENING_PARENTHESIS = '(';
+const auto STR_CLOSING_PARENTHESIS = ')';
 const auto STR_COLON = ':';
 const auto STR_COMMA = ',';
 const auto STR_DOG = '@';
@@ -57,9 +61,9 @@ static QuotesInfo detectFunctionArgument(string functionName, string strLine, st
 
     for (long i = 0; i < index; i++)
     {
-        if (strLine[i] == '(')
+        if (strLine[i] == STR_OPENING_PARENTHESIS)
             parenthesisStack ~= i;
-        else if (strLine[i] == ')')
+        else if (strLine[i] == STR_CLOSING_PARENTHESIS)
         {
             if (!parenthesisStack.empty)
                 parenthesisStack.popBack();
@@ -67,7 +71,7 @@ static QuotesInfo detectFunctionArgument(string functionName, string strLine, st
     }
     if (parenthesisStack.length != 1)
     {
-        writeln("detectFunctionArgument: no open parenthesis found, stack.length = " ~ std.conv.to!string(parenthesisStack.length));
+        trace("no open parenthesis found, stack.length = " ~ std.conv.to!string(parenthesisStack.length));
         return QuotesInfo(-1, -1, false);
     }
     auto indexOpen = parenthesisStack[0];
@@ -88,7 +92,7 @@ static QuotesInfo detectFunctionArgument(string functionName, string strLine, st
     }
     if (parenthesisStack.length != 1)
     {
-        writeln("detectFunctionArgument: no close parenthesis found, stack.length = " ~ std.conv.to!string(parenthesisStack.length));
+        trace("no close parenthesis found, stack.length = " ~ std.conv.to!string(parenthesisStack.length));
         return QuotesInfo(-1, -1, false);
     }
     auto indexClose = parenthesisStack[0];
@@ -97,7 +101,7 @@ static QuotesInfo detectFunctionArgument(string functionName, string strLine, st
     auto thisFunctionName = strLine[indexOpen - functionName.length .. indexOpen];
     if (thisFunctionName != functionName)
     {
-        writeln("detectFunctionArgument: another function name = " ~ thisFunctionName);
+        trace("non-ambiguous function name = " ~ thisFunctionName);
         return QuotesInfo(-1, -1, false);
     }
     
@@ -116,7 +120,7 @@ static QuotesInfo detectPairedCharacter(char openChar, char closeChar, string st
     }
     if (stack.empty || (stack.length % 2 == 0))
     {
-        writeln("detectPairedCharacter: no open char '" ~ openChar ~ "' before index " ~ std.conv.to!string(index)
+        trace("no open char '" ~ openChar ~ "' before index " ~ std.conv.to!string(index)
                 ~ ", stack.length = " ~ std.conv.to!string(stack.length));
         return QuotesInfo(-1, -1, false);
     }
@@ -131,7 +135,7 @@ static QuotesInfo detectPairedCharacter(char openChar, char closeChar, string st
     }
     if (stack.empty || (stack.length % 2 == 0))
     {
-        writeln("detectPairedCharacter: no close char '" ~ closeChar ~ "' before index " ~ std.conv.to!string(index)
+        trace("no close char '" ~ closeChar ~ "' before index " ~ std.conv.to!string(index)
                 ~ ", stack.length = " ~ std.conv.to!string(stack.length));
         return QuotesInfo(-1, -1, false);
     }
@@ -157,10 +161,10 @@ static string cutInlineComment(string strLine, ref bool commentFound)
         if (hashIndex == 0)
         {
             commentFound = true;
-            writeln("ProParser::preprocessLines: skip comment line");
+            trace("skip comment line");
         }
         else
-            writeln("ProParser::preprocessLines: cutting off inline comment");
+            trace("cutting off inline comment");
 
         result = strLine[0 .. hashIndex];
         result = strip(result);
@@ -193,7 +197,7 @@ static string enquoteFunctionArgument(string functionName, int argumentIndex, st
             break;
         }
         
-//        writeln("functionIndex = " ~ std.conv.to!string(functionIndex));
+        trace("ambiguous function detected at index " ~ std.conv.to!string(functionIndex));
 
         functionIndex += functionName.length;
         
@@ -205,7 +209,7 @@ static string enquoteFunctionArgument(string functionName, int argumentIndex, st
             commaIndex = strLine.indexOf(STR_COMMA, commaIndex);
             if (commaIndex == -1)
             {
-                writeln("enquoteFunctionArgument: function '" ~ functionName ~ "' argument count is " ~ std.conv.to!string(currentArgumentIndex));
+                trace("ambiguous function '" ~ functionName ~ "' argument count is " ~ std.conv.to!string(currentArgumentIndex));
                 break;
             }
             
@@ -213,19 +217,19 @@ static string enquoteFunctionArgument(string functionName, int argumentIndex, st
         }        
         assert(commaIndex >= 0);
         
-        // Skip whitespaces between comma and next argument value
-        // FIXME: move this code to separate function
-        writeln("enquoteFunctionArgument: strLine[commaIndex] = '" ~ strLine[commaIndex] ~ "'");
+        trace("strLine[commaIndex] = '" ~ strLine[commaIndex] ~ "'");
         if (argumentIndex >= 2)
             commaIndex++;
         
+        // Skip whitespaces between comma and next argument value
+        // FIXME: move this code to separate function
         auto secondArgumentBeginIndex = commaIndex;
         while (isWhitespace(strLine[secondArgumentBeginIndex]) && (secondArgumentBeginIndex < strLine.length))
             secondArgumentBeginIndex++;
 
         // Search for second argument end - skip paired parenthesis
         auto secondArgumentEndIndex = secondArgumentBeginIndex;
-        writeln("enquoteFunctionArgument: strLine[secondArgumentEndIndex] = '" ~ strLine[secondArgumentEndIndex] ~ "'");
+        trace("strLine[secondArgumentEndIndex] = '" ~ strLine[secondArgumentEndIndex] ~ "'");
         long[] parenthesisStack;
         for (auto i = secondArgumentBeginIndex; i < strLine.length; i++)
         {
@@ -255,8 +259,8 @@ static string enquoteFunctionArgument(string functionName, int argumentIndex, st
         result ~= strLine[newFunctionEndIndex == -1 ? 0 : newFunctionEndIndex .. commaIndex] ~ wsSuffix;
         result ~= secondArgumentQuoted ~ ")";
         
-        writeln("enquoteFunctionArgument: secondArgument = '" ~ secondArgument ~ "'");
-        writeln("enquoteFunctionArgument: secondArgumentQuoted = '" ~ secondArgumentQuoted ~ "'");
+        trace("secondArgument = '" ~ secondArgument ~ "'");
+        trace("secondArgumentQuoted = '" ~ secondArgumentQuoted ~ "'");
         
         newFunctionEndIndex = secondArgumentEndIndex + 1;
     }
@@ -317,15 +321,15 @@ static string preprocessLines(string[] strLinesArray)
             {
                 if (strLine[i] == STR_COLON)
                 {
-                    writeln("ProParser::preprocessLines: colon detected at index " ~ std.conv.to!string(i));
+                    trace("colon detected at index " ~ std.conv.to!string(i));
 
                     auto info1 = detectPairedCharacter(STR_DQUOTE, STR_DQUOTE, strLine, "" ~ STR_COLON, i);
                     if (info1.success)
                     {
                         i = info1.indexOpen - 1;
-                        writeln("ProParser::preprocessLines: quote begin = " ~ std.conv.to!string(info1.indexOpen));
-                        writeln("ProParser::preprocessLines: quote end = " ~ std.conv.to!string(info1.indexClose));
-                        writeln("ProParser::preprocessLines: colon inside quotes detected, go back to index " ~ std.conv.to!string(i));
+                        trace("quote begin = " ~ std.conv.to!string(info1.indexOpen));
+                        trace("quote end = " ~ std.conv.to!string(info1.indexClose));
+                        trace("colon inside quotes detected, go back to index " ~ std.conv.to!string(i));
                         continue;
                     }
                     
@@ -333,8 +337,8 @@ static string preprocessLines(string[] strLinesArray)
                     if (info2.success)
                     {
                         i = info2.indexOpen - 1;
-                        writeln("ProParser::preprocessLines: function begin = " ~ std.conv.to!string(info2.indexOpen));
-                        writeln("ProParser::preprocessLines: function end = " ~ std.conv.to!string(info2.indexClose));
+                        trace("function begin = " ~ std.conv.to!string(info2.indexOpen));
+                        trace("function end = " ~ std.conv.to!string(info2.indexClose));
                         continue;
                     }
                     
@@ -347,7 +351,7 @@ static string preprocessLines(string[] strLinesArray)
                     }
                     
                     strLine.replaceInPlace(i, i + 1, "" ~ STR_DOG);
-                    writeln("ProParser::preprocessLines: single-line block statement detected");
+                    trace("single-line block statement detected");
                     break;
                 }
             }
@@ -370,7 +374,6 @@ static string preprocessLines(string[] strLinesArray)
         }
         
         // Replace "else:" with "else@"
-        // FIXME: cover all cases!
         strLine = strLine.replace("else:", "else" ~ STR_DOG);
         
         // Enquote contains test function second argument
@@ -380,14 +383,17 @@ static string preprocessLines(string[] strLinesArray)
         strLine = enquoteFunctionArgument(QTCONFIG_STR, 1, strLine);
 
         if (isMultiLine)
-            writeln("Multi-line " ~ std.conv.to!string(startLineIndex + 1) ~ " - " ~ std.conv.to!string(endLineIndex + 1) ~ ": |" ~ strLine ~ "|");
+            trace("Multi-line " ~ std.conv.to!string(startLineIndex + 1) ~ " - " ~ std.conv.to!string(endLineIndex + 1) ~ ": |" ~ strLine ~ "|");
         else
-            writeln("Line " ~ std.conv.to!string(lineIndex + 1) ~ ": |" ~ strLine ~ "|");
+            trace("Line " ~ std.conv.to!string(lineIndex + 1) ~ ": |" ~ strLine ~ "|");
 
-//        if (!strLine.empty())
-            result ~= strLine;
+        result ~= strLine;
     }
 
     return result.join("\n");
 }
 
+unittest
+{
+	// FIXME: implement
+}

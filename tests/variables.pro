@@ -16,5 +16,6 @@ UAP_CAPABILITIES += \
             videosLibrary \
             voipCall
 
-BUILDS.$$size(priority) = $$key
+# FIXME: failed
+#BUILDS.$$size(priority) = $$key
 
