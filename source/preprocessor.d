@@ -198,6 +198,11 @@ private string cutInlineComment(in string sourceLine, ref bool commentFound)
     return result;
 }
 
+private bool hasFunctionCall(in string functionName, in string sourceLine)
+{
+    return sourceLine.indexOf(functionName) != -1;
+}
+
 // qtConfig(opengl(es1|es2)?)
 // contains(var, regex)
 private string enquoteFunctionArgument(in string functionName, in int argumentIndex, in string strLine)
@@ -464,80 +469,117 @@ private bool fixSinglelineScopeElse(in string sourceLine, out string resultLine)
     return true;
 }
 
-string preprocessLines(in string[] strLinesArray)
+private void prettifyLine(ref LineInfo li)
+{
+    auto temp = li.line.strip();
+    if (li.line != temp)
+    {
+        li.mods |= PreprocessorModifications.WhitespaceStripped;
+        li.line = temp;
+    }
+
+    temp = cutInlineComment(li.line);
+    if (li.line != temp)
+    {
+        li.mods |= PreprocessorModifications.CommentRemoved;
+        li.line = temp;
+    }
+}
+
+private void fixMultiline(ref LineInfo li, ref MultilineInfo mresult, ref long lineIndex, in string[] strLinesArray)
+{
+    if (isMultiline(li.line))
+    {
+        mergeMultiline(lineIndex, strLinesArray, mresult);
+
+        li.mods |= PreprocessorModifications.MultilineMerged;
+        li.line = mresult.line;
+
+        lineIndex = mresult.endIndex;
+    }
+}
+
+private void fixScope(ref LineInfo li)
+{
+    // FIXME: workaround for grammar ambiguity - cannot distingush AND-colon and scope statement expression end colon
+    // Replace last colon (":") with "@";
+    // Exceptions:
+    // - there is an "{" on this line
+    // - the colon is inside quotes/doublequotes
+    // - the colon is a part of assignment operator
+    if (hasSinglelineScope(li.line))
+    {
+        li.mods |= PreprocessorModifications.SinglelineScopeFixed;
+
+        fixSinglelineScope(li.line, li.line);
+    }
+    if (hasMultilineScope(li.line))
+    {
+        li.mods |= PreprocessorModifications.MultilineScopeFixed;
+
+        fixMultilineScope(li.line, li.line);
+    }
+
+    // Replace "else:" with "else@"
+    if (hasSinglelineScopeElse(li.line))
+    {
+        li.mods |= PreprocessorModifications.SinglelineScopeElseFixed;
+
+        fixSinglelineScopeElse(li.line, li.line);
+    }
+}
+
+private void fixAmbiguousFunctionCalls(ref LineInfo li)
+{
+    // Enquote contains test function second argument
+    if (hasFunctionCall(CONTAINS_STR, li.line))
+    {
+        li.mods |= PreprocessorModifications.FunctionArgumentEnquoted;
+        li.line = enquoteFunctionArgument(CONTAINS_STR, 2, li.line);
+    }
+
+    // Enquote qtConfig test function first argument
+    if (hasFunctionCall(QTCONFIG_STR, li.line))
+    {
+        li.mods |= PreprocessorModifications.FunctionArgumentEnquoted;
+        li.line = enquoteFunctionArgument(QTCONFIG_STR, 1, li.line);
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+
+struct LineInfo
+{
+    alias Mods = PreprocessorModifications;
+
+    string line;
+    long index;
+    Mods mods;
+}
+
+string preprocessLines(in string[] strLinesArray, out LineInfo[] resultLines)
 {
     string[] result;
+    MultilineInfo mresult;
     for (long lineIndex; lineIndex < strLinesArray.length; lineIndex++)
     {
-        BitFlags!PreprocessorModifications mods;
-        string strLine = strLinesArray[lineIndex];
+        LineInfo li;
+        li.index = lineIndex;
+        li.line = strLinesArray[lineIndex];
 
-        auto temp = strLine.strip();
-        if (strLine != temp)
-        {
-            mods |= PreprocessorModifications.WhitespaceStripped;
-            strLine = temp;
-        }
+        prettifyLine(li);
+        fixMultiline(li, mresult, lineIndex, strLinesArray);
+        fixScope(li);
+        fixAmbiguousFunctionCalls(li);
 
-        temp = cutInlineComment(strLine);
-        if (strLine != temp)
-        {
-            mods |= PreprocessorModifications.CommentRemoved;
-            strLine = temp;
-        }
-
-        immutable bool multilineMerged = isMultiline(strLine);
-        MultilineInfo mresult;
-        if (multilineMerged)
-        {
-            mods |= PreprocessorModifications.MultilineMerged;
-
-            mergeMultiline(lineIndex, strLinesArray, mresult);
-
-            lineIndex = mresult.endIndex;
-            strLine = mresult.line;
-        }
-
-        // FIXME: workaround for grammar ambiguity - cannot distingush AND-colon and scope statement expression end colon
-        // Replace last colon (":") with "@";
-        // Exceptions:
-        // - there is an "{" on this line
-        // - the colon is inside quotes/doublequotes
-        // - the colon is a part of assignment operator
-        if (hasSinglelineScope(strLine))
-        {
-            mods |= PreprocessorModifications.SinglelineScopeFixed;
-
-            fixSinglelineScope(strLine, strLine);
-        }
-        if (hasMultilineScope(strLine))
-        {
-            mods |= PreprocessorModifications.MultilineScopeFixed;
-
-            fixMultilineScope(strLine, strLine);
-        }
-
-        // Replace "else:" with "else@"
-        if (hasSinglelineScopeElse(strLine))
-        {
-            mods |= PreprocessorModifications.SinglelineScopeElseFixed;
-
-            fixSinglelineScopeElse(strLine, strLine);
-        }
-
-        // Enquote contains test function second argument
-        strLine = enquoteFunctionArgument(CONTAINS_STR, 2, strLine);
-
-        // Enquote qtConfig test function first argument
-        strLine = enquoteFunctionArgument(QTCONFIG_STR, 1, strLine);
-
-        if (multilineMerged)
+        if (li.mods & PreprocessorModifications.MultilineMerged)
             trace("Multi-line " ~ std.conv.to!string(mresult.startIndex + 1) ~
-                " - " ~ std.conv.to!string(mresult.endIndex + 1) ~ ": |" ~ strLine ~ "|");
+                " - " ~ std.conv.to!string(mresult.endIndex + 1) ~ ": |" ~ li.line ~ "|");
         else
-            trace("Line " ~ std.conv.to!string(lineIndex + 1) ~ ": |" ~ strLine ~ "|");
+            trace("Line " ~ std.conv.to!string(lineIndex + 1) ~ ": |" ~ li.line ~ "|");
 
-        result ~= strLine;
+        result ~= li.line;
+        resultLines ~= li;
     }
 
     return result.join("\n");

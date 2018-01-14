@@ -38,7 +38,8 @@ class Project
         trace("Trying to parse project file '" ~ fileName ~ "'...");
 
         auto proFileContents = std.file.readText(fileName);
-        proFileContents = preprocessLines(splitLines(proFileContents));
+        LineInfo[] result;
+        proFileContents = preprocessLines(splitLines(proFileContents), result);
 
         auto parseTree = QMakeProject(proFileContents);
         if (!parseTree.successful)
