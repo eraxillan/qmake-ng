@@ -22,7 +22,7 @@
 
 module preprocessor;
 
-import std.typecons : No;
+import std.typecons : BitFlags;
 
 import std.experimental.logger;
 
@@ -36,86 +36,104 @@ import std.path;
 import std.string;
 import std.range;
 
-const auto STR_HASH = '#';
-const auto STR_QUOTE = '\'';
-const auto STR_DQUOTE = '"';
-const auto STR_OPEN_CURLY_BRACE = '{';
-const auto STR_OPENING_PARENTHESIS = '(';
-const auto STR_CLOSING_PARENTHESIS = ')';
-const auto STR_COLON = ':';
-const auto STR_COMMA = ',';
-const auto STR_DOG = '@';
-const auto STR_BACKSLASH = '\\';
-const auto STR_WS = ' ';
-const auto STR_EQ = '=';
+private const auto STR_HASH = '#';
+private const auto STR_QUOTE = '\'';
+private const auto STR_DQUOTE = '"';
+private const auto STR_OPEN_CURLY_BRACE = '{';
+private const auto STR_OPENING_PARENTHESIS = '(';
+private const auto STR_CLOSING_PARENTHESIS = ')';
+private const auto STR_COLON = ':';
+private const auto STR_COMMA = ',';
+private const auto STR_DOG = '@';
+private const auto STR_BACKSLASH = '\\';
+private const auto STR_WS = ' ';
+private const auto STR_EQ = '=';
 
-const auto STR_ELSE = "else";
-const auto STR_ELSE_SINGLELINE = "else:";
+private const auto STR_ELSE = "else";
+private const auto STR_ELSE_SINGLELINE = "else:";
 
-const auto CONTAINS_STR = "contains(";
-const auto QTCONFIG_STR = "qtConfig(";
+private const auto CONTAINS_STR = "contains(";
+private const auto QTCONFIG_STR = "qtConfig(";
 
-struct QuotesInfo
+private struct QuotesInfo
+{
+    long indexOpen  = -1;
+    long indexClose = -1;
+    bool success;
+}
+
+private enum PreprocessorModifications
+{
+    None,
+    WhitespaceStripped       = 1 << 0,
+    CommentRemoved           = 1 << 1,
+    MultilineMerged          = 1 << 2,
+    SinglelineScopeFixed     = 1 << 3,
+    MultilineScopeFixed      = 1 << 4,
+    SinglelineScopeElseFixed = 1 << 5,
+    FunctionArgumentEnquoted = 1 << 6
+} 
+
+private enum ParenhesisType
+{
+    None,
+    Opening,
+    Closing
+}
+
+private bool isInsideParenthesis(in string sourceLine, in long index, in ParenhesisType parType, out long parIndex)
+{
+    immutable long startIndex = (parType == ParenhesisType.Opening) ? 0     : (index + 1);
+    immutable long endIndex   = (parType == ParenhesisType.Opening) ? index : sourceLine.length;
+
+    long[] parenthesisStack;
+    for (long i = startIndex; i < endIndex; i++)
+    {
+        if (sourceLine[i] == STR_OPENING_PARENTHESIS)
+            parenthesisStack ~= i;
+        else if (sourceLine[i] == STR_CLOSING_PARENTHESIS)
+        {
+            if (!parenthesisStack.empty)
+                parenthesisStack.popBack();
+
+            if (parType == ParenhesisType.Closing)
+                parenthesisStack ~= i;
+        }
+    }
+    if (parenthesisStack.length == 1)
+    {
+         parIndex = parenthesisStack[0];
+         return true;
+    }
+
+    if (parType == ParenhesisType.Opening)
+        trace("no open parenthesis found, stack.length = " ~ std.conv.to!string(parenthesisStack.length));
+    else
+        trace("no close parenthesis found, stack.length = " ~ std.conv.to!string(parenthesisStack.length));
+    return false;
+}
+
+private QuotesInfo detectFunctionArgument(in string functionName, in string sourceLine, in long index)
 {
     long indexOpen;
+    if (!isInsideParenthesis(sourceLine, index, ParenhesisType.Opening, indexOpen))
+        return QuotesInfo(-1, -1, false);
+
     long indexClose;
-    bool success;
-};
-
-static QuotesInfo detectFunctionArgument(string functionName, string strLine, string subStr, long index)
-{
-    long[] parenthesisStack;
-
-    for (long i = 0; i < index; i++)
-    {
-        if (strLine[i] == STR_OPENING_PARENTHESIS)
-            parenthesisStack ~= i;
-        else if (strLine[i] == STR_CLOSING_PARENTHESIS)
-        {
-            if (!parenthesisStack.empty)
-                parenthesisStack.popBack();
-        }
-    }
-    if (parenthesisStack.length != 1)
-    {
-        trace("no open parenthesis found, stack.length = " ~ std.conv.to!string(parenthesisStack.length));
+    if (!isInsideParenthesis(sourceLine, index, ParenhesisType.Closing, indexClose))
         return QuotesInfo(-1, -1, false);
-    }
-    auto indexOpen = parenthesisStack[0];
-    parenthesisStack = [];
-    assert(parenthesisStack.length == 0);
-    
-    for (long i = index + 1; i < strLine.length; i++)
-    {
-        if (strLine[i] == STR_OPENING_PARENTHESIS)
-            parenthesisStack ~= i;
-        else if (strLine[i] == STR_CLOSING_PARENTHESIS)
-        {
-            if (!parenthesisStack.empty)
-                parenthesisStack.popBack();
-            
-            parenthesisStack ~= i;
-        }
-    }
-    if (parenthesisStack.length != 1)
-    {
-        trace("no close parenthesis found, stack.length = " ~ std.conv.to!string(parenthesisStack.length));
-        return QuotesInfo(-1, -1, false);
-    }
-    auto indexClose = parenthesisStack[0];
-    parenthesisStack = [];
-    
-    auto thisFunctionName = strLine[indexOpen - functionName.length .. indexOpen];
+
+    auto thisFunctionName = sourceLine[indexOpen - functionName.length .. indexOpen];
     if (thisFunctionName != functionName)
     {
-        trace("non-ambiguous function name = " ~ thisFunctionName);
+        trace("non-ambiguous function call detected = " ~ thisFunctionName);
         return QuotesInfo(-1, -1, false);
     }
-    
+
     return QuotesInfo(indexOpen, indexClose, true);
 }
 
-static QuotesInfo detectPairedCharacter(char openChar, char closeChar, string strLine, string subStr, long index)
+private QuotesInfo detectPairedCharacter(in char openChar, in char closeChar, in string strLine, in long index)
 {    
     long[] stack;
     
@@ -152,17 +170,17 @@ static QuotesInfo detectPairedCharacter(char openChar, char closeChar, string st
     return QuotesInfo(indexOpen, indexClose, true);
 }
 
-static string cutInlineComment(string strLine)
+private string cutInlineComment(in string sourceLine)
 {
     bool commentFound;
-    return cutInlineComment(strLine, commentFound);
+    return cutInlineComment(sourceLine, commentFound);
 }
 
-static string cutInlineComment(string strLine, ref bool commentFound)
+private string cutInlineComment(in string sourceLine, ref bool commentFound)
 {
-    string result = strLine;
+    string result = sourceLine;
 
-    auto hashIndex = indexOf(strLine, STR_HASH);
+    auto hashIndex = indexOf(sourceLine, STR_HASH);
     if (hashIndex >= 0)
     {
         if (hashIndex == 0)
@@ -173,7 +191,7 @@ static string cutInlineComment(string strLine, ref bool commentFound)
         else
             trace("cutting off inline comment");
 
-        result = strLine[0 .. hashIndex];
+        result = sourceLine[0 .. hashIndex];
         result = strip(result);
     }
 
@@ -182,13 +200,13 @@ static string cutInlineComment(string strLine, ref bool commentFound)
 
 // qtConfig(opengl(es1|es2)?)
 // contains(var, regex)
-static string enquoteFunctionArgument(string functionName, int argumentIndex, string strLine)
+private string enquoteFunctionArgument(in string functionName, in int argumentIndex, in string strLine)
 {
     string result;
 
     // contains(id, regex)
     // NOTE: regex may contain paired parenthesis
-    long functionIndex = 0, newFunctionEndIndex = -1;
+    long functionIndex, newFunctionEndIndex = -1;
     while (true)
     {
         // FIXME: implement regex search using "contains\\s*\\("
@@ -211,7 +229,8 @@ static string enquoteFunctionArgument(string functionName, int argumentIndex, st
             commaIndex = strLine.indexOf(STR_COMMA, commaIndex);
             if (commaIndex == -1)
             {
-                trace("ambiguous function '" ~ functionName ~ "' argument count is " ~ std.conv.to!string(currentArgumentIndex));
+                trace("ambiguous function '" ~ functionName ~ "' argument count is "
+                    ~ std.conv.to!string(currentArgumentIndex));
                 break;
             }
 
@@ -270,19 +289,19 @@ static string enquoteFunctionArgument(string functionName, int argumentIndex, st
     return result;
 }
 
-static bool isMultiline(in string sourceLine)
+private bool isMultiline(in string sourceLine)
 {
     return sourceLine.endsWith(STR_BACKSLASH);
 }
 
-struct MultilineInfo
+private struct MultilineInfo
 {
     long startIndex = -1;
     long endIndex = -1;
     string line;
 }
 
-static bool mergeMultiline(in long lineNo, in string[] lines, out MultilineInfo result)
+private bool mergeMultiline(in long lineNo, in string[] lines, out MultilineInfo result)
 // FIXME: in-out-do contracts
 {
     string currentLine = lines[lineNo];
@@ -308,7 +327,7 @@ static bool mergeMultiline(in long lineNo, in string[] lines, out MultilineInfo 
         currentLine = lines[j];
         currentLine = currentLine.strip();
 
-        bool commentFound = false;
+        bool commentFound;
         currentLine = cutInlineComment(currentLine, commentFound);
         
         result.line ~= isMultiline(currentLine) ? STR_WS ~ strip(currentLine[0 .. $ - 1]) : STR_WS ~ currentLine;
@@ -329,7 +348,7 @@ static bool mergeMultiline(in long lineNo, in string[] lines, out MultilineInfo 
     return true;
 }
 
-static bool hasSinglelineScope(in string sourceLine, out long colonIndex)
+private bool hasSinglelineScope(in string sourceLine, out long colonIndex)
 {
     colonIndex = -1;
 
@@ -337,8 +356,8 @@ static bool hasSinglelineScope(in string sourceLine, out long colonIndex)
         return false;
 
     // testFunc(): x = y ... : ...
-    auto lastEqIndex = sourceLine.lastIndexOf(STR_EQ);
-    long i = (lastEqIndex == -1) ? (sourceLine.length - 1) : (lastEqIndex - 1);
+    immutable auto lastEqIndex = sourceLine.lastIndexOf(STR_EQ);
+    long i = (lastEqIndex == -1) ? (cast(long)sourceLine.length - 1) : (lastEqIndex - 1);
     for ( ; i >= 0; i--)
     {
         if (sourceLine[i] != STR_COLON)
@@ -346,7 +365,7 @@ static bool hasSinglelineScope(in string sourceLine, out long colonIndex)
 
         trace("colon detected at index " ~ std.conv.to!string(i));
 
-        auto info1 = detectPairedCharacter(STR_DQUOTE, STR_DQUOTE, sourceLine, "" ~ STR_COLON, i);
+        auto info1 = detectPairedCharacter(STR_DQUOTE, STR_DQUOTE, sourceLine, i);
         if (info1.success)
         {
             i = info1.indexOpen - 1;
@@ -356,7 +375,7 @@ static bool hasSinglelineScope(in string sourceLine, out long colonIndex)
             continue;
         }
 
-        auto info2 = detectFunctionArgument("requires", sourceLine, "" ~ STR_COLON, i);
+        auto info2 = detectFunctionArgument("requires", sourceLine, i);
         if (info2.success)
         {
             i = info2.indexOpen - 1;
@@ -372,13 +391,13 @@ static bool hasSinglelineScope(in string sourceLine, out long colonIndex)
     return false;
 }
 
-static bool hasSinglelineScope(in string sourceLine)
+private bool hasSinglelineScope(in string sourceLine)
 {
     long colonIndex;
     return hasSinglelineScope(sourceLine, colonIndex);
 }
 
-static bool fixSinglelineScope(in string sourceLine, out string resultLine)
+private bool fixSinglelineScope(in string sourceLine, out string resultLine)
 {
     resultLine = sourceLine;
 
@@ -391,7 +410,7 @@ static bool fixSinglelineScope(in string sourceLine, out string resultLine)
     return true;
 }
 
-static bool hasMultilineScope(in string sourceLine, out long colonIndex)
+private bool hasMultilineScope(in string sourceLine, out long colonIndex)
 {
     if (!sourceLine.endsWith(STR_OPEN_CURLY_BRACE))
         return false;
@@ -415,13 +434,13 @@ static bool hasMultilineScope(in string sourceLine, out long colonIndex)
     return reduntant;
 }
 
-static bool hasMultilineScope(in string sourceLine)
+private bool hasMultilineScope(in string sourceLine)
 {
     long colonIndex;
     return hasMultilineScope(sourceLine, colonIndex);
 }
 
-static bool fixMultilineScope(in string sourceLine, out string resultLine)
+private bool fixMultilineScope(in string sourceLine, out string resultLine)
 {
     resultLine = sourceLine;
 
@@ -434,30 +453,45 @@ static bool fixMultilineScope(in string sourceLine, out string resultLine)
     return true;
 }
 
-static bool hasSinglelineScopeElse(in string sourceLine)
+private bool hasSinglelineScopeElse(in string sourceLine)
 {
     return sourceLine.indexOf(STR_ELSE_SINGLELINE) != -1;
 }
 
-static bool fixSinglelineScopeElse(in string sourceLine, out string resultLine)
+private bool fixSinglelineScopeElse(in string sourceLine, out string resultLine)
 {
     resultLine = sourceLine.replace(STR_ELSE_SINGLELINE, STR_ELSE ~ STR_DOG);
     return true;
 }
 
-static string preprocessLines(in string[] strLinesArray)
-{    
+string preprocessLines(in string[] strLinesArray)
+{
     string[] result;
-    for (long lineIndex = 0; lineIndex < strLinesArray.length; lineIndex++)
+    for (long lineIndex; lineIndex < strLinesArray.length; lineIndex++)
     {
+        BitFlags!PreprocessorModifications mods;
         string strLine = strLinesArray[lineIndex];
-        strLine = strip(strLine);
-        strLine = cutInlineComment(strLine);
 
-        bool multilineMerged = isMultiline(strLine);
+        auto temp = strLine.strip();
+        if (strLine != temp)
+        {
+            mods |= PreprocessorModifications.WhitespaceStripped;
+            strLine = temp;
+        }
+
+        temp = cutInlineComment(strLine);
+        if (strLine != temp)
+        {
+            mods |= PreprocessorModifications.CommentRemoved;
+            strLine = temp;
+        }
+
+        immutable bool multilineMerged = isMultiline(strLine);
         MultilineInfo mresult;
         if (multilineMerged)
         {
+            mods |= PreprocessorModifications.MultilineMerged;
+
             mergeMultiline(lineIndex, strLinesArray, mresult);
 
             lineIndex = mresult.endIndex;
@@ -471,14 +505,25 @@ static string preprocessLines(in string[] strLinesArray)
         // - the colon is inside quotes/doublequotes
         // - the colon is a part of assignment operator
         if (hasSinglelineScope(strLine))
+        {
+            mods |= PreprocessorModifications.SinglelineScopeFixed;
+
             fixSinglelineScope(strLine, strLine);
+        }
         if (hasMultilineScope(strLine))
+        {
+            mods |= PreprocessorModifications.MultilineScopeFixed;
+
             fixMultilineScope(strLine, strLine);
+        }
 
         // Replace "else:" with "else@"
-        //strLine = strLine.replace("else:", "else" ~ STR_DOG);
         if (hasSinglelineScopeElse(strLine))
+        {
+            mods |= PreprocessorModifications.SinglelineScopeElseFixed;
+
             fixSinglelineScopeElse(strLine, strLine);
+        }
 
         // Enquote contains test function second argument
         strLine = enquoteFunctionArgument(CONTAINS_STR, 2, strLine);
@@ -487,7 +532,8 @@ static string preprocessLines(in string[] strLinesArray)
         strLine = enquoteFunctionArgument(QTCONFIG_STR, 1, strLine);
 
         if (multilineMerged)
-            trace("Multi-line " ~ std.conv.to!string(mresult.startIndex + 1) ~ " - " ~ std.conv.to!string(mresult.endIndex + 1) ~ ": |" ~ strLine ~ "|");
+            trace("Multi-line " ~ std.conv.to!string(mresult.startIndex + 1) ~
+                " - " ~ std.conv.to!string(mresult.endIndex + 1) ~ ": |" ~ strLine ~ "|");
         else
             trace("Line " ~ std.conv.to!string(lineIndex + 1) ~ ": |" ~ strLine ~ "|");
 
