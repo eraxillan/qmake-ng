@@ -26,6 +26,7 @@ import std.typecons : No;
 
 import std.experimental.logger;
 
+import std.uni;
 import std.algorithm;
 import std.conv;
 import std.stdio;
@@ -36,6 +37,7 @@ import std.string;
 import std.range;
 
 const auto STR_HASH = '#';
+const auto STR_QUOTE = '\'';
 const auto STR_DQUOTE = '"';
 const auto STR_OPEN_CURLY_BRACE = '{';
 const auto STR_OPENING_PARENTHESIS = '(';
@@ -44,6 +46,11 @@ const auto STR_COLON = ':';
 const auto STR_COMMA = ',';
 const auto STR_DOG = '@';
 const auto STR_BACKSLASH = '\\';
+const auto STR_WS = ' ';
+const auto STR_EQ = '=';
+
+const auto STR_ELSE = "else";
+const auto STR_ELSE_SINGLELINE = "else:";
 
 const auto CONTAINS_STR = "contains(";
 const auto QTCONFIG_STR = "qtConfig(";
@@ -80,9 +87,9 @@ static QuotesInfo detectFunctionArgument(string functionName, string strLine, st
     
     for (long i = index + 1; i < strLine.length; i++)
     {
-        if (strLine[i] == '(')
+        if (strLine[i] == STR_OPENING_PARENTHESIS)
             parenthesisStack ~= i;
-        else if (strLine[i] == ')')
+        else if (strLine[i] == STR_CLOSING_PARENTHESIS)
         {
             if (!parenthesisStack.empty)
                 parenthesisStack.popBack();
@@ -169,13 +176,8 @@ static string cutInlineComment(string strLine, ref bool commentFound)
         result = strLine[0 .. hashIndex];
         result = strip(result);
     }
-    
-    return result;
-}
 
-static bool isWhitespace(char c)
-{
-    return (c == ' ') || (c == '\t');
+    return result;
 }
 
 // qtConfig(opengl(es1|es2)?)
@@ -196,11 +198,11 @@ static string enquoteFunctionArgument(string functionName, int argumentIndex, st
             result ~= strLine[newFunctionEndIndex == -1 ? 0 : newFunctionEndIndex .. $];
             break;
         }
-        
+
         trace("ambiguous function detected at index " ~ std.conv.to!string(functionIndex));
 
         functionIndex += functionName.length;
-        
+
         // Skip previous arguments
         auto commaIndex = functionIndex;
         auto currentArgumentIndex = 1;
@@ -212,19 +214,19 @@ static string enquoteFunctionArgument(string functionName, int argumentIndex, st
                 trace("ambiguous function '" ~ functionName ~ "' argument count is " ~ std.conv.to!string(currentArgumentIndex));
                 break;
             }
-            
+
             currentArgumentIndex++;
-        }        
+        }
         assert(commaIndex >= 0);
-        
+
         trace("strLine[commaIndex] = '" ~ strLine[commaIndex] ~ "'");
         if (argumentIndex >= 2)
             commaIndex++;
-        
+
         // Skip whitespaces between comma and next argument value
         // FIXME: move this code to separate function
         auto secondArgumentBeginIndex = commaIndex;
-        while (isWhitespace(strLine[secondArgumentBeginIndex]) && (secondArgumentBeginIndex < strLine.length))
+        while (isWhite(strLine[secondArgumentBeginIndex]) && (secondArgumentBeginIndex < strLine.length))
             secondArgumentBeginIndex++;
 
         // Search for second argument end - skip paired parenthesis
@@ -233,9 +235,9 @@ static string enquoteFunctionArgument(string functionName, int argumentIndex, st
         long[] parenthesisStack;
         for (auto i = secondArgumentBeginIndex; i < strLine.length; i++)
         {
-            if (strLine[i] == '(')
+            if (strLine[i] == STR_OPENING_PARENTHESIS)
                 parenthesisStack ~= i;
-            else if (strLine[i] == ')')
+            else if (strLine[i] == STR_CLOSING_PARENTHESIS)
             {
                 if (parenthesisStack.empty)
                 {
@@ -246,144 +248,246 @@ static string enquoteFunctionArgument(string functionName, int argumentIndex, st
                 parenthesisStack.popBack();
             }
         }
-        
-        string wsSuffix = "";
+
+        string wsSuffix;
         if (argumentIndex >= 2)
-            wsSuffix = " ";
-        
+            wsSuffix ~= STR_WS;
+
         // Enquote specified argument value
         auto secondArgument = strLine[secondArgumentBeginIndex .. secondArgumentEndIndex];
         auto secondArgumentQuoted = secondArgument;
-        if (secondArgument[0] != '"' && secondArgument[$-1] != '"')
-            secondArgumentQuoted = '"' ~ secondArgument ~ '"';
+        if ((secondArgument[0] != STR_DQUOTE) && (secondArgument[$ - 1] != STR_DQUOTE))
+            secondArgumentQuoted = STR_DQUOTE ~ secondArgument ~ STR_DQUOTE;
         result ~= strLine[newFunctionEndIndex == -1 ? 0 : newFunctionEndIndex .. commaIndex] ~ wsSuffix;
-        result ~= secondArgumentQuoted ~ ")";
-        
+        result ~= secondArgumentQuoted ~ STR_CLOSING_PARENTHESIS;
+
         trace("secondArgument = '" ~ secondArgument ~ "'");
         trace("secondArgumentQuoted = '" ~ secondArgumentQuoted ~ "'");
-        
+
         newFunctionEndIndex = secondArgumentEndIndex + 1;
     }
     
     return result;
 }
 
-static string preprocessLines(string[] strLinesArray)
+static bool isMultiline(in string sourceLine)
+{
+    return sourceLine.endsWith(STR_BACKSLASH);
+}
+
+struct MultilineInfo
+{
+    long startIndex = -1;
+    long endIndex = -1;
+    string line;
+}
+
+static bool mergeMultiline(in long lineNo, in string[] lines, out MultilineInfo result)
+// FIXME: in-out-do contracts
+{
+    string currentLine = lines[lineNo];
+    currentLine = currentLine.strip();
+    currentLine = cutInlineComment(currentLine);
+
+    if (!isMultiline(currentLine))
+    {
+        trace("not a multi-line, skipping");
+        return false;
+    }
+
+    result.line = strip(currentLine[0 .. $ - 1]);
+    auto j = lineNo + 1;
+    if (j == lines.length)
+    {
+        trace("the last line, nothing to merge");
+        return false;
+    }
+    
+    for (; j < lines.length; j++)
+    {
+        currentLine = lines[j];
+        currentLine = currentLine.strip();
+
+        bool commentFound = false;
+        currentLine = cutInlineComment(currentLine, commentFound);
+        
+        result.line ~= isMultiline(currentLine) ? STR_WS ~ strip(currentLine[0 .. $ - 1]) : STR_WS ~ currentLine;
+
+        // NOTE: comment line will be replaced with empty one by cutInlineComment() function call
+        if (!commentFound)
+        {
+            if (!isMultiline(currentLine) || currentLine.empty)
+                break;
+        }
+    }
+
+    trace("startIndex: " ~ std.conv.to!string(lineNo));
+    trace("endIndex: " ~ std.conv.to!string(j));
+
+    result.startIndex = lineNo;
+    result.endIndex = j;
+    return true;
+}
+
+static bool hasSinglelineScope(in string sourceLine, out long colonIndex)
+{
+    colonIndex = -1;
+
+    if (sourceLine.empty || sourceLine.endsWith(STR_OPEN_CURLY_BRACE))
+        return false;
+
+    // testFunc(): x = y ... : ...
+    auto lastEqIndex = sourceLine.lastIndexOf(STR_EQ);
+    long i = (lastEqIndex == -1) ? (sourceLine.length - 1) : (lastEqIndex - 1);
+    for ( ; i >= 0; i--)
+    {
+        if (sourceLine[i] != STR_COLON)
+            continue;
+
+        trace("colon detected at index " ~ std.conv.to!string(i));
+
+        auto info1 = detectPairedCharacter(STR_DQUOTE, STR_DQUOTE, sourceLine, "" ~ STR_COLON, i);
+        if (info1.success)
+        {
+            i = info1.indexOpen - 1;
+            trace("quote begin = " ~ std.conv.to!string(info1.indexOpen));
+            trace("quote end = " ~ std.conv.to!string(info1.indexClose));
+            trace("colon inside quotes detected, go back to index " ~ std.conv.to!string(i));
+            continue;
+        }
+
+        auto info2 = detectFunctionArgument("requires", sourceLine, "" ~ STR_COLON, i);
+        if (info2.success)
+        {
+            i = info2.indexOpen - 1;
+            trace("function begin = " ~ std.conv.to!string(info2.indexOpen));
+            trace("function end = " ~ std.conv.to!string(info2.indexClose));
+            continue;
+        }
+
+        colonIndex = i;
+        trace("single-line block statement detected");
+        return true;
+    }
+    return false;
+}
+
+static bool hasSinglelineScope(in string sourceLine)
+{
+    long colonIndex;
+    return hasSinglelineScope(sourceLine, colonIndex);
+}
+
+static bool fixSinglelineScope(in string sourceLine, out string resultLine)
+{
+    resultLine = sourceLine;
+
+    long colonIndex;
+    if (!hasSinglelineScope(sourceLine, colonIndex))
+        return false;
+
+    trace("single-line scope statement detected and fixed");
+    resultLine.replaceInPlace(colonIndex, colonIndex + 1, "" ~ STR_DOG);
+    return true;
+}
+
+static bool hasMultilineScope(in string sourceLine, out long colonIndex)
+{
+    if (!sourceLine.endsWith(STR_OPEN_CURLY_BRACE))
+        return false;
+
+    // Search for reduntant colon
+    // E.g.: contains(TEMPLATE, ".*app"):!build_pass: { ... }
+    colonIndex = sourceLine.lastIndexOf(STR_COLON);
+    if (colonIndex == -1)
+        return false;
+
+    bool reduntant = true;
+    for (int i = cast(int)colonIndex + 1; i < cast(int)sourceLine.length - 1; i++)
+    {
+        if (!isWhite(sourceLine[i]))
+        {
+            reduntant = false;
+            break;
+        }
+    }
+
+    return reduntant;
+}
+
+static bool hasMultilineScope(in string sourceLine)
+{
+    long colonIndex;
+    return hasMultilineScope(sourceLine, colonIndex);
+}
+
+static bool fixMultilineScope(in string sourceLine, out string resultLine)
+{
+    resultLine = sourceLine;
+
+    long colonIndex;
+    if (!hasMultilineScope(sourceLine, colonIndex))
+        return false;
+
+    trace("single-line scope statement detected and fixed");
+    resultLine.replaceInPlace(colonIndex, colonIndex + 1, "" ~ STR_DOG);
+    return true;
+}
+
+static bool hasSinglelineScopeElse(in string sourceLine)
+{
+    return sourceLine.indexOf(STR_ELSE_SINGLELINE) != -1;
+}
+
+static bool fixSinglelineScopeElse(in string sourceLine, out string resultLine)
+{
+    resultLine = sourceLine.replace(STR_ELSE_SINGLELINE, STR_ELSE ~ STR_DOG);
+    return true;
+}
+
+static string preprocessLines(in string[] strLinesArray)
 {    
     string[] result;
-    for (int lineIndex = 0; lineIndex < strLinesArray.length; lineIndex++)
+    for (long lineIndex = 0; lineIndex < strLinesArray.length; lineIndex++)
     {
-        auto strLine = strLinesArray[lineIndex];
+        string strLine = strLinesArray[lineIndex];
         strLine = strip(strLine);
         strLine = cutInlineComment(strLine);
 
-        bool isMultiLine = false;
-        int startLineIndex = -1;
-        int endLineIndex = -1;
-        if (strLine.endsWith(STR_BACKSLASH))
+        bool multilineMerged = isMultiline(strLine);
+        MultilineInfo mresult;
+        if (multilineMerged)
         {
-            isMultiLine = true;
+            mergeMultiline(lineIndex, strLinesArray, mresult);
 
-            auto strMultiLine = strip(strLine[0 .. $ - 1]);
-            auto j = lineIndex + 1;
-            for ( ; j < strLinesArray.length; j++)
-            {
-                strLine = strLinesArray[j];
-                strLine = strip(strLine);
-                
-                bool commentFound = false;
-                strLine = cutInlineComment(strLine, commentFound);
-
-                bool endsWithBackslash = strLine.endsWith(STR_BACKSLASH);
-                strMultiLine ~= endsWithBackslash ? " " ~ strip(strLine[0 .. strLine.length - 1]) : " " ~ strLine;
-
-                // NOTE: comment line will be replaced with empty one by cutInlineComment() function call
-                if (!commentFound)
-                    if (!endsWithBackslash || strLine.empty)
-                        break;
-            }
-
-            startLineIndex = lineIndex;
-            endLineIndex = j;
-            lineIndex = j;
-            strLine = strMultiLine;
+            lineIndex = mresult.endIndex;
+            strLine = mresult.line;
         }
-        
+
         // FIXME: workaround for grammar ambiguity - cannot distingush AND-colon and scope statement expression end colon
         // Replace last colon (":") with "@";
         // Exceptions:
         // - there is an "{" on this line
         // - the colon is inside quotes/doublequotes
         // - the colon is a part of assignment operator
-        if (!strLine.empty && !strLine.endsWith(STR_OPEN_CURLY_BRACE))
-        {
-            for (long i = strLine.length - 1; i >= 0; i--)
-            {
-                if (strLine[i] == STR_COLON)
-                {
-                    trace("colon detected at index " ~ std.conv.to!string(i));
+        if (hasSinglelineScope(strLine))
+            fixSinglelineScope(strLine, strLine);
+        if (hasMultilineScope(strLine))
+            fixMultilineScope(strLine, strLine);
 
-                    auto info1 = detectPairedCharacter(STR_DQUOTE, STR_DQUOTE, strLine, "" ~ STR_COLON, i);
-                    if (info1.success)
-                    {
-                        i = info1.indexOpen - 1;
-                        trace("quote begin = " ~ std.conv.to!string(info1.indexOpen));
-                        trace("quote end = " ~ std.conv.to!string(info1.indexClose));
-                        trace("colon inside quotes detected, go back to index " ~ std.conv.to!string(i));
-                        continue;
-                    }
-                    
-                    auto info2 = detectFunctionArgument("requires", strLine, "" ~ STR_COLON, i);
-                    if (info2.success)
-                    {
-                        i = info2.indexOpen - 1;
-                        trace("function begin = " ~ std.conv.to!string(info2.indexOpen));
-                        trace("function end = " ~ std.conv.to!string(info2.indexClose));
-                        continue;
-                    }
-                    
-                    // testFunc(): x = y ... : ...
-                    auto lastEqIndex = strLine.lastIndexOf('=');
-                    if (lastEqIndex != -1)
-                    {
-                        if (i >= lastEqIndex)
-                            continue;
-                    }
-                    
-                    strLine.replaceInPlace(i, i + 1, "" ~ STR_DOG);
-                    trace("single-line block statement detected");
-                    break;
-                }
-            }
-        }
-        else if (strLine.endsWith(STR_OPEN_CURLY_BRACE))
-        {
-            // Remove reduntant colon
-            // E.g.: contains(TEMPLATE, ".*app"):!build_pass: {
-            auto lastColonIndex = strLine.lastIndexOf(STR_COLON);
-            if (lastColonIndex != -1)
-            {
-                bool reduntant = true;
-                for (int i = cast(int)lastColonIndex + 1; i < cast(int)strLine.length - 1; i++)
-                {
-                    if (strLine[i] != ' ' && strLine[i] != '\t') { reduntant = false; break; }
-                }
-                if (reduntant)
-                    strLine.replaceInPlace(lastColonIndex, lastColonIndex + 1, "");
-            }
-        }
-        
         // Replace "else:" with "else@"
-        strLine = strLine.replace("else:", "else" ~ STR_DOG);
-        
+        //strLine = strLine.replace("else:", "else" ~ STR_DOG);
+        if (hasSinglelineScopeElse(strLine))
+            fixSinglelineScopeElse(strLine, strLine);
+
         // Enquote contains test function second argument
         strLine = enquoteFunctionArgument(CONTAINS_STR, 2, strLine);
-        
+
         // Enquote qtConfig test function first argument
         strLine = enquoteFunctionArgument(QTCONFIG_STR, 1, strLine);
 
-        if (isMultiLine)
-            trace("Multi-line " ~ std.conv.to!string(startLineIndex + 1) ~ " - " ~ std.conv.to!string(endLineIndex + 1) ~ ": |" ~ strLine ~ "|");
+        if (multilineMerged)
+            trace("Multi-line " ~ std.conv.to!string(mresult.startIndex + 1) ~ " - " ~ std.conv.to!string(mresult.endIndex + 1) ~ ": |" ~ strLine ~ "|");
         else
             trace("Line " ~ std.conv.to!string(lineIndex + 1) ~ ": |" ~ strLine ~ "|");
 
@@ -395,5 +499,14 @@ static string preprocessLines(string[] strLinesArray)
 
 unittest
 {
-	// FIXME: implement
+    // FIXME: implement
+    writeln("<<< 1 >>>");
+    assert(isWhite(' '));
+    assert(isWhite('\t'));
+    // detectFunctionArgument
+    // detectPairedCharacter
+    // cutInlineComment
+    // enquoteFunctionArgument
+    // preprocessLines
+    writeln("<<< >>>");
 }

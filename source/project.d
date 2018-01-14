@@ -22,51 +22,43 @@
 
 module project;
 
-//import std.typecons : No;
-
-import std.experimental.logger;
-
-import std.algorithm;
-import std.conv;
-import std.stdio;
 import std.file;
-import std.getopt;
-import std.path;
 import std.string;
+import std.experimental.logger;
 
 import preprocessor;
 import qmakeparser;
 
 class Project
 {
-	const bool tryParse(string fileName)
-	{
-		import qmakeparser;
-		
-		trace("Trying to parse project file '" ~ fileName ~ "'...");
+    const bool tryParse(in string fileName)
+    {
+        import qmakeparser;
+        
+        trace("Trying to parse project file '" ~ fileName ~ "'...");
 
-		auto proFileContents = std.file.readText(fileName);
-		proFileContents = preprocessLines(splitLines(proFileContents));
+        auto proFileContents = std.file.readText(fileName);
+        proFileContents = preprocessLines(splitLines(proFileContents));
 
-		auto parseTree = QMakeProject(proFileContents);
-		if (!parseTree.successful)
-		{
-			trace(parseTree);
-			trace("Parsing project file '" ~ fileName ~ "' FAILED:");
-		}
-		else
-			trace("Project file '" ~ fileName ~ "' successfully parsed");
+        auto parseTree = QMakeProject(proFileContents);
+        if (!parseTree.successful)
+        {
+            trace(parseTree);
+            trace("Parsing project file '" ~ fileName ~ "' FAILED:");
+        }
+        else
+            trace("Project file '" ~ fileName ~ "' successfully parsed");
 
-		return parseTree.successful;
-	}
+        return parseTree.successful;
+    }
 }
 
 unittest
 {
-	auto pro = new Project();
+    auto pro = new Project();
 
-	assert(pro.tryParse("tests/variables.pro"));
-	assert(pro.tryParse("tests/contains.pro"));
+    assert(pro.tryParse("tests/variables.pro"));
+    assert(pro.tryParse("tests/contains.pro"));
     assert(pro.tryParse("tests/eval.pro"));
     assert(pro.tryParse("tests/test_function_call_1.pro"));
     assert(pro.tryParse("tests/test_function_call_2.pro"));
