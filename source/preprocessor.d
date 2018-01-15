@@ -81,7 +81,14 @@ private enum ParenhesisType
     Closing
 }
 
-private bool isInsideParenthesis(in string sourceLine, in long index, in ParenhesisType parType, out long parIndex)
+private void skipWhitespaces(in string sourceLine, ref long index)
+{
+    while (isWhite(sourceLine[index]) && (index < sourceLine.length))
+        index++;
+}
+
+private bool isInsideParenthesis(in string sourceLine, in long index, in ParenhesisType parType,
+    out long parIndex, bool findClosest = false)
 {
     immutable long startIndex = (parType == ParenhesisType.Opening) ? 0     : (index + 1);
     immutable long endIndex   = (parType == ParenhesisType.Opening) ? index : sourceLine.length;
@@ -95,9 +102,16 @@ private bool isInsideParenthesis(in string sourceLine, in long index, in Parenhe
         {
             if (!parenthesisStack.empty)
                 parenthesisStack.popBack();
-
-            if (parType == ParenhesisType.Closing)
-                parenthesisStack ~= i;
+            else
+            {
+                if (findClosest)
+                {
+                    parenthesisStack = [i];
+                    break;
+                }
+                else if (parType == ParenhesisType.Closing)
+                    parenthesisStack ~= i;
+            }
         }
     }
     if (parenthesisStack.length == 1)
@@ -133,19 +147,20 @@ private QuotesInfo detectFunctionArgument(in string functionName, in string sour
     return QuotesInfo(indexOpen, indexClose, true);
 }
 
-private QuotesInfo detectPairedCharacter(in char openChar, in char closeChar, in string strLine, in long index)
+// TODO: rewrite code like in detectFunctionArgument
+private QuotesInfo isInsideQuotes(in string strLine, in long index)
 {    
     long[] stack;
     
     // Search for opening separator: skip paired characters until we find unpaired one
-    for (auto i = index - 1; i >= 0; i--)
+    for (auto i = 0; i < index; i++)
     {
-        if (strLine[i] == openChar)
+        if (strLine[i] == STR_DQUOTE)
             stack ~= i;
     }
     if (stack.empty || (stack.length % 2 == 0))
     {
-        trace("no open char '" ~ openChar ~ "' before index " ~ std.conv.to!string(index)
+        trace("no open char '" ~ STR_DQUOTE ~ "' before index " ~ std.conv.to!string(index)
                 ~ ", stack.length = " ~ std.conv.to!string(stack.length));
         return QuotesInfo(-1, -1, false);
     }
@@ -155,12 +170,12 @@ private QuotesInfo detectPairedCharacter(in char openChar, in char closeChar, in
     // Search for closing double quote (unpaired)
     for (auto i = index + 1; i < strLine.length; i++)
     {
-        if (strLine[i] == closeChar)
+        if (strLine[i] == STR_DQUOTE)
             stack ~= i;
     }
     if (stack.empty || (stack.length % 2 == 0))
     {
-        trace("no close char '" ~ closeChar ~ "' before index " ~ std.conv.to!string(index)
+        trace("no close char '" ~ STR_DQUOTE ~ "' before index " ~ std.conv.to!string(index)
                 ~ ", stack.length = " ~ std.conv.to!string(stack.length));
         return QuotesInfo(-1, -1, false);
     }
@@ -180,7 +195,7 @@ private string cutInlineComment(in string sourceLine, ref bool commentFound)
 {
     string result = sourceLine;
 
-    auto hashIndex = indexOf(sourceLine, STR_HASH);
+    auto hashIndex = sourceLine.indexOf(STR_HASH);
     if (hashIndex >= 0)
     {
         if (hashIndex == 0)
@@ -192,7 +207,7 @@ private string cutInlineComment(in string sourceLine, ref bool commentFound)
             trace("cutting off inline comment");
 
         result = sourceLine[0 .. hashIndex];
-        result = strip(result);
+        result = result.strip();
     }
 
     return result;
@@ -203,74 +218,66 @@ private bool hasFunctionCall(in string functionName, in string sourceLine)
     return sourceLine.indexOf(functionName) != -1;
 }
 
-// qtConfig(opengl(es1|es2)?)
-// contains(var, regex)
-private string enquoteFunctionArgument(in string functionName, in int argumentIndex, in string strLine)
+private long skipFunctionArguments(in string functionName, in long functionIndex, in int argumentIndex,
+    in string sourceLine)
+{
+    // Skip previous arguments
+    long commaIndex = functionIndex;
+    auto currentArgumentIndex = 1;
+    while (currentArgumentIndex < argumentIndex)
+    {
+        commaIndex = sourceLine.indexOf(STR_COMMA, commaIndex);
+        if (commaIndex == -1)
+        {
+            trace("function call '" ~ functionName ~ "' argument count is "
+                ~ std.conv.to!string(currentArgumentIndex));
+            break;
+        }
+
+        currentArgumentIndex++;
+    }
+
+    trace("sourceLine[commaIndex] = '" ~ sourceLine[commaIndex] ~ "'");
+    if (argumentIndex >= 2)
+        commaIndex++;
+    
+    return commaIndex;
+}
+
+private string enquoteFunctionArgument(in string functionName, in int argumentIndex, in string sourceLine)
 {
     string result;
 
     // contains(id, regex)
-    // NOTE: regex may contain paired parenthesis
+    // NOTE: regex may contain paired parenthesis which don't handled by grammar now
     long functionIndex, newFunctionEndIndex = -1;
     while (true)
     {
-        // FIXME: implement regex search using "contains\\s*\\("
-        functionIndex = strLine.indexOf(functionName, functionIndex);
+        // TODO: implement regex search using "contains\\s*\\("
+        functionIndex = sourceLine.indexOf(functionName, functionIndex);
         if (functionIndex == -1)
         {
-            result ~= strLine[newFunctionEndIndex == -1 ? 0 : newFunctionEndIndex .. $];
+            result ~= sourceLine[newFunctionEndIndex == -1 ? 0 : newFunctionEndIndex .. $];
             break;
         }
-
-        trace("ambiguous function detected at index " ~ std.conv.to!string(functionIndex));
-
+        trace("function call detected at index " ~ std.conv.to!string(functionIndex));
         functionIndex += functionName.length;
 
         // Skip previous arguments
-        auto commaIndex = functionIndex;
-        auto currentArgumentIndex = 1;
-        while (currentArgumentIndex < argumentIndex)
-        {
-            commaIndex = strLine.indexOf(STR_COMMA, commaIndex);
-            if (commaIndex == -1)
-            {
-                trace("ambiguous function '" ~ functionName ~ "' argument count is "
-                    ~ std.conv.to!string(currentArgumentIndex));
-                break;
-            }
-
-            currentArgumentIndex++;
-        }
-        assert(commaIndex >= 0);
-
-        trace("strLine[commaIndex] = '" ~ strLine[commaIndex] ~ "'");
-        if (argumentIndex >= 2)
-            commaIndex++;
+        auto commaIndex = skipFunctionArguments(functionName, functionIndex, argumentIndex, sourceLine);
 
         // Skip whitespaces between comma and next argument value
-        // FIXME: move this code to separate function
         auto secondArgumentBeginIndex = commaIndex;
-        while (isWhite(strLine[secondArgumentBeginIndex]) && (secondArgumentBeginIndex < strLine.length))
-            secondArgumentBeginIndex++;
+        skipWhitespaces(sourceLine, secondArgumentBeginIndex);
 
         // Search for second argument end - skip paired parenthesis
         auto secondArgumentEndIndex = secondArgumentBeginIndex;
-        trace("strLine[secondArgumentEndIndex] = '" ~ strLine[secondArgumentEndIndex] ~ "'");
-        long[] parenthesisStack;
-        for (auto i = secondArgumentBeginIndex; i < strLine.length; i++)
+        trace("strLine[secondArgumentEndIndex] = '" ~ sourceLine[secondArgumentEndIndex] ~ "'");
+        if (!isInsideParenthesis(sourceLine, secondArgumentBeginIndex - 1, ParenhesisType.Closing,
+            secondArgumentEndIndex, true))
         {
-            if (strLine[i] == STR_OPENING_PARENTHESIS)
-                parenthesisStack ~= i;
-            else if (strLine[i] == STR_CLOSING_PARENTHESIS)
-            {
-                if (parenthesisStack.empty)
-                {
-                    secondArgumentEndIndex = i;
-                    break;
-                }
-                
-                parenthesisStack.popBack();
-            }
+            trace("closing parenthesis is absent");
+            continue;
         }
 
         string wsSuffix;
@@ -278,11 +285,11 @@ private string enquoteFunctionArgument(in string functionName, in int argumentIn
             wsSuffix ~= STR_WS;
 
         // Enquote specified argument value
-        auto secondArgument = strLine[secondArgumentBeginIndex .. secondArgumentEndIndex];
+        auto secondArgument = sourceLine[secondArgumentBeginIndex .. secondArgumentEndIndex];
         auto secondArgumentQuoted = secondArgument;
         if ((secondArgument[0] != STR_DQUOTE) && (secondArgument[$ - 1] != STR_DQUOTE))
             secondArgumentQuoted = STR_DQUOTE ~ secondArgument ~ STR_DQUOTE;
-        result ~= strLine[newFunctionEndIndex == -1 ? 0 : newFunctionEndIndex .. commaIndex] ~ wsSuffix;
+        result ~= sourceLine[newFunctionEndIndex == -1 ? 0 : newFunctionEndIndex .. commaIndex] ~ wsSuffix;
         result ~= secondArgumentQuoted ~ STR_CLOSING_PARENTHESIS;
 
         trace("secondArgument = '" ~ secondArgument ~ "'");
@@ -370,7 +377,7 @@ private bool hasSinglelineScope(in string sourceLine, out long colonIndex)
 
         trace("colon detected at index " ~ std.conv.to!string(i));
 
-        auto info1 = detectPairedCharacter(STR_DQUOTE, STR_DQUOTE, sourceLine, i);
+        auto info1 = isInsideQuotes(sourceLine, i);
         if (info1.success)
         {
             i = info1.indexOpen - 1;
@@ -531,6 +538,9 @@ private void fixScope(ref LineInfo li)
 
 private void fixAmbiguousFunctionCalls(ref LineInfo li)
 {
+    // qtConfig(opengl(es1|es2)?)
+    // contains(var, regex)
+
     // Enquote contains test function second argument
     if (hasFunctionCall(CONTAINS_STR, li.line))
     {
@@ -589,8 +599,6 @@ unittest
 {
     // FIXME: implement
     writeln("<<< 1 >>>");
-    assert(isWhite(' '));
-    assert(isWhite('\t'));
     // detectFunctionArgument
     // detectPairedCharacter
     // cutInlineComment
