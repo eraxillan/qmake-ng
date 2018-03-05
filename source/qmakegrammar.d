@@ -107,9 +107,11 @@ enum QMakeGrammar = `
         # Conditional statement
         # E.g.:
         # CONFIG(debug, debug|release):buildmode = debug
-        Scope            <- BooleanExpression ScopeTrueBranch ScopeFalseBranch*
-        ScopeTrueBranch  <- Block
-        ScopeFalseBranch <- "else" :space* Block
+        Scope            <- BooleanExpression ScopeMainBranch ScopeElseIfBranch* ScopeElseBranch?
+        ScopeMainBranch   <- Block
+        ScopeElseIfBranch <- "else@" :space* BooleanExpression Block
+        ScopeElseBranch   <- "else@" :space* Statement
+                           / "else"  MultiLineBlock
 
         # E.g.:
         # var1: message("scope 1.1")
