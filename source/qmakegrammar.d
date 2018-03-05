@@ -25,7 +25,7 @@ module qmakegrammar;
 enum QMakeGrammar = `
     QMakeProject:
         Project <- Statement* eoi
-        Statement <- Scope | Block | BooleanExpression | ReplaceFunctionCall | TestFunctionCall | Assignment | Comment | EmptyStatement
+        Statement <- FunctionDeclaration / Assignment / Scope / Block / BooleanExpression / ReplaceFunctionCall / TestFunctionCall / Comment / EmptyStatement
 
         # No input
         EmptyStatement <- eps :eol*
@@ -71,7 +71,8 @@ enum QMakeGrammar = `
         # NOTE: "$${call}($$opt, $$val, $$nextok)" is also a valid function call statement;
         #       also is \$\$"$$call"()
         FunctionCall <- FunctionId OPEN_PAR_WS FunctionArgumentList? CLOSE_PAR_WS :space* :eol*
-        FunctionId   <- (!("eval" / "cache" / "contains" / "return" / "requires") (QualifiedIdentifier / EnquotedString))
+        FunctionId   <- (!("defineReplace" / "defineTest" / "eval" / "cache" / "contains" / "return" / "requires")
+                        ("{" :space* QualifiedIdentifier :space* "}" / QualifiedIdentifier / EnquotedString))
 
         FunctionArgumentList       <- List(:COMMA_WS, :COMMA) / List(:space+, :space) / FunctionFirstArgument
         List(delimRule, delimChar) <- FunctionFirstArgument (delimRule (FunctionNextArgument(delimChar))?)+
@@ -99,6 +100,10 @@ enum QMakeGrammar = `
             / "@" / "{" / "}" / ":" / "|"
         )
 
+        FunctionDeclaration        <- ReplaceFunctionDeclaration / TestFunctionDeclaration
+        ReplaceFunctionDeclaration <- "defineReplace" OPEN_PAR_WS FunctionArgumentList? CLOSE_PAR_WS :space* :eol* Block
+        TestFunctionDeclaration    <- "defineTest"    OPEN_PAR_WS FunctionArgumentList? CLOSE_PAR_WS :space* :eol* Block
+
         # Conditional statement
         # E.g.:
         # CONFIG(debug, debug|release):buildmode = debug
@@ -119,16 +124,15 @@ enum QMakeGrammar = `
         ParenthesedBooleanExpression <- '(' BooleanExpression ')'
 # FIXME: support CONFIG test function
         IfTestFunctionCall           <- "if" OPEN_PAR_WS BooleanExpression CLOSE_PAR_WS
-# FIXME: try to replace longest match "|" with "/"
-        BooleanAtom                  <- QualifiedIdentifier | ReplaceFunctionCall | ExpandStatement | TestFunctionCall | BooleanConst
+        BooleanAtom                  <- ReplaceFunctionCall / TestFunctionCall / QualifiedIdentifier / BooleanConst
         BooleanConst                 <- "true" / "false"
 
         # FIXME: move built-in test and replace function to separate module
-        
+
         # eval(string)
         EvalTestFunctionCall <- "eval" OPEN_PAR_WS EvalArg CLOSE_PAR_WS
         EvalArg <- (QualifiedIdentifier :space* "=" :space* Statement) / Statement
-        
+
         # cache(variablename, [set|add|sub] [transient] [super|stash], [source variablename])
         # Special case:
         # cache(, super)
