@@ -5,12 +5,12 @@
 **
 ** This file is part of the qmake-ng application, replacement of the Qt Toolkit one.
 **
-** Foobar is free software: you can redistribute it and/or modify
+** qmake-ng is free software: you can redistribute it and/or modify
 ** it under the terms of the GNU General Public License as published by
 ** the Free Software Foundation, either version 3 of the License, or
 ** (at your option) any later version.
 **
-** Foobar is distributed in the hope that it will be useful,
+** qmake-ng is distributed in the hope that it will be useful,
 ** but WITHOUT ANY WARRANTY; without even the implied warranty of
 ** MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ** GNU General Public License for more details.
@@ -125,7 +125,7 @@ int main(string[] args)
     if (isFile(args[1]))
     {
         auto pro = new Project();
-        if (pro.tryParse(args[1]))
+        if (pro.tryParse/*eval*/(args[1]))
         {
             info("qmake project file '" ~ args[1] ~ "' was successfully parsed");
             return 0;

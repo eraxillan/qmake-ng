@@ -5,12 +5,12 @@
 **
 ** This file is part of the qmake-ng application, replacement of the Qt Toolkit one.
 **
-** Foobar is free software: you can redistribute it and/or modify
+** qmake-ng is free software: you can redistribute it and/or modify
 ** it under the terms of the GNU General Public License as published by
 ** the Free Software Foundation, either version 3 of the License, or
 ** (at your option) any later version.
 **
-** Foobar is distributed in the hope that it will be useful,
+** qmake-ng is distributed in the hope that it will be useful,
 ** but WITHOUT ANY WARRANTY; without even the implied warranty of
 ** MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ** GNU General Public License for more details.
@@ -36,18 +36,7 @@ import std.path;
 import std.string;
 import std.range;
 
-private const auto STR_HASH = '#';
-private const auto STR_QUOTE = '\'';
-private const auto STR_DQUOTE = '"';
-private const auto STR_OPEN_CURLY_BRACE = '{';
-private const auto STR_OPENING_PARENTHESIS = '(';
-private const auto STR_CLOSING_PARENTHESIS = ')';
-private const auto STR_COLON = ':';
-private const auto STR_COMMA = ',';
-private const auto STR_DOG = '@';
-private const auto STR_BACKSLASH = '\\';
-private const auto STR_WS = ' ';
-private const auto STR_EQ = '=';
+import common_const;
 
 private const auto STR_ELSE = "else";
 private const auto STR_ELSE_SINGLELINE = "else:";
@@ -83,7 +72,7 @@ private enum ParenhesisType
 
 private void skipWhitespaces(in string sourceLine, ref long index)
 {
-    while (isWhite(sourceLine[index]) && (index < sourceLine.length))
+    while (isWhite(sourceLine[cast(uint)index]) && (cast(uint)index < sourceLine.length))
         index++;
 }
 
@@ -96,9 +85,9 @@ private bool isInsideParenthesis(in string sourceLine, in long index, in Parenhe
     long[] parenthesisStack;
     for (long i = startIndex; i < endIndex; i++)
     {
-        if (sourceLine[i] == STR_OPENING_PARENTHESIS)
+        if ("" ~ sourceLine[cast(uint)i] == STR_OPENING_PARENTHESIS)
             parenthesisStack ~= i;
-        else if (sourceLine[i] == STR_CLOSING_PARENTHESIS)
+        else if ("" ~ sourceLine[cast(uint)i] == STR_CLOSING_PARENTHESIS)
         {
             if (!parenthesisStack.empty)
                 parenthesisStack.popBack();
@@ -137,7 +126,7 @@ private QuotesInfo detectFunctionArgument(in string functionName, in string sour
     if (!isInsideParenthesis(sourceLine, index, ParenhesisType.Closing, indexClose))
         return QuotesInfo(-1, -1, false);
 
-    auto thisFunctionName = sourceLine[indexOpen - functionName.length .. indexOpen];
+    auto thisFunctionName = sourceLine[cast(uint)(cast(uint)indexOpen - functionName.length) .. cast(uint)indexOpen];
     if (thisFunctionName != functionName)
     {
         trace("non-ambiguous function call detected = " ~ thisFunctionName);
@@ -155,12 +144,12 @@ private QuotesInfo isInsideQuotes(in string strLine, in long index)
     // Search for opening separator: skip paired characters until we find unpaired one
     for (auto i = 0; i < index; i++)
     {
-        if (strLine[i] == STR_DQUOTE)
+        if ("" ~ strLine[i] == STR_DOUBLE_QUOTE)
             stack ~= i;
     }
     if (stack.empty || (stack.length % 2 == 0))
     {
-        trace("no open char '" ~ STR_DQUOTE ~ "' before index " ~ std.conv.to!string(index)
+        trace("no open char '" ~ STR_DOUBLE_QUOTE ~ "' before index " ~ std.conv.to!string(index)
                 ~ ", stack.length = " ~ std.conv.to!string(stack.length));
         return QuotesInfo(-1, -1, false);
     }
@@ -170,12 +159,12 @@ private QuotesInfo isInsideQuotes(in string strLine, in long index)
     // Search for closing double quote (unpaired)
     for (auto i = index + 1; i < strLine.length; i++)
     {
-        if (strLine[i] == STR_DQUOTE)
+        if ("" ~ strLine[cast(uint)i] == STR_DOUBLE_QUOTE)
             stack ~= i;
     }
     if (stack.empty || (stack.length % 2 == 0))
     {
-        trace("no close char '" ~ STR_DQUOTE ~ "' before index " ~ std.conv.to!string(index)
+        trace("no close char '" ~ STR_DOUBLE_QUOTE ~ "' before index " ~ std.conv.to!string(index)
                 ~ ", stack.length = " ~ std.conv.to!string(stack.length));
         return QuotesInfo(-1, -1, false);
     }
@@ -226,7 +215,7 @@ private long skipFunctionArguments(in string functionName, in long functionIndex
     auto currentArgumentIndex = 1;
     while (currentArgumentIndex < argumentIndex)
     {
-        commaIndex = sourceLine.indexOf(STR_COMMA, commaIndex);
+        commaIndex = sourceLine.indexOf(STR_COMMA, cast(uint)commaIndex);
         if (commaIndex == -1)
         {
             trace("function call '" ~ functionName ~ "' argument count is "
@@ -237,7 +226,7 @@ private long skipFunctionArguments(in string functionName, in long functionIndex
         currentArgumentIndex++;
     }
 
-    trace("sourceLine[commaIndex] = '" ~ sourceLine[commaIndex] ~ "'");
+    trace("sourceLine[commaIndex] = '" ~ sourceLine[cast(uint)commaIndex] ~ "'");
     if (argumentIndex >= 2)
         commaIndex++;
     
@@ -254,10 +243,10 @@ private string enquoteFunctionArgument(in string functionName, in int argumentIn
     while (true)
     {
         // TODO: implement regex search using "contains\\s*\\("
-        functionIndex = sourceLine.indexOf(functionName, functionIndex);
+        functionIndex = sourceLine.indexOf(functionName, cast(uint)functionIndex);
         if (functionIndex == -1)
         {
-            result ~= sourceLine[newFunctionEndIndex == -1 ? 0 : newFunctionEndIndex .. $];
+            result ~= sourceLine[newFunctionEndIndex == -1 ? 0 : cast(uint)newFunctionEndIndex .. $];
             break;
         }
         trace("function call detected at index " ~ std.conv.to!string(functionIndex));
@@ -272,7 +261,7 @@ private string enquoteFunctionArgument(in string functionName, in int argumentIn
 
         // Search for second argument end - skip paired parenthesis
         auto secondArgumentEndIndex = secondArgumentBeginIndex;
-        trace("strLine[secondArgumentEndIndex] = '" ~ sourceLine[secondArgumentEndIndex] ~ "'");
+        trace("strLine[secondArgumentEndIndex] = '" ~ sourceLine[cast(uint)secondArgumentEndIndex] ~ "'");
         if (!isInsideParenthesis(sourceLine, secondArgumentBeginIndex - 1, ParenhesisType.Closing,
             secondArgumentEndIndex, true))
         {
@@ -285,11 +274,11 @@ private string enquoteFunctionArgument(in string functionName, in int argumentIn
             wsSuffix ~= STR_WS;
 
         // Enquote specified argument value
-        auto secondArgument = sourceLine[secondArgumentBeginIndex .. secondArgumentEndIndex];
+        auto secondArgument = sourceLine[cast(uint)secondArgumentBeginIndex .. cast(uint)secondArgumentEndIndex];
         auto secondArgumentQuoted = secondArgument;
-        if ((secondArgument[0] != STR_DQUOTE) && (secondArgument[$ - 1] != STR_DQUOTE))
-            secondArgumentQuoted = STR_DQUOTE ~ secondArgument ~ STR_DQUOTE;
-        result ~= sourceLine[newFunctionEndIndex == -1 ? 0 : newFunctionEndIndex .. commaIndex] ~ wsSuffix;
+        if (("" ~ secondArgument[0] != STR_DOUBLE_QUOTE) && ("" ~ secondArgument[secondArgument.length - 1] != STR_DOUBLE_QUOTE))
+            secondArgumentQuoted = STR_DOUBLE_QUOTE ~ secondArgument ~ STR_DOUBLE_QUOTE;
+        result ~= sourceLine[newFunctionEndIndex == -1 ? 0 : cast(uint)newFunctionEndIndex .. cast(uint)commaIndex] ~ wsSuffix;
         result ~= secondArgumentQuoted ~ STR_CLOSING_PARENTHESIS;
 
         trace("secondArgument = '" ~ secondArgument ~ "'");
@@ -316,7 +305,7 @@ private struct MultilineInfo
 private bool mergeMultiline(in long lineNo, in string[] lines, out MultilineInfo result)
 // FIXME: in-out-do contracts
 {
-    string currentLine = lines[lineNo];
+    string currentLine = lines[cast(uint)lineNo];
     currentLine = currentLine.strip();
     currentLine = cutInlineComment(currentLine);
 
@@ -336,7 +325,7 @@ private bool mergeMultiline(in long lineNo, in string[] lines, out MultilineInfo
     
     for (; j < lines.length; j++)
     {
-        currentLine = lines[j];
+        currentLine = lines[cast(uint)j];
         currentLine = currentLine.strip();
 
         bool commentFound;
@@ -364,15 +353,15 @@ private bool hasSinglelineScope(in string sourceLine, out long colonIndex)
 {
     colonIndex = -1;
 
-    if (sourceLine.empty || sourceLine.endsWith(STR_OPEN_CURLY_BRACE))
+    if (sourceLine.empty || sourceLine.endsWith(STR_OPENING_CURLY_BRACE))
         return false;
 
     // testFunc(): x = y ... : ...
-    immutable auto lastEqIndex = sourceLine.lastIndexOf(STR_EQ);
+    immutable auto lastEqIndex = sourceLine.lastIndexOf(STR_EQUALS);
     long i = (lastEqIndex == -1) ? (cast(long)sourceLine.length - 1) : (lastEqIndex - 1);
     for ( ; i >= 0; i--)
     {
-        if (sourceLine[i] != STR_COLON)
+        if ("" ~ sourceLine[cast(uint)i] != STR_COLON)
             continue;
 
         trace("colon detected at index " ~ std.conv.to!string(i));
@@ -418,13 +407,13 @@ private bool fixSinglelineScope(in string sourceLine, out string resultLine)
         return false;
 
     trace("single-line scope statement detected and fixed");
-    resultLine.replaceInPlace(colonIndex, colonIndex + 1, "" ~ STR_DOG);
+    resultLine.replaceInPlace(cast(uint)colonIndex, cast(uint)(colonIndex + 1), STR_DOG);
     return true;
 }
 
 private bool hasMultilineScope(in string sourceLine, out long colonIndex)
 {
-    if (!sourceLine.endsWith(STR_OPEN_CURLY_BRACE))
+    if (!sourceLine.endsWith(STR_OPENING_CURLY_BRACE))
         return false;
 
     // Search for reduntant colon
@@ -461,7 +450,7 @@ private bool fixMultilineScope(in string sourceLine, out string resultLine)
         return false;
 
     trace("single-line scope statement detected and fixed");
-    resultLine.replaceInPlace(colonIndex, colonIndex + 1, "" ~ STR_DOG);
+    resultLine.replaceInPlace(cast(uint)colonIndex, cast(uint)(colonIndex + 1), "" ~ STR_DOG);
     return true;
 }
 
@@ -575,7 +564,7 @@ string preprocessLines(in string[] strLinesArray, out LineInfo[] resultLines)
     {
         LineInfo li;
         li.index = lineIndex;
-        li.line = strLinesArray[lineIndex];
+        li.line = strLinesArray[cast(uint)lineIndex];
 
         prettifyLine(li);
         fixMultiline(li, mresult, lineIndex, strLinesArray);

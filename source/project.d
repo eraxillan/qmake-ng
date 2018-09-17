@@ -5,12 +5,12 @@
 **
 ** This file is part of the qmake-ng application, replacement of the Qt Toolkit one.
 **
-** Foobar is free software: you can redistribute it and/or modify
+** qmake-ng is free software: you can redistribute it and/or modify
 ** it under the terms of the GNU General Public License as published by
 ** the Free Software Foundation, either version 3 of the License, or
 ** (at your option) any later version.
 **
-** Foobar is distributed in the hope that it will be useful,
+** qmake-ng is distributed in the hope that it will be useful,
 ** but WITHOUT ANY WARRANTY; without even the implied warranty of
 ** MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ** GNU General Public License for more details.
@@ -23,14 +23,22 @@
 module project;
 
 import std.file;
+import std.path;
 import std.string;
 import std.experimental.logger;
 
 import preprocessor;
 import qmakeparser;
 
+import common_const;
+import eval;
+import project_variable;
+import project_context;
+
 class Project
 {
+    private string[][string] m_variables;
+
     const bool tryParse(in string fileName)
     {
         import qmakeparser;
@@ -51,6 +59,100 @@ class Project
             trace("Project file '" ~ fileName ~ "' successfully parsed");
 
         return parseTree.successful;
+    }
+    
+    const bool eval(in string fileName)
+    {       
+        trace("Trying to parse project file '" ~ fileName ~ "'...");
+
+        // FIXME: replace to QStack!ProExecutionContext to handle inner code blocks
+        auto context = new ProExecutionContext();
+        
+        //
+        context.assignVariable("PWD", [dirName(fileName)], VariableType.STRING);
+        context.assignVariable("OUT_PWD", [dirName(fileName)], VariableType.STRING);
+        context.assignVariable("_PRO_FILE_", [fileName], VariableType.STRING);
+        context.assignVariable("_PRO_FILE_PWD_", [dirName(fileName)], VariableType.STRING);
+        //
+
+        auto proFileContents = std.file.readText(fileName);
+        LineInfo[] result;
+        proFileContents = preprocessLines(splitLines(proFileContents), result);
+
+        auto parseTree = QMakeProject(proFileContents);
+        if (!parseTree.successful)
+        {
+            trace(parseTree);
+            trace("Parsing project file '" ~ fileName ~ "' FAILED:");
+            return false;
+        }
+
+        trace("Project file '" ~ fileName ~ "' successfully parsed");
+
+        trace("Trying to evaluate project file '" ~ fileName ~ "'...");
+
+        // Get the root project node (must be the only child of parse tree)
+        auto projectNode = parseTree.children[0];
+        // FIXME: check parseTree.children count
+
+        foreach(ref child; projectNode.children)
+        {
+            auto statementNode = child.children[0];
+            // FIXME: check child.children count
+
+            trace("STATEMENT: " ~ statementNode.name ~ ": [" ~ statementNode.matches.join(" ") ~ "]");
+            
+            switch (statementNode.name)
+            {
+                case "QMakeProject.Assignment":
+                {
+                    auto variableName = statementNode.matches[0];
+                    auto variableOperator = statementNode.matches[1];
+                    auto variableValue = statementNode.matches[2 .. $];
+                    trace("Variable name: '" ~ variableName ~ "'");
+                    trace("Variable assignment operator: '" ~ variableOperator ~ "'");
+                    trace("Variable value: '" ~ variableValue.join(" ") ~ "'");
+                    
+                    auto evaluator = new ExpressionEvaluator(context);
+                    auto rpnExpression = ExpressionEvaluator.convertToRPN(variableValue.join(" "));
+                    auto rpnResult = evaluator.evalRPN(rpnExpression);
+
+                    switch (variableOperator)
+                    {
+                        case STR_EQUALS:
+                            context.assignVariable(variableName, rpnResult, VariableType.STRING_LIST /*FIXME:*/);
+                            break;
+                        case STR_PLUS_EQUALS:
+                            context.appendAssignVariable(variableName, rpnResult);
+                            break;
+                        case STR_ASTERISK_EQUALS:
+                            context.appendUniqueAssignVariable(variableName, rpnResult);
+                            break;
+                        case STR_MINUS_EQUALS:
+                            context.removeAssignVariable(variableName, rpnResult);
+                            break;
+                        case STR_TILDE_EQUALS:
+                            throw new Exception("Not implemented yet");
+                        default:
+                            throw new Exception("Invalid assignment operator");
+                    }
+
+                    break;
+                }
+                case "QMakeProject.Scope":
+                {
+                    break;
+                }
+                default:
+                {
+                    error("Invalid statement type '" ~ statementNode.name ~ "'");
+                    break;
+                }
+            }
+        }
+
+        trace("Project file '" ~ fileName ~ "' successfully evaluated");
+        return true;
     }
 }
 
