@@ -86,7 +86,7 @@ public class QStack(DataType)
         return m_array.empty;
     }
 	
-	public uint length()
+	public ulong length()
 	{
 		return m_array.length;
 	}
