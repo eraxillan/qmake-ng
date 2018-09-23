@@ -169,7 +169,7 @@ public class ProExecutionContext
     }
 
 	// FIXME: add const
-    private string[] getVariableRawValue(in string name) /+const+/
+    public string[] getVariableRawValue(in string name) /+const+/
 	in
 	{
 		assert(!name.empty, "project variable name cannot be empty");
@@ -343,6 +343,10 @@ public class ProExecutionContext
                 break;
             }
             case VariableType.STRING_LIST: {
+                break;
+            }
+            case VariableType.OBJECT_LIST: {
+                // FIXME: implement
                 break;
             }
             default: {
