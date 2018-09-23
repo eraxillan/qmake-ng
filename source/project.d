@@ -36,6 +36,7 @@ import common_const;
 import eval;
 import project_variable;
 import project_context;
+import rpn;
 
 public class Project
 {
@@ -154,7 +155,7 @@ public class Project
             in string operator, in string[] value) const
     {
         auto evaluator = new ExpressionEvaluator(context);
-        auto rpnExpression = evaluator.convertToRPN(value.join(" "));
+        auto rpnExpression = convertToRPN(value.join(" "));
         auto rpnResult = evaluator.evalRPN(rpnExpression);
 
         switch (operator)
