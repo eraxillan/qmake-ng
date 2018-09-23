@@ -122,6 +122,14 @@ public class ProExecutionContext
         return m_userVariables.keys.sort.release();
     }
 
+    public void setupPaths(in string projectFileName)
+    {
+        assignVariable("PWD", [dirName(projectFileName)], VariableType.STRING);
+        assignVariable("OUT_PWD", [dirName(projectFileName)], VariableType.STRING);
+        assignVariable("_PRO_FILE_", [projectFileName], VariableType.STRING);
+        assignVariable("_PRO_FILE_PWD_", [dirName(projectFileName)], VariableType.STRING);
+    }
+
     private void getVariableDescription(in string name, ref ProVariable var)
 	in
 	{

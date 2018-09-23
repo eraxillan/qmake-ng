@@ -37,14 +37,10 @@ import eval;
 import project_variable;
 import project_context;
 
-class Project
+public class Project
 {
-    private string[][string] m_variables;
-
-    const bool tryParse(in string fileName)
+    public bool tryParse(in string fileName) const
     {
-        import qmakeparser;
-
         trace("Trying to parse project file '" ~ fileName ~ "'...");
 
         auto proFileContents = std.file.readText(fileName);
@@ -63,19 +59,14 @@ class Project
         return parseTree.successful;
     }
 
-    bool eval(in string fileName)
+    public bool eval(in string fileName) const
     {
         trace("Trying to parse project file '" ~ fileName ~ "'...");
 
         // FIXME: replace to QStack!ProExecutionContext to handle inner code blocks
         auto context = new ProExecutionContext();
 
-        //
-        context.assignVariable("PWD", [dirName(fileName)], VariableType.STRING);
-        context.assignVariable("OUT_PWD", [dirName(fileName)], VariableType.STRING);
-        context.assignVariable("_PRO_FILE_", [fileName], VariableType.STRING);
-        context.assignVariable("_PRO_FILE_PWD_", [dirName(fileName)], VariableType.STRING);
-        //
+        context.setupPaths(fileName);
 
         auto proFileContents = std.file.readText(fileName);
         LineInfo[] result;
@@ -124,7 +115,7 @@ class Project
         return true;
     }
 
-    private void evalStatementNode(ref ProExecutionContext context, ref ParseTree statementNode)
+    private void evalStatementNode(ref ProExecutionContext context, ref ParseTree statementNode) const
     {
         switch (statementNode.name)
         {
@@ -147,7 +138,7 @@ class Project
     }
 
     private void evalVariableAssignmentNode(ref ProExecutionContext context,
-            ref ParseTree statementNode)
+            ref ParseTree statementNode) const
     {
         auto variableName = statementNode.matches[0];
         auto variableOperator = statementNode.matches[1];
@@ -160,7 +151,7 @@ class Project
     }
 
     private void assignVariable(ref ProExecutionContext context, in string name,
-            in string operator, in string[] value)
+            in string operator, in string[] value) const
     {
         auto evaluator = new ExpressionEvaluator(context);
         auto rpnExpression = evaluator.convertToRPN(value.join(" "));
@@ -187,7 +178,7 @@ class Project
         }
     }
 
-    private void evalScopeNode(ref ProExecutionContext context, ref ParseTree statementNode)
+    private void evalScopeNode(ref ProExecutionContext context, ref ParseTree statementNode) const
     {
         trace("\n");
 
@@ -252,7 +243,7 @@ class Project
         }
     }
 
-    private bool evalScopeConditionNode(ref ProExecutionContext context, ref ParseTree statementNode)
+    private bool evalScopeConditionNode(ref ProExecutionContext context, ref ParseTree statementNode) const
     {
         assert(statementNode.name == "QMakeProject.BooleanExpression");
         assert(statementNode.children.length == 1);
@@ -324,7 +315,7 @@ class Project
         return orResult;
     }
 
-    private bool evalBooleanExressionNode(ref ProExecutionContext context, ref ParseTree boolExprNode)
+    private bool evalBooleanExressionNode(ref ProExecutionContext context, ref ParseTree boolExprNode) const
     {
         assert(boolExprNode.children.length == 1);
         switch (boolExprNode.name)
@@ -364,7 +355,7 @@ class Project
        // return false;
     }
 
-    private bool evalBooleanVariableNode(ref ProExecutionContext context, ref ParseTree boolAtomNode)
+    private bool evalBooleanVariableNode(ref ProExecutionContext context, ref ParseTree boolAtomNode) const
     {
         assert(boolAtomNode.children.length == 0);
         assert(boolAtomNode.matches.length == 1);
