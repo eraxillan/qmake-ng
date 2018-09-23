@@ -163,7 +163,7 @@ class Project
             in string operator, in string[] value)
     {
         auto evaluator = new ExpressionEvaluator(context);
-        auto rpnExpression = ExpressionEvaluator.convertToRPN(value.join(" "));
+        auto rpnExpression = evaluator.convertToRPN(value.join(" "));
         auto rpnResult = evaluator.evalRPN(rpnExpression);
 
         switch (operator)

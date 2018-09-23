@@ -69,9 +69,9 @@ public class ProFunction
 	static this()
 	{
 		// FIXME: add others
-		replaceFunctions["first"] = new ProFunction("first", VariableType.STRING, false, 1, 0, [VariableType.STRING_LIST],
+		replaceFunctions["first"] = new ProFunction("first", VariableType.STRING, true, 1, -1, [VariableType.STRING_LIST],
 			(in string[] arguments) {
-				if (arguments.length != 1)
+				if (arguments.length < 1)
 					throw new Exception("Invalid argument count: expected 1, got " ~ to!string(arguments.length));
 				return [arguments[0]];
 			}

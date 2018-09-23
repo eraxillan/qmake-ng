@@ -186,7 +186,7 @@ private string[] initQmakeCompilerVariableRange()
 
 private string[] initQmakeCompilerVariableValue()
 {
-	return ["msvc"];
+	return ["gcc"];
 }
 
 private string[] initQmakePlatformVariableRange()

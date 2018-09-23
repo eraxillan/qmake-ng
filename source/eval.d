@@ -462,8 +462,6 @@ class ExpressionEvaluator
                 outputQueue.push(STR_ARITY_MARKER);
 
                 if (ProFunction.isReplaceFunction(op)) {
-//                    auto functionName = op.substring(STR_EXPAND_MARKER.length);
-					// FIXME: check
 					auto functionName = op[STR_EXPAND_MARKER.length .. $];
                     trace("replace function call (2): '" ~ functionName ~ "' with " ~ to!string(functionArity) ~ " arguments");
 					
@@ -614,30 +612,31 @@ class ExpressionEvaluator
                         // Validate replace function description
 						if (!ProFunction.hasReplaceFunctionDescription(funcName))
                             throw new Exception("Unsupported replace function '" ~ funcName ~ "'");
+                        auto functionDescription = ProFunction.getReplaceFunctionDescription(funcName);
 
                         // Get replace function actual argument count
                         string operandCountStr = array.pop();
                         if (!isNumeric(operandCountStr))
-						{
                             throw new Exception("Invalid replace function argument count value '" ~ operandCountStr ~ "'");
-                        }
-						// FIXME: handle exception
+
+                        // FIXME: can throw ConvException/ConvOverflowException
                         int operandCount = to!int(operandCountStr);
-                        /+if ((operandCount === undefined) || (operandCount < 0)) {
-                            throw new Exception("Invalid replace function argument count value '" ~ operandCountStr ~ "'");
-                        }+/
                         trace("Operand count: " ~ operandCountStr);
 
                         string[] val;
+                        if (functionDescription.m_isVariadic)
+                        {
+                            trace("Replace function '", funcName, "' is variadic: ignore argument count from RPN, just pop the entire stack");
+                            operandCount = cast(int)(array.length);
+                        }
                         for (int j = 0; j < operandCount; j++)
 						{
-                            val ~= array.pop();  // val = val.concat(array.pop());
+                            val ~= array.pop();
                         }
                         val = val.reverse();
                         trace("Operand values: ", val);
 
                         // Validate arguments count for non-variadic functions
-						auto functionDescription = ProFunction.getReplaceFunctionDescription(funcName);
                         if (!functionDescription.m_isVariadic)
 						{
                             if (functionDescription.m_requiredArgumentCount < 0)
@@ -669,9 +668,6 @@ class ExpressionEvaluator
                         const(string[]) result = functionDescription.m_action(val);
 
                         // Validate and save execution result
-                        /*if (!typeUtils.isArray(result)) {
-                            result = [result];
-                        }*/
 						array.push(result);
 
                         trace("Result: ", result);
@@ -819,13 +815,13 @@ class ExpressionEvaluator
             }
 			else if (isStringValue(token))
 			{
-//                assert.isNotEmpty(this.executionContext);
                 string tokenExpanded = m_executionContext.expandVariables(token);
-                if (token != tokenExpanded)
-                    token = tokenExpanded;
 
-                array.push(token);
-			} else {
+                // FIXME HACK: expand function deal only with raw string, but functions works with lists
+                array.push(tokenExpanded.split(" "));
+			}
+            else
+            {
                 throw new Exception("Unknown token '" ~ token ~ "'");
 			}
 		}
