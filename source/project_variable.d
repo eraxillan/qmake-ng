@@ -92,8 +92,15 @@ public struct ProVariable
 
 // --------------------------------------------------------------------------------------------------------------------------------------------------
 
+private string[] initQmakeSpecVariableValue()
+{
+    // FIXME: platform autodetect
+    return ["/opt/Qt/5.11.1/gcc_64/mkspecs/linux-g++"];
+}
+
 private string[] initConfigVariableValue()
 {
+    // FIXME: platform autodetect
     return [
         "lex", "yacc", "debug", "exceptions", "depend_includepath", "testcase_targets",
         "import_plugins", "import_qpa_plugin", "file_copies", "qmake_use", "qt", "warn_on",
@@ -104,6 +111,7 @@ private string[] initConfigVariableValue()
 
 private string[] initConfigVariableRange()
 {
+    // FIXME: CONFIG variable can be extended with user-defined values! this list is uncomplete
     return [
         "release", "debug", "debug_and_release", "debug_and_release_target", "qml_debug",
         "qmake_use", "build_all", "autogen_precompile_source", "ordered", "precompile_header", "depend_includepath",
@@ -202,7 +210,8 @@ private string[] initQmakePlatformVariableRange()
 
 private string[] initQmakePlatformVariableValue()
 {
-	return ["win32"];
+    // FIXME: platform autodetect
+	return ["linux", "unix", "posix"];
 }
 
 // --------------------------------------------------------------------------------------------------------------------------------------------------
@@ -234,6 +243,8 @@ static this()
 	temp1["_PRO_FILE_"] = ProVariable("_PRO_FILE_", VariableType.STRING, [], [STR_EMPTY]);
 	temp1["_PRO_FILE_PWD_"] = ProVariable("_PRO_FILE_PWD_", VariableType.STRING, [], [STR_EMPTY]);
 	
+    temp1["QMAKESPEC"] = ProVariable("QMAKE_SPEC", VariableType.STRING_LIST, [], initQmakeSpecVariableValue());
+
 	temp1["QMAKE_CFLAGS"] = ProVariable("QMAKE_CFLAGS", VariableType.STRING_LIST, [], []);
 	temp1["QMAKE_COMPILER"] = ProVariable("QMAKE_COMPILER", VariableType.RESTRICTED_STRING_LIST, initQmakeCompilerVariableRange(), initQmakeCompilerVariableValue());
 	temp1["QMAKE_PLATFORM"] = ProVariable("QMAKE_PLATFORM", VariableType.RESTRICTED_STRING_LIST, initQmakePlatformVariableRange(), initQmakePlatformVariableValue());
