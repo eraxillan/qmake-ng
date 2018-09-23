@@ -105,16 +105,16 @@ class Project
 
         // Output all built-in and user-defined variables
         trace("\n\nqmake built-in variable values:");
-        foreach (variableName; context.getBuiltinVariables().keys.sort)
+        foreach (variableName; context.getBuiltinVariableNames())
         {
-            string[] variableValue = context.getBuiltinVariables()[variableName].value;
+            string[] variableValue = context.getVariableRawValue(variableName);
             if (!variableValue.empty)
                 trace(variableName, " = ", variableValue);
         }
         trace("\n\nqmake user-defined variable values:");
-        foreach (variableName; context.getUserDefinedVariables().keys.sort)
+        foreach (variableName; context.getUserDefinedVariableNames())
         {
-            string[] variableValue = context.getUserDefinedVariables()[variableName].value;
+            string[] variableValue = context.getVariableRawValue(variableName);
             if (!variableValue.empty)
                 trace(variableName, " = ", variableValue);
         }

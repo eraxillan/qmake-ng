@@ -113,14 +113,13 @@ public class ProExecutionContext
         return (name in m_userVariables) !is null;
     }
 
-    public ref ProVariable[string] getBuiltinVariables()
-	{
-        return m_builtinVariables;
+    public string[] getBuiltinVariableNames() const
+    {
+        return m_builtinVariables.keys.sort.release();
     }
-
-    public ref ProVariable[string] getUserDefinedVariables()
-	{
-        return m_userVariables;
+    public string[] getUserDefinedVariableNames() const
+    {
+        return m_userVariables.keys.sort.release();
     }
 
     private void getVariableDescription(in string name, ref ProVariable var)
