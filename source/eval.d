@@ -485,9 +485,9 @@ class ExpressionEvaluator
         for (int i = 0; i < exprArray.length; i++)
 		{
             auto token = exprArray[i];
-            trace("token[" ~ to!string(i) ~ "]:", token);
+            trace("token[" ~ to!string(i) ~ "]: ", token);
 
-            if (ProFunction.isReplaceFunction(token) && (exprArray[i + 1] == STR_OPENING_PARENTHESIS)) {
+            if (ProFunction.isReplaceFunction(token) && (i + 1 < exprArray.length) && (exprArray[i + 1] == STR_OPENING_PARENTHESIS)) {
                 trace("replace function call (1): '" ~ token[STR_EXPAND_MARKER.length .. $] ~ "'");
 
                 auto o1 = token;
@@ -501,7 +501,7 @@ class ExpressionEvaluator
                 operatorStack.push(o1);
                 arityStack.push(1);
             }
-			else if (ProFunction.isTestFunction(token) && (exprArray[i + 1] == STR_OPENING_PARENTHESIS))
+			else if (ProFunction.isTestFunction(token) && (i + 1 < exprArray.length) && (exprArray[i + 1] == STR_OPENING_PARENTHESIS))
 			{
                 trace("test function call (1): '" ~ token ~ "'");
 
