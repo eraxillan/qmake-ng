@@ -75,10 +75,10 @@ public class QStack(DataType)
 
     public void setTop(in DataType value)
 	{
-		if (!m_array.empty)
-			m_array[m_array.length - 1] = value;
+		if (m_array.empty)
+			throw new Exception("trying to set top item value from empty stack");
 		
-		throw new Exception("trying to set top item value from empty stack");
+		m_array[m_array.length - 1] = value;
     }
 
     public bool isEmpty()

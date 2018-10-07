@@ -43,6 +43,7 @@ import project_function;
 import project_context;
 
 import rpn;
+import qmakeexception;
 
 /*
 var builtinVariableModule = require("./builtin_variable_description");
@@ -151,7 +152,7 @@ class ExpressionEvaluator
                 {
                 case STR_ARITY_MARKER:
                     {
-                        throw new Exception("Logic error: STR_ARITY_MARKER must be already processed");
+                        throw new EvalLogicException("Logic error: STR_ARITY_MARKER must be already processed");
                     }
                 case STR_INVOKE_REPLACE:
                     {
@@ -166,13 +167,12 @@ class ExpressionEvaluator
                 case STR_BLOCK_BEGIN:
                     {
                         // FIXME: implement
-                        throw new NotImplementedError("Code block eval not implemented yet");
-                        //break;
+                        throw new NotImplementedException("Code block eval not implemented yet");
                     }
                 case STR_BLOCK_END:
                     {
                         // FIXME: implement
-                        break;
+                        throw new NotImplementedException("Code block eval not implemented yet");
                     }
                 default:
                     {
@@ -300,7 +300,7 @@ class ExpressionEvaluator
         }
 
         // Call function
-        const(string[]) result = functionDescription.m_action(val);
+        const(string[]) result = functionDescription.m_action(m_executionContext, val);
 
         // Validate and save execution result
         array.push(result);
@@ -415,7 +415,7 @@ class ExpressionEvaluator
 
         // Call function
         // NOTE: test function can return boolean or void
-        const(string[]) result = functionDescription.m_action(val);
+        const(string[]) result = functionDescription.m_action(m_executionContext, val);
         
         // Validate and save execution result
         array.push(result);

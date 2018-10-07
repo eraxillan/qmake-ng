@@ -44,6 +44,9 @@ public const auto STR_EXCLAMATION_MARK = "!";
 public const auto STR_COLON = ":";
 public const auto STR_VERTICAL_BAR = "|";
 
+public const auto STR_SINGLE_EXPAND_MARKER = "$";
+public const auto STR_GENERATOR_EXPAND_MARKER = "${";
+
 public const auto STR_EXPAND_MARKER = "$$";
 public const auto STR_FUNCTION_EXPAND_MARKER = "$$";
 

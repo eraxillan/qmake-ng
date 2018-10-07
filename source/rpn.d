@@ -152,6 +152,7 @@ public string[] convertToRPN(in string expr)
 
             operatorStack.push(o1);
             arityStack.push(1);
+            assert(arityStack.length() >= 1);
         }
         else if (token == STR_OPENING_PARENTHESIS)
         {
@@ -173,6 +174,7 @@ public string[] convertToRPN(in string expr)
         {
             trace("comma");
 
+            assert(arityStack.length() >= 1);
             arityStack.setTop(arityStack.top() + 1);
 
             while (operatorStack.top() != STR_OPENING_PARENTHESIS)
@@ -334,7 +336,7 @@ private string[] tokenizeString(in string str)
         return ProFunction.getFunctionArgumentType(parenthesisStack.top().functionName, parenthesisStack.top().argumentIndex);
     };
 
-    for (int i = 0; i < str.length; i++) {
+    for (int i; i < str.length; i++) {
         auto token = joinTokens(str, i, 1);
 
         // Single-line comment
@@ -513,6 +515,28 @@ private string[] tokenizeString(in string str)
 
                 trace("colon (as single-line code block start marker)");
                 result.push(STR_COLON);
+            }
+        } else if (token == STR_SINGLE_EXPAND_MARKER) {
+            // NOTE: statement like ${VAR} can be used in custom compiler generation (?); attention: SINGLE dollar sign
+            // FIXME: need further investigion!
+            trace("Expand token: '", token, "'");
+
+            auto twoTokens = joinTokens(str, i, 2);
+            if (twoTokens == STR_GENERATOR_EXPAND_MARKER) {
+                trace("Generator expression detected");
+
+                currentStr ~= twoTokens;
+                i += 2;
+
+                do {
+                    currentStr ~= str[i];
+                    i++;
+
+                    if ("" ~ str[i] == STR_CLOSING_CURLY_BRACE)
+                        break;
+                } while (i < str.length);
+            } else {
+                currentStr ~= token;
             }
         } else {
             trace("Other token: '" ~ token ~ "'");

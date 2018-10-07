@@ -36,49 +36,48 @@ import std.range;
 
 import common_const;
 import project_variable;
-
+import project_context;
 // -------------------------------------------------------------------------------------------------
 
 public class ProFunction
 {
-	/+
-        // first(variablename)
-        "first": {
-            operandCount: {required: 1, optional: 0},
-            operandTypes: {0: VariableTypeEnum.STRING_LIST},
-            action: function() {
-                const args = Array.from(arguments);
-
-                // FIXME: think about argument data type
-                /*if ((args.length !== 1) || (args[0].length === 0))
-                    throw new RangeError("'first' replace function requires exactly one non-empty list");
-
-                return args[0][0];*/
-
-                return args[0];
-            }
-        },
-		"list": {
-            operandCount: undefined,
-            operandTypes: {0: VariableTypeEnum.STRING_LIST},
-            action: function() {
-                return new Array(...arguments);
-            }
-        },
-	+/
 	static this()
 	{
 		// FIXME: add others
 		replaceFunctions["first"] = new ProFunction("first", VariableType.STRING, true, 1, -1, [VariableType.STRING_LIST],
-			(in string[] arguments) {
+			(ProExecutionContext context, in string[] arguments) {
 				if (arguments.length < 1)
 					throw new Exception("Invalid argument count: expected 1, got " ~ to!string(arguments.length));
 				return [arguments[0]];
 			}
 		);
 		replaceFunctions["list"] = new ProFunction("list", VariableType.STRING_LIST, true, 1, -1, [VariableType.STRING],
-			(in string[] arguments) {
+			(ProExecutionContext context, in string[] arguments) {
 				return arguments;
+			}
+		);
+
+		testFunctions["include"] = new ProFunction("include", VariableType.BOOLEAN, false, 1, 0, [VariableType.STRING],
+			(ProExecutionContext context, in string[] arguments) {
+				error("Control flow error: currently implemented in eval.d module");
+				return ["false"];
+			}
+		);
+
+		testFunctions["equals"] = new ProFunction("equals", VariableType.BOOLEAN,
+			false, 2, 0, [VariableType.STRING, VariableType.STRING],
+			(ProExecutionContext context, in string[] arguments) {
+				string variableName = arguments[0];
+				string value = arguments[1];
+
+				string[] variableRawValue = context.getVariableRawValue(variableName);
+				if (variableRawValue.length >= 2)
+					throw new Exception("Variable type mismatch: 'equals' test function can work only with string-typed variable");
+				
+				string variableValue = variableRawValue[0];
+				trace("Variable value: '", variableValue, "'");
+				trace("String to compare with: '", value, "'");
+				return (variableRawValue[0] == value) ? ["true"] : ["false"];
 			}
 		);
 	}
@@ -94,7 +93,7 @@ public class ProFunction
 		m_action = action;
 	}
 	
-	// Compiletime function info
+	// Compile-time function info
 	public string m_name;
 	public VariableType m_returnType;
 	public bool m_isVariadic;
@@ -102,9 +101,9 @@ public class ProFunction
 	public int m_optionalArgumentCount;
 	public VariableType[] m_argumentTypes;
 	
-	// Runtime function info
+	// Run-time function info
 	public string[] m_arguments;
-	alias Action = const(string[]) function(in string[] arguments);
+	alias Action = const(string[]) function(ProExecutionContext context, in string[] arguments);
 	public Action m_action;
 
 	// qmake builtin test and replace functions

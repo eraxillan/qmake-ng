@@ -130,6 +130,22 @@ public class ProExecutionContext
         assignVariable("_PRO_FILE_PWD_", [dirName(projectFileName)], VariableType.STRING);
     }
 
+    // Add absent variables and reassign already existing
+    public void merge(/*in*/ ProExecutionContext other)
+    {
+        // Built-in variables
+        foreach (name; other.m_builtinVariables.keys)
+        {
+            this.m_builtinVariables.require(name, other.m_builtinVariables[name]);
+        }
+
+        // User-defined variables
+        foreach (name; other.m_userVariables.keys)
+        {
+            this.m_userVariables.require(name, other.m_userVariables[name]);
+        }
+    }
+
     private void getVariableDescription(in string name, ref ProVariable var)
 	in
 	{

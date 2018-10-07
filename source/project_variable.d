@@ -41,7 +41,8 @@ import common_const;
 public enum VariableType
 {
     UNKNOWN = -1,
-    RAW_STRING = 0,           // string with any characters, e.g. argument of message() test function: message(I am a raw string)
+    BOOLEAN = 0,
+    RAW_STRING = 1,           // string with any characters, e.g. argument of message() test function: message(I am a raw string)
     NUMBER,                   // integer number, e.g. qmake debug level: debug(1, This text will be shown under debug level 1)
     STRING,                   // string without whitespaces/commas, e.g. variable name
     STRING_LIST,    	  	  // array of strings without whitespaces/commas
@@ -223,6 +224,9 @@ static this()
     import std.exception : assumeUnique;
 
     ProVariable[string] temp1; // mutable buffer
+    // FIXME: platform detection
+    temp1["QMAKE_HOST.os"] = ProVariable("QMAKE_HOST.os", VariableType.RESTRICTED_STRING, ["Linux"], ["Linux"]);
+
 	temp1["CONFIG"] = ProVariable("CONFIG", VariableType.RESTRICTED_STRING_LIST, initConfigVariableRange(), initConfigVariableValue());
 	temp1["DEFINES"] = ProVariable("DEFINES", VariableType.STRING_LIST, [], []);
 	temp1["DESTDIR"] = ProVariable("DESTDIR", VariableType.STRING, [], [STR_EMPTY]);
@@ -246,7 +250,9 @@ static this()
     temp1["QMAKESPEC"] = ProVariable("QMAKE_SPEC", VariableType.STRING_LIST, [], initQmakeSpecVariableValue());
 
 	temp1["QMAKE_CFLAGS"] = ProVariable("QMAKE_CFLAGS", VariableType.STRING_LIST, [], []);
-	temp1["QMAKE_COMPILER"] = ProVariable("QMAKE_COMPILER", VariableType.RESTRICTED_STRING_LIST, initQmakeCompilerVariableRange(), initQmakeCompilerVariableValue());
+    temp1["QMAKE_CFLAGS_PIC"] = ProVariable("QMAKE_CFLAGS_PIC", VariableType.STRING_LIST, [], []);
+
+    temp1["QMAKE_COMPILER"] = ProVariable("QMAKE_COMPILER", VariableType.RESTRICTED_STRING_LIST, initQmakeCompilerVariableRange(), initQmakeCompilerVariableValue());
 	temp1["QMAKE_PLATFORM"] = ProVariable("QMAKE_PLATFORM", VariableType.RESTRICTED_STRING_LIST, initQmakePlatformVariableRange(), initQmakePlatformVariableValue());
 	temp1["QT"] = ProVariable("QT", VariableType.RESTRICTED_STRING_LIST, initQtVariableRange(), initQtVariableValue());
 	temp1["QT_ARCH"] = ProVariable("QT_ARCH", VariableType.RESTRICTED_STRING, initQtArchVariableRange(), initQtArchVariableValue());

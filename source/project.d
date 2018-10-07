@@ -40,6 +40,13 @@ import rpn;
 
 public class Project
 {
+    private ProExecutionContext m_context;
+
+    public this()
+    {
+        m_context = new ProExecutionContext();
+    }
+
     public bool tryParse(in string fileName) const
     {
         trace("Trying to parse project file '" ~ fileName ~ "'...");
@@ -60,14 +67,13 @@ public class Project
         return parseTree.successful;
     }
 
-    public bool eval(in string fileName) const
+    public bool eval(in string fileName) /*const*/
     {
         trace("Trying to parse project file '" ~ fileName ~ "'...");
 
         // FIXME: replace to QStack!ProExecutionContext to handle inner code blocks
-        auto context = new ProExecutionContext();
-
-        context.setupPaths(fileName);
+        m_context.reset();
+        m_context.setupPaths(fileName);
 
         auto proFileContents = std.file.readText(fileName);
         LineInfo[] result;
@@ -92,21 +98,21 @@ public class Project
             auto statementNode = child.children[0];
             trace("STATEMENT: " ~ statementNode.name ~ ": [" ~ statementNode.matches.join(" ") ~ "]");
 
-            evalStatementNode(context, statementNode);
+            evalStatementNode(m_context, statementNode);
         }
 
         // Output all built-in and user-defined variables
         trace("\n\nqmake built-in variable values:");
-        foreach (variableName; context.getBuiltinVariableNames())
+        foreach (variableName; m_context.getBuiltinVariableNames())
         {
-            string[] variableValue = context.getVariableRawValue(variableName);
+            string[] variableValue = m_context.getVariableRawValue(variableName);
             if (!variableValue.empty)
                 trace(variableName, " = ", variableValue);
         }
         trace("\n\nqmake user-defined variable values:");
-        foreach (variableName; context.getUserDefinedVariableNames())
+        foreach (variableName; m_context.getUserDefinedVariableNames())
         {
-            string[] variableValue = context.getVariableRawValue(variableName);
+            string[] variableValue = m_context.getVariableRawValue(variableName);
             if (!variableValue.empty)
                 trace(variableName, " = ", variableValue);
         }
@@ -116,10 +122,20 @@ public class Project
         return true;
     }
 
-    private void evalStatementNode(ref ProExecutionContext context, ref ParseTree statementNode) const
+    public void merge(/*in*/ Project otherPro)
+    {
+        m_context.merge(otherPro.m_context);
+    }
+
+    // ----------------------------------------------------------------------------------------------------------------------------------------------
+
+    private void evalStatementNode(ref ProExecutionContext context, ref ParseTree statementNode) /+const+/
     {
         switch (statementNode.name)
         {
+        case "QMakeProject.EmptyStatement":
+            trace("Ignore QMakeProject.EmptyStatement");
+            break;
         case "QMakeProject.Assignment":
             evalVariableAssignmentNode(context, statementNode);
             break;
@@ -127,7 +143,7 @@ public class Project
             evalScopeNode(context, statementNode);
             break;
         case "QMakeProject.BooleanExpression":
-            error("NOT IMPLEMENTED YET");
+            evalScopeConditionNode(context, statementNode);
             break;
         case "QMakeProject.FunctionDeclaration":
             error("NOT IMPLEMENTED YET");
@@ -154,23 +170,27 @@ public class Project
     private void assignVariable(ref ProExecutionContext context, in string name,
             in string operator, in string[] value) const
     {
-        auto evaluator = new ExpressionEvaluator(context);
-        auto rpnExpression = convertToRPN(value.join(" "));
-        auto rpnResult = evaluator.evalRPN(rpnExpression);
+        string[] result;
+        if (!value.empty)
+        {
+            auto evaluator = new ExpressionEvaluator(context);
+            auto rpnExpression = convertToRPN(value.join(" "));
+            result = evaluator.evalRPN(rpnExpression);
+        }
 
         switch (operator)
         {
         case STR_EQUALS:
-            context.assignVariable(name, rpnResult, VariableType.STRING_LIST /*FIXME:*/ );
+            context.assignVariable(name, result, VariableType.STRING_LIST /*FIXME:*/ );
             break;
         case STR_PLUS_EQUALS:
-            context.appendAssignVariable(name, rpnResult);
+            context.appendAssignVariable(name, result);
             break;
         case STR_ASTERISK_EQUALS:
-            context.appendUniqueAssignVariable(name, rpnResult);
+            context.appendUniqueAssignVariable(name, result);
             break;
         case STR_MINUS_EQUALS:
-            context.removeAssignVariable(name, rpnResult);
+            context.removeAssignVariable(name, result);
             break;
         case STR_TILDE_EQUALS:
             throw new Exception("Not implemented yet");
@@ -179,7 +199,7 @@ public class Project
         }
     }
 
-    private void evalScopeNode(ref ProExecutionContext context, ref ParseTree statementNode) const
+    private void evalScopeNode(ref ProExecutionContext context, ref ParseTree statementNode) /+const+/
     {
         trace("\n");
 
@@ -244,7 +264,7 @@ public class Project
         }
     }
 
-    private bool evalScopeConditionNode(ref ProExecutionContext context, ref ParseTree statementNode) const
+    private bool evalScopeConditionNode(ref ProExecutionContext context, ref ParseTree statementNode) /+const+/
     {
         assert(statementNode.name == "QMakeProject.BooleanExpression");
         assert(statementNode.children.length == 1);
@@ -316,7 +336,7 @@ public class Project
         return orResult;
     }
 
-    private bool evalBooleanExressionNode(ref ProExecutionContext context, ref ParseTree boolExprNode) const
+    private bool evalBooleanExressionNode(ref ProExecutionContext context, ref ParseTree boolExprNode) /+const+/
     {
         assert(boolExprNode.children.length == 1);
         switch (boolExprNode.name)
@@ -328,19 +348,12 @@ public class Project
         case "QMakeProject.BooleanAtom":
             // BooleanAtom <- ReplaceFunctionCall / TestFunctionCall / QualifiedIdentifier / BooleanConst
             auto boolAtomNode = boolExprNode.children[0];
-            //
-            trace("boolAtomNode.children.length = ", boolAtomNode.children.length);
-            //
-
             switch (boolAtomNode.name)
             {
             case "QMakeProject.ReplaceFunctionCall":
                 throw new Exception("Not implemented yet");
             case "QMakeProject.TestFunctionCall":
-                assert(boolAtomNode.children.length == 1);
-                // FIXME: implement
-                // FunctionCall <- FunctionId OPEN_PAR_WS FunctionArgumentList? CLOSE_PAR_WS :space* :eol*
-                return false;
+                return evalTestFunctionNode(context, boolAtomNode);
             case "QMakeProject.QualifiedIdentifier":
                 return evalBooleanVariableNode(context, boolAtomNode);
             case "QMakeProject.BooleanConst":
@@ -354,6 +367,62 @@ public class Project
         }
 
        // return false;
+    }
+
+    private bool evalTestFunctionNode(ref ProExecutionContext context, ref ParseTree testFunctionNode) /+const+/
+    {
+        assert(testFunctionNode.name == "QMakeProject.TestFunctionCall");
+        assert(testFunctionNode.children.length == 1);
+
+        // FunctionCall <- FunctionId OPEN_PAR_WS FunctionArgumentList? CLOSE_PAR_WS :space* :eol*
+        auto functionNode = testFunctionNode.children[0];
+        assert(functionNode.name == "QMakeProject.FunctionCall");
+        // assert(functionNode.children.length == 4);
+        string functionName = functionNode.children[0].matches[0];
+        trace("Eval function '", functionName, "'...");
+
+        // FIXME: looks hacky :( is there another way to break circular dependency project_function <--> eval?
+        if (functionName == "include")
+        {
+            assert(functionNode.children.length == 4);
+            assert(functionNode.children[1].matches[0] == STR_OPENING_PARENTHESIS);
+            assert(functionNode.children[3].matches[0] == STR_CLOSING_PARENTHESIS);
+
+            string projectFileName = functionNode.children[2].matches[0];
+			string projectDirectory = context.getVariableRawValue("PWD")[0];
+			if (!isAbsolute(projectFileName))
+				projectFileName = buildNormalizedPath(absolutePath(projectFileName, projectDirectory));
+			trace("absolute project path: '", projectFileName, "'");
+			if (!exists(projectFileName) || !isFile(projectFileName)) {
+				error("project file '", projectFileName, "' was not found, so return 'false'");
+				return false;
+			}
+
+			trace("include: --- NOT IMPLEMENTED YET ---");
+			auto pro = new Project();
+    		if (pro.eval(projectFileName))
+    		{
+        		info("qmake project file '" ~ projectFileName ~ "' was successfully parsed");
+                // FIXME: merge variables (context) with current project one
+                this.merge(pro);
+        		return true;
+    		}
+            return false;
+        }
+        else if (functionName == "load")
+        {
+            trace("include: --- NOT IMPLEMENTED YET ---");
+            return false;
+        }
+        else
+        {
+            auto evaluator = new ExpressionEvaluator(context);
+            // FIXME: whitespaces must not change during conversion! but here we just eliminate them all
+            auto rpnExpression = convertToRPN(functionNode.matches.join(" "));
+            auto rpnResult = evaluator.evalRPN(rpnExpression);
+            trace("Function '", functionName, "' result = ", rpnResult);
+            return (rpnResult[0] == "true");
+        }
     }
 
     private bool evalBooleanVariableNode(ref ProExecutionContext context, ref ParseTree boolAtomNode) const
