@@ -99,6 +99,24 @@ public class QStack(DataType)
 
 // -------------------------------------------------------------------------------------------------
 
+public auto getDateTimeString()
+{
+	import std.string : format, split;
+	import std.datetime : DateTime, Clock;
+
+	DateTime dateTime = cast(DateTime)Clock.currTime();
+	with (dateTime)
+	{
+		return format(
+			"%s " ~ // day of the week (eg. 'Saturday')
+			"%s.%02s.%s " ~ // date, month, year
+			"[%s:%02s:%02s%s]", // hour:minute:second am/pm
+			split("Sunday Monday Tuesday Wednesday Thursday Friday Saturday")[dayOfWeek],
+				day, cast(int)month, year,
+				hour == 0 || hour == 12 ? 12 : hour % 12, minute, second, hour <= 11 ? "am" : "pm");
+	}
+}
+
 public bool isWhitespaceToken(in string str)
 {
 	// FIXME: implement
