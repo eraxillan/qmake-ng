@@ -122,10 +122,10 @@ static this()
 
 class ExpressionEvaluator
 {
-    // FIXME: replace with QStack!ProExecutionContext
+    // FIXME: replace with QStack!ProExecutionContext for function/block evaluation
     private ProExecutionContext m_executionContext;
 
-    this(ProExecutionContext context)
+    this(ref ProExecutionContext context)
     {
         m_executionContext = context;
     }
@@ -207,6 +207,7 @@ class ExpressionEvaluator
             else if (isStringValue(token))
             {
                 string tokenExpanded = m_executionContext.expandVariables(token);
+                trace("RPN string operand: '", token, "', expanded: '", tokenExpanded, "', expanded-splitted: '", tokenExpanded.split(" "), "'");
 
                 // FIXME HACK: expand function deal only with raw string, but functions works with lists
                 array.push(tokenExpanded.split(" "));
