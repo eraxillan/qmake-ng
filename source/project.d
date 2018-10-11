@@ -30,6 +30,7 @@ import std.algorithm;
 import std.experimental.logger;
 
 import preprocessor;
+import qmakeexception;
 import qmakeparser;
 
 import common_const;
@@ -148,6 +149,37 @@ public class Project
         }
     }
 
+    private void evalBlock(ref ProExecutionContext context, ref ParseTree bodyNode)
+    {
+        assert(bodyNode.name == "QMakeProject.Block");
+        assert(bodyNode.children.length == 1);
+
+        /*immutable*/ auto blockNode = bodyNode.children[0];
+        if (blockNode.name == "QMakeProject.SingleLineBlock")
+            // FIXME: add checks for children count
+            evalStatementNode(context, blockNode.children[0].children[0]);
+        else if (blockNode.name == "QMakeProject.MultiLineBlock")
+            evalMultilineBlockNode(context, blockNode);
+        else
+            throw new Exception("Unknown code block type");
+    }
+
+    private void evalMultilineBlockNode(ref ProExecutionContext context, ref ParseTree multilineBlockNode) /+const+/
+    {
+        assert(multilineBlockNode.name == "QMakeProject.MultiLineBlock");
+        assert(multilineBlockNode.children.length >= 1);
+        trace("Multi-line block statement count: ", multilineBlockNode.children.length);
+        trace("{");
+        for (int i; i < multilineBlockNode.children.length; i++)
+        {
+            auto blockStatementNode = multilineBlockNode.children[i];
+            trace("Eval statement [", i, "] of type ", blockStatementNode.name);
+
+            evalStatementNode(context, blockStatementNode.children[0]);
+        }
+        trace("}");
+    }
+
     private void evalVariableAssignmentNode(ref ProExecutionContext context,
             ref ParseTree statementNode) const
     {
@@ -156,6 +188,8 @@ public class Project
         auto variableValue = statementNode.matches[2 .. $];
         trace("Variable name: '" ~ variableName ~ "'");
         trace("Variable assignment operator: '" ~ variableOperator ~ "'");
+
+        // FIXME: add "if defined" statement after all qmake built-in variables will be recognized
         trace("Variable old raw value: ", context.getVariableRawValue(variableName));
         trace("Variable new raw value: ", variableValue);
 
@@ -171,7 +205,7 @@ public class Project
             auto evaluator = new ExpressionEvaluator(context);
             auto rpnExpression = convertToRPN(value.join(" "));
             result = evaluator.evalRPN(rpnExpression);
-            trace("Variable new value: ", result);
+            trace("Variable '", name, "' new value: ", result);
         }
 
         switch (operator)
@@ -197,66 +231,67 @@ public class Project
 
     private void evalScopeNode(ref ProExecutionContext context, ref ParseTree statementNode) /+const+/
     {
-        trace("\n");
-
         ParseTree scopeConditionNode = statementNode.children[0];
         ParseTree scopeIfTrueBranch = statementNode.children[1];
-        trace("Condition: ", scopeConditionNode);
-        trace("If-true: ", scopeIfTrueBranch);
 
-        // 1) Eval main scope branch condition (true or false)
         if (evalScopeConditionNode(context, scopeConditionNode))
         {
-            trace("Scope condition '", scopeConditionNode.matches.join(" "), "' eval'd to true");
-
-            // 2) Eval main scope branch statements (single- or multi-line code block)
-            switch (scopeIfTrueBranch.matches[0])
-            {
-            case STR_DOG:
-                // trace("Single-line code block: ", scopeIfTrueBranch.matches[1 .. $]);
-                auto singlelineBlockNode = scopeIfTrueBranch.children[0].children[0];
-                assert(singlelineBlockNode.children.length == 1);
-                assert(singlelineBlockNode.name == "QMakeProject.SingleLineBlock");
-                auto singlelineBlockStatementNode = singlelineBlockNode.children[0];
-                assert(singlelineBlockStatementNode.name == "QMakeProject.Statement");
-                assert(singlelineBlockStatementNode.children.length == 1);
-                auto singlelineBlockRawStatementNode = singlelineBlockStatementNode.children[0];
-                evalStatementNode(context, singlelineBlockRawStatementNode);
-                break;
-            case STR_OPENING_CURLY_BRACE:
-                if (scopeIfTrueBranch.matches[$ - 1] != STR_CLOSING_CURLY_BRACE)
-                    throw new Exception(
-                            "Invalid multi-line code block: closing curly brace is absent");
-
-                auto multilineBlockNode = scopeIfTrueBranch.children[0].children[0];
-                assert(multilineBlockNode.name == "QMakeProject.MultiLineBlock");
-                trace("Multi-line block statement count: ", multilineBlockNode.children.length);
-                for (int i = 0; i < multilineBlockNode.children.length; i++)
-                {
-                    auto blockStatementNode = multilineBlockNode.children[i];
-                    trace("BLOCK_STATEMENT_NAME: ", blockStatementNode.name);
-                    trace("Statement [", i, "]: ", blockStatementNode.matches);
-                    evalStatementNode(context, blockStatementNode.children[0]);
-                }
-
-                //trace("Multi-line code block: ", multilineBlockNode.matches);
-                break;
-            default:
-                throw new Exception("Invalid code block start token");
-            }
+            trace("Scope main condition '", scopeConditionNode.matches.join(" "),
+                "' evaluated to TRUE, select main branch code path");
+            evalBlock(context, scopeIfTrueBranch.children[0]);
+            return;
         }
-        else
+
+        for (int i = 2; i < statementNode.children.length; i++)
         {
-            // FIXME: 3) Eval optional else-if branch conditions
-            // FIXME: 4) Eval optional else-branch statements
-            /+ParseTree scopeElseIfBranch;
-            ParseTree scopeElseBranch;
-            if (statementNode.children.length >= 3)
-                throw new Exception("Not implemented yet");+/
-            if (statementNode.children.length >= 3)
-                error("\nELSE-IF/ELSE: NOT IMPLEMENTED YET\n");
-            else
-                trace("Scope condition '", scopeConditionNode.matches.join(" "), "' eval'd to FALSE");
+            // Scope             <- BooleanExpression ScopeMainBranch ScopeElseIfBranch* ScopeElseBranch?
+            // ScopeMainBranch   <- Block
+            // ScopeElseIfBranch <- "else@" :space* BooleanExpression Block
+            // ScopeElseBranch   <- "else@" :space* Statement
+            //                    / "else"  MultiLineBlock
+            // Block             <- SingleLineBlock / MultiLineBlock
+            switch(statementNode.children[i].name)
+            {
+                case "QMakeProject.ScopeElseIfBranch":
+                    assert(statementNode.children[i].children.length == 2);
+
+                    auto conditionNode = statementNode.children[i].children[0];
+                    assert(conditionNode.name == "QMakeProject.BooleanExpression");
+
+                    // FIXME: eval and use condition
+                    if (evalScopeConditionNode(context, conditionNode))
+                    {
+                        trace("Scope else-if condition '", conditionNode.matches.join(" "),
+                            "' evaluated to TRUE, select else-if branch code path");
+                        evalBlock(context, statementNode.children[i].children[1]);
+                        return;
+                    }
+                    break;
+                case "QMakeProject.ScopeElseBranch":
+                    // NOTE: else-branch must be the last one
+                    assert(i == statementNode.children.length - 1);
+                    assert(statementNode.children[i].children.length == 1);
+
+                    trace("Scope main and all else-if conditions '", scopeConditionNode.matches.join(" "),
+                        "' evaluated to FALSE, select else branch code path");
+
+                    auto bodyNode = statementNode.children[i].children[0];
+                    if (bodyNode.name == "QMakeProject.Statement")
+                    {
+                        evalStatementNode(context, bodyNode.children[0]);
+                    }
+                    else if (bodyNode.name == "QMakeProject.MultiLineBlock")
+                    {
+                        evalMultilineBlockNode(context, bodyNode);
+                    }
+                    else
+                    {
+                        throw new Exception("Invalid node type in else-if branch");
+                    }
+                    break;
+                default:
+                    throw new Exception("Invalid scope node type");
+            }
         }
     }
 
@@ -300,7 +335,6 @@ public class Project
                 if (j == 0)
                 {
                     andResult = evalBooleanExressionNode(context, boolExprNode);
-                    // FIXME:
                     if (notMarker)
                     {
                         trace("Apply NOT 1: '", andResult, "' --> '", !andResult, "'");
@@ -313,7 +347,6 @@ public class Project
                     if (!andResult)
                     {
                         trace("operand [", j, "] of AND-expression is FALSE, aborting");
-                        // FIXME:
                         if (notMarker)
                         {
                             trace("Apply NOT 2: '", andResult, "' --> '", !andResult, "'");

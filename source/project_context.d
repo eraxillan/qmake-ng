@@ -130,6 +130,11 @@ public class ProExecutionContext
         assignVariable("_PRO_FILE_PWD_", [dirName(projectFileName)], VariableType.STRING);
     }
 
+    public bool isVariableDefined(in string name) const
+    {
+        return isBuiltinVariable(name) || isUserDefinedVariable(name);
+    }
+
     private void getVariableDescription(in string name, ref ProVariable var)
 	in
 	{

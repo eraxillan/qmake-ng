@@ -384,6 +384,7 @@ static this()
     temp1["QMAKE_DEL_TREE"] = ProVariable("QMAKE_DEL_TREE", VariableType.STRING_LIST, [], []);
     temp1["QMAKE_EXTENSION_SHLIB"] = ProVariable("QMAKE_EXTENSION_SHLIB", VariableType.STRING_LIST, [], []);
     temp1["QMAKE_EXTENSION_STATICLIB"] = ProVariable("QMAKE_EXTENSION_STATICLIB", VariableType.STRING_LIST, [], []);
+    temp1["QMAKE_GZIP"] = ProVariable("QMAKE_GZIP", VariableType.STRING_LIST, [], []);
     temp1["QMAKE_INCDIR"] = ProVariable("QMAKE_INCDIR", VariableType.STRING_LIST, [], []);
     temp1["QMAKE_INCDIR_EGL"] = ProVariable("QMAKE_INCDIR_EGL", VariableType.STRING_LIST, [], []);
     temp1["QMAKE_INCDIR_OPENGL"] = ProVariable("QMAKE_INCDIR_OPENGL", VariableType.STRING_LIST, [], []);
@@ -444,6 +445,7 @@ static this()
     temp1["QMAKE_LINK_C"] = ProVariable("QMAKE_LINK_C", VariableType.STRING_LIST, [], []);
     temp1["QMAKE_LINK_C_SHLIB"] = ProVariable("QMAKE_LINK_C_SHLIB", VariableType.STRING_LIST, [], []);
     temp1["QMAKE_LINK_SHLIB"] = ProVariable("QMAKE_LINK_SHLIB", VariableType.STRING_LIST, [], []);
+    temp1["QMAKE_LN_SHLIB"] = ProVariable("QMAKE_LN_SHLIB", VariableType.STRING_LIST, [], []);
     temp1["QMAKE_MKDIR"] = ProVariable("QMAKE_MKDIR", VariableType.STRING_LIST, [], []);
     temp1["QMAKE_MKDIR_CMD"] = ProVariable("QMAKE_MKDIR_CMD", VariableType.STRING_LIST, [], []);
     temp1["QMAKE_MOVE"] = ProVariable("QMAKE_MOVE", VariableType.STRING_LIST, [], []);
@@ -472,6 +474,9 @@ static this()
     temp1["QMAKE_STREAM_EDITOR"] = ProVariable("QMAKE_STREAM_EDITOR", VariableType.STRING_LIST, [], []);
     temp1["QMAKE_STRIP"] = ProVariable("QMAKE_STRIP", VariableType.STRING_LIST, [], []);
     temp1["QMAKE_STRIPFLAGS_LIB"] = ProVariable("QMAKE_STRIPFLAGS_LIB", VariableType.STRING_LIST, [], []);
+    temp1["QMAKE_SYMBOLIC_LINK"] = ProVariable("QMAKE_SYMBOLIC_LINK", VariableType.STRING_LIST, [], []);
+    temp1["QMAKE_SYSTEM_NULL_DEVICE"] = ProVariable("QMAKE_SYSTEM_NULL_DEVICE", VariableType.STRING_LIST, [], []);
+    temp1["QMAKE_TAR"] = ProVariable("QMAKE_TAR", VariableType.STRING_LIST, [], []);
     temp1["QMAKE_WAYLAND_SCANNER"] = ProVariable("QMAKE_WAYLAND_SCANNER", VariableType.STRING_LIST, [], []);
     temp1["QMAKE_YACC"] = ProVariable("QMAKE_YACC", VariableType.STRING_LIST, [], []);
     temp1["QMAKE_YACCFLAGS"] = ProVariable("QMAKE_YACCFLAGS", VariableType.STRING_LIST, [], []);
