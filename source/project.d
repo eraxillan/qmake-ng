@@ -42,9 +42,9 @@ public class Project
 {
     private ProExecutionContext m_context;
 
-    public this()
+    public this(ref ProExecutionContext context)
     {
-        m_context = new ProExecutionContext();
+        m_context = context;
     }
 
     public bool tryParse(in string fileName) const
@@ -71,8 +71,7 @@ public class Project
     {
         trace("Trying to parse project file '" ~ fileName ~ "'...");
 
-        // FIXME: replace to QStack!ProExecutionContext to handle inner code blocks
-        m_context.reset();
+        // NOTE: use the previously eval'd state, because we can need already defined variables
         m_context.setupPaths(fileName);
 
         auto proFileContents = std.file.readText(fileName);
@@ -102,7 +101,7 @@ public class Project
         }
 
         // Output all built-in and user-defined variables
-        trace("\n\nqmake built-in variable values:");
+        /*trace("\n\nqmake built-in variable values:");
         foreach (variableName; m_context.getBuiltinVariableNames())
         {
             string[] variableValue = m_context.getVariableRawValue(variableName);
@@ -116,15 +115,10 @@ public class Project
             if (!variableValue.empty)
                 trace(variableName, " = ", variableValue);
         }
-        trace("\n\n");
+        trace("\n\n");*/
 
         trace("Project file '" ~ fileName ~ "' successfully evaluated");
         return true;
-    }
-
-    public void merge(/*in*/ Project otherPro)
-    {
-        m_context.merge(otherPro.m_context);
     }
 
     // ----------------------------------------------------------------------------------------------------------------------------------------------
@@ -162,7 +156,8 @@ public class Project
         auto variableValue = statementNode.matches[2 .. $];
         trace("Variable name: '" ~ variableName ~ "'");
         trace("Variable assignment operator: '" ~ variableOperator ~ "'");
-        trace("Variable value: '" ~ variableValue.join(" ") ~ "'");
+        trace("Variable old raw value: ", context.getVariableRawValue(variableName));
+        trace("Variable new raw value: ", variableValue);
 
         assignVariable(context, variableName, variableOperator, variableValue);
     }
@@ -176,6 +171,7 @@ public class Project
             auto evaluator = new ExpressionEvaluator(context);
             auto rpnExpression = convertToRPN(value.join(" "));
             result = evaluator.evalRPN(rpnExpression);
+            trace("Variable new value: ", result);
         }
 
         switch (operator)
@@ -195,7 +191,7 @@ public class Project
         case STR_TILDE_EQUALS:
             throw new Exception("Not implemented yet");
         default:
-            throw new Exception("Invalid assignment operator");
+            throw new Exception("Invalid assignment operator '" ~ operator ~ "'");
         }
     }
 
@@ -376,9 +372,14 @@ public class Project
 
         // FunctionCall <- FunctionId OPEN_PAR_WS FunctionArgumentList? CLOSE_PAR_WS :space* :eol*
         auto functionNode = testFunctionNode.children[0];
-        assert(functionNode.name == "QMakeProject.FunctionCall");
+        assert(functionNode.name == "QMakeProject.FunctionCall"
+            || functionNode.name == "QMakeProject.ContainsTestFunctionCall");
         // assert(functionNode.children.length == 4);
         string functionName = functionNode.children[0].matches[0];
+        if (functionNode.name == "QMakeProject.ContainsTestFunctionCall")
+        {
+            functionName = "contains";
+        }
         trace("Eval function '", functionName, "'...");
 
         // FIXME: looks hacky :( is there another way to break circular dependency project_function <--> eval?
@@ -398,21 +399,30 @@ public class Project
 				return false;
 			}
 
-			trace("include: --- NOT IMPLEMENTED YET ---");
-			auto pro = new Project();
+			auto pro = new Project(context);
     		if (pro.eval(projectFileName))
     		{
         		info("qmake project file '" ~ projectFileName ~ "' was successfully parsed");
-                // FIXME: merge variables (context) with current project one
-                this.merge(pro);
         		return true;
     		}
             return false;
         }
         else if (functionName == "load")
         {
+            // FIXME: implement
             trace("include: --- NOT IMPLEMENTED YET ---");
             return false;
+        }
+        else if (functionName == "contains"
+              || functionName == "message" || functionName == "warning" || functionName == "error")
+        {
+            auto evaluator = new ExpressionEvaluator(context);
+            auto rpnExpression = convertToRPN(functionNode.matches.join("") /*.replace(",", ", ")*/ );
+            auto rpnResult = evaluator.evalRPN(rpnExpression);
+            trace("Function '", functionName, "' result = ", rpnResult);
+            if (functionName == "error")
+                throw new Exception("User-defined error raised");
+            return (rpnResult[0] == "true");
         }
         else
         {

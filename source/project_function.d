@@ -45,20 +45,20 @@ public class ProFunction
 	{
 		// FIXME: add others
 		replaceFunctions["first"] = new ProFunction("first", VariableType.STRING, true, 1, -1, [VariableType.STRING_LIST],
-			(ProExecutionContext context, in string[] arguments) {
+			(ref ProExecutionContext context, in string[] arguments) {
 				if (arguments.length < 1)
 					throw new Exception("Invalid argument count: expected 1, got " ~ to!string(arguments.length));
 				return [arguments[0]];
 			}
 		);
 		replaceFunctions["list"] = new ProFunction("list", VariableType.STRING_LIST, true, 1, -1, [VariableType.STRING],
-			(ProExecutionContext context, in string[] arguments) {
+			(ref ProExecutionContext context, in string[] arguments) {
 				return arguments;
 			}
 		);
 
 		testFunctions["include"] = new ProFunction("include", VariableType.BOOLEAN, false, 1, 0, [VariableType.STRING],
-			(ProExecutionContext context, in string[] arguments) {
+			(ref ProExecutionContext context, in string[] arguments) {
 				error("Control flow error: currently implemented in eval.d module");
 				return ["false"];
 			}
@@ -66,7 +66,7 @@ public class ProFunction
 
 		testFunctions["equals"] = new ProFunction("equals", VariableType.BOOLEAN,
 			false, 2, 0, [VariableType.STRING, VariableType.STRING],
-			(ProExecutionContext context, in string[] arguments) {
+			(ref ProExecutionContext context, in string[] arguments) {
 				string variableName = arguments[0];
 				string value = arguments[1];
 
@@ -78,6 +78,77 @@ public class ProFunction
 				trace("Variable value: '", variableValue, "'");
 				trace("String to compare with: '", value, "'");
 				return (variableRawValue[0] == value) ? ["true"] : ["false"];
+			}
+		);
+
+		testFunctions["isEmpty"] = new ProFunction("isEmpty", VariableType.BOOLEAN,
+			false, 1, 0, [VariableType.STRING],
+			(ref ProExecutionContext context, in string[] arguments) {
+				string variableName = arguments[0];
+
+				if (!context.isBuiltinVariable(variableName) && !context.isUserDefinedVariable(variableName))
+				{
+					trace("Variable was not defined yet");
+					return ["true"];
+				}
+
+				string[] variableRawValue = context.getVariableRawValue(variableName);
+				assert(variableRawValue.length >= 1);
+				trace("Variable name: ", variableName);
+				trace("Variable value: ", variableRawValue);
+				return (variableRawValue[0].empty) ? ["true"] : ["false"];
+			}
+		);
+
+		testFunctions["contains"] = new ProFunction("contains", VariableType.BOOLEAN,
+			false, 2, 0, [VariableType.STRING],
+			(ref ProExecutionContext context, in string[] arguments) {
+				string variableName = arguments[0];
+				string value = arguments[1];
+
+				string[] variableRawValue = context.getVariableRawValue(variableName);
+				assert(variableRawValue.length >= 1);
+
+				trace("Variable name: ", variableName);
+				trace("Variable value: ", variableRawValue);
+				trace("Value to search for: ", value);
+				return (variableRawValue.countUntil(value) > 0) ? ["true"] : ["false"];
+			}
+		);
+
+		testFunctions["message"] = new ProFunction("message", VariableType.BOOLEAN,
+			true, 1, -1, [VariableType.STRING_LIST],
+			(ref ProExecutionContext /*context*/, in string[] arguments) {
+				assert(arguments.length >= 1);
+
+				string message = arguments.join(" ");
+				writefln("Project MESSAGE: " ~ message);
+
+				return ["true"];
+			}
+		);
+
+		testFunctions["warning"] = new ProFunction("warning", VariableType.BOOLEAN,
+			true, 1, -1, [VariableType.STRING_LIST],
+			(ref ProExecutionContext /*context*/, in string[] arguments) {
+				assert(arguments.length >= 1);
+
+				string message = arguments.join(" ");
+				writefln("Project WARNING: " ~ message);
+
+				return ["true"];
+			}
+		);
+
+		testFunctions["error"] = new ProFunction("error", VariableType.VOID,
+			true, 1, -1, [VariableType.STRING_LIST],
+			(ref ProExecutionContext /*context*/, in string[] arguments) {
+				assert(arguments.length >= 1);
+
+				string message = arguments.join(" ");
+				writefln("Project ERROR: " ~ message);
+
+				return ["true"];
 			}
 		);
 	}
@@ -103,7 +174,7 @@ public class ProFunction
 	
 	// Run-time function info
 	public string[] m_arguments;
-	alias Action = const(string[]) function(ProExecutionContext context, in string[] arguments);
+	alias Action = const(string[]) function(ref ProExecutionContext context, in string[] arguments);
 	public Action m_action;
 
 	// qmake builtin test and replace functions

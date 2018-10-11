@@ -130,22 +130,6 @@ public class ProExecutionContext
         assignVariable("_PRO_FILE_PWD_", [dirName(projectFileName)], VariableType.STRING);
     }
 
-    // Add absent variables and reassign already existing
-    public void merge(/*in*/ ProExecutionContext other)
-    {
-        // Built-in variables
-        foreach (name; other.m_builtinVariables.keys)
-        {
-            this.m_builtinVariables.require(name, other.m_builtinVariables[name]);
-        }
-
-        // User-defined variables
-        foreach (name; other.m_userVariables.keys)
-        {
-            this.m_userVariables.require(name, other.m_userVariables[name]);
-        }
-    }
-
     private void getVariableDescription(in string name, ref ProVariable var)
 	in
 	{
@@ -201,6 +185,8 @@ public class ProExecutionContext
 	{
         ProVariable variableDescription;
 		getVariableDescription(name, variableDescription);
+        if (variableDescription.value.empty)
+            variableDescription.value ~= "";
         return variableDescription.value;
     }
 
@@ -218,6 +204,8 @@ public class ProExecutionContext
 		{
             case VariableType.STRING:
             case VariableType.RESTRICTED_STRING:
+                if (variableDescription.value.empty)
+                    variableDescription.value ~= "";
                 return variableDescription.value[0];
             case VariableType.STRING_LIST:
             case VariableType.RESTRICTED_STRING_LIST:
@@ -411,6 +399,10 @@ public class ProExecutionContext
 			string variableName = captures["name"];
 			if (variableName.empty)
 				throw new Exception("variable name cannot be empty");
+            
+            trace("Expanding variable '", variableName, "'...");
+            trace("Variable pretty value: ", getVariableValue(variableName));
+            trace("Variable raw value: ", getVariableRawValue(variableName));
 
 			return getVariableValue(variableName);
 		}

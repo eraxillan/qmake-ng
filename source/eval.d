@@ -207,7 +207,7 @@ class ExpressionEvaluator
             else if (isStringValue(token))
             {
                 string tokenExpanded = m_executionContext.expandVariables(token);
-                trace("RPN string operand: '", token, "', expanded: '", tokenExpanded, "', expanded-splitted: '", tokenExpanded.split(" "), "'");
+                trace("RPN string operand: '", token, "', expanded: '", tokenExpanded, "', expanded-splitted: ", tokenExpanded.split(" "));
 
                 // FIXME HACK: expand function deal only with raw string, but functions works with lists
                 array.push(tokenExpanded.split(" "));

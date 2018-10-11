@@ -53,7 +53,7 @@ This module was automatically generated from the following grammar:
         FunctionId   <- (!("defineReplace" / "defineTest" / "eval" / "cache" / "contains" / "return" / "requires")
                         ("{" :space* QualifiedIdentifier :space* "}" / QualifiedIdentifier / EnquotedString))
 
-        FunctionArgumentList       <- List(:COMMA_WS, :COMMA) / List(:space+, :space) / FunctionFirstArgument
+        FunctionArgumentList       <- List(COMMA_WS, COMMA) / List(:space+, :space) / FunctionFirstArgument
         List(delimRule, delimChar) <- FunctionFirstArgument (delimRule (FunctionNextArgument(delimChar))?)+
         
         FunctionFirstArgument           <- FunctionFirstArgumentImpl FunctionFirstArgumentImpl*
@@ -1278,7 +1278,7 @@ struct GenericQMakeProject(TParseTree)
     {
         if(__ctfe)
         {
-            return         pegged.peg.defined!(pegged.peg.or!(List!(pegged.peg.discard!(COMMA_WS), pegged.peg.discard!(COMMA)), List!(pegged.peg.discard!(pegged.peg.oneOrMore!(space)), pegged.peg.discard!(space)), FunctionFirstArgument), "QMakeProject.FunctionArgumentList")(p);
+            return         pegged.peg.defined!(pegged.peg.or!(List!(COMMA_WS, COMMA), List!(pegged.peg.discard!(pegged.peg.oneOrMore!(space)), pegged.peg.discard!(space)), FunctionFirstArgument), "QMakeProject.FunctionArgumentList")(p);
         }
         else
         {
@@ -1286,7 +1286,7 @@ struct GenericQMakeProject(TParseTree)
                 return *m;
             else
             {
-                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.or!(List!(pegged.peg.discard!(COMMA_WS), pegged.peg.discard!(COMMA)), List!(pegged.peg.discard!(pegged.peg.oneOrMore!(space)), pegged.peg.discard!(space)), FunctionFirstArgument), "QMakeProject.FunctionArgumentList"), "FunctionArgumentList")(p);
+                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.or!(List!(COMMA_WS, COMMA), List!(pegged.peg.discard!(pegged.peg.oneOrMore!(space)), pegged.peg.discard!(space)), FunctionFirstArgument), "QMakeProject.FunctionArgumentList"), "FunctionArgumentList")(p);
                 memo[tuple(`FunctionArgumentList`, p.end)] = result;
                 return result;
             }
@@ -1297,12 +1297,12 @@ struct GenericQMakeProject(TParseTree)
     {
         if(__ctfe)
         {
-            return         pegged.peg.defined!(pegged.peg.or!(List!(pegged.peg.discard!(COMMA_WS), pegged.peg.discard!(COMMA)), List!(pegged.peg.discard!(pegged.peg.oneOrMore!(space)), pegged.peg.discard!(space)), FunctionFirstArgument), "QMakeProject.FunctionArgumentList")(TParseTree("", false,[], s));
+            return         pegged.peg.defined!(pegged.peg.or!(List!(COMMA_WS, COMMA), List!(pegged.peg.discard!(pegged.peg.oneOrMore!(space)), pegged.peg.discard!(space)), FunctionFirstArgument), "QMakeProject.FunctionArgumentList")(TParseTree("", false,[], s));
         }
         else
         {
             forgetMemo();
-            return hooked!(pegged.peg.defined!(pegged.peg.or!(List!(pegged.peg.discard!(COMMA_WS), pegged.peg.discard!(COMMA)), List!(pegged.peg.discard!(pegged.peg.oneOrMore!(space)), pegged.peg.discard!(space)), FunctionFirstArgument), "QMakeProject.FunctionArgumentList"), "FunctionArgumentList")(TParseTree("", false,[], s));
+            return hooked!(pegged.peg.defined!(pegged.peg.or!(List!(COMMA_WS, COMMA), List!(pegged.peg.discard!(pegged.peg.oneOrMore!(space)), pegged.peg.discard!(space)), FunctionFirstArgument), "QMakeProject.FunctionArgumentList"), "FunctionArgumentList")(TParseTree("", false,[], s));
         }
     }
     static string FunctionArgumentList(GetName g)
