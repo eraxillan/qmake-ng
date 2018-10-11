@@ -93,10 +93,11 @@ public class ProFunction
 				}
 
 				string[] variableRawValue = context.getVariableRawValue(variableName);
-				assert(variableRawValue.length >= 1);
+				immutable(bool) isEmpty = variableRawValue.empty || variableRawValue[0].empty;
 				trace("Variable name: ", variableName);
 				trace("Variable value: ", variableRawValue);
-				return (variableRawValue[0].empty) ? ["true"] : ["false"];
+				trace("Variable value is empty: ", isEmpty);
+				return isEmpty ? ["true"] : ["false"];
 			}
 		);
 

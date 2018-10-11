@@ -185,8 +185,6 @@ public class ProExecutionContext
 	{
         ProVariable variableDescription;
 		getVariableDescription(name, variableDescription);
-        if (variableDescription.value.empty)
-            variableDescription.value ~= "";
         return variableDescription.value;
     }
 
@@ -205,7 +203,9 @@ public class ProExecutionContext
             case VariableType.STRING:
             case VariableType.RESTRICTED_STRING:
                 if (variableDescription.value.empty)
-                    variableDescription.value ~= "";
+                {
+                    return [];
+                }
                 return variableDescription.value[0];
             case VariableType.STRING_LIST:
             case VariableType.RESTRICTED_STRING_LIST:
