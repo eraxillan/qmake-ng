@@ -547,7 +547,9 @@ public class Project
 
 unittest
 {
-    auto pro = new Project();
+    auto context = new ProExecutionContext();
+    auto storage = new PersistentPropertyStorage();
+    auto pro = new Project(context, storage);
 
     assert(pro.tryParse("tests/variables.pro"));
     assert(pro.tryParse("tests/contains.pro"));
