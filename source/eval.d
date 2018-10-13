@@ -44,6 +44,7 @@ import project_context;
 
 import rpn;
 import qmakeexception;
+import persistent_property;
 
 /*
 var builtinVariableModule = require("./builtin_variable_description");
@@ -124,10 +125,12 @@ class ExpressionEvaluator
 {
     // FIXME: replace with QStack!ProExecutionContext for function/block evaluation
     private ProExecutionContext m_executionContext;
+    private PersistentPropertyStorage m_persistentStorage;
 
-    this(ref ProExecutionContext context)
+    this(ref ProExecutionContext context, ref PersistentPropertyStorage persistentStorage)
     {
         m_executionContext = context;
+        m_persistentStorage = persistentStorage;
     }
 
     public string[] evalRPN(in string[] rpnExpr)
@@ -139,7 +142,7 @@ class ExpressionEvaluator
     {
         string[] values = rpnExpr.dup;
         auto array = new QStack!string;
-        for (int i = 0; i < values.length; i++)
+        for (int i; i < values.length; i++)
         {
             string token = values[i];
             trace("RPN[" ~ to!string(i) ~ "] = '" ~ token ~ "'");
@@ -206,7 +209,7 @@ class ExpressionEvaluator
             }
             else if (isStringValue(token))
             {
-                string tokenExpanded = m_executionContext.expandVariables(token);
+                string tokenExpanded = m_executionContext.expandVariables(m_persistentStorage, token);
                 trace("RPN string operand: '", token, "', expanded: '", tokenExpanded, "', expanded-splitted: ", tokenExpanded.split(" "));
 
                 // FIXME HACK: expand function deal only with raw string, but functions works with lists

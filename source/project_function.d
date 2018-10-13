@@ -43,7 +43,6 @@ public class ProFunction
 {
 	static this()
 	{
-		// FIXME: add others
 		replaceFunctions["first"] = new ProFunction("first", VariableType.STRING, true, 1, -1, [VariableType.STRING_LIST],
 			(ref ProExecutionContext context, in string[] arguments) {
 				if (arguments.length < 1)
@@ -57,9 +56,88 @@ public class ProFunction
 			}
 		);
 
+		replaceFunctions["replace"] = new ProFunction("replace", VariableType.STRING_LIST,
+			false, 3, 0, [VariableType.STRING, VariableType.STRING, VariableType.STRING],
+			(ref ProExecutionContext context, in string[] arguments) {
+				string variableName = arguments[0];
+				string sourceString = arguments[1];
+				string targetString = arguments[2];
+
+				string variableValue = context.getVariableRawValue(variableName).join("");
+				string result = variableValue.replace(sourceString, targetString);
+				trace("Variable name: ", variableName);
+				trace("Variable value: ", variableValue);
+				trace("Variable replaced value: ", result);
+				return [result];
+			}
+		);
+
+		replaceFunctions["reverse"] = new ProFunction("reverse", VariableType.STRING_LIST,
+			false, 1, 0, [VariableType.STRING],
+			(ref ProExecutionContext context, in string[] arguments) {
+				string variableName = arguments[0];
+
+				string[] variableValue = context.getVariableRawValue(variableName);
+				string[] result = variableValue.reverse;
+				trace("Variable name: ", variableName);
+				trace("Variable value: ", variableValue);
+				trace("Variable reversed value: ", result);
+				return result;
+			}
+		);
+
+		replaceFunctions["split"] = new ProFunction("split", VariableType.STRING_LIST,
+			false, 2, 0, [VariableType.STRING, VariableType.STRING],
+			(ref ProExecutionContext context, in string[] arguments) {
+				string variableName = arguments[0];
+				string separator = arguments[1];
+
+				string variableValue = context.getVariableRawValue(variableName).join("");
+				string[] result = variableValue.split(separator);
+				trace("Variable name: ", variableName);
+				trace("Variable value: ", variableValue);
+				trace("Variable splitted value: ", result);
+				return result;
+			}
+		);
+
+		replaceFunctions["unique"] = new ProFunction("unique", VariableType.STRING_LIST,
+			false, 1, 0, [VariableType.STRING],
+			(ref ProExecutionContext context, in string[] arguments) {
+				string variableName = arguments[0];
+
+				string[] variableValue;
+				if (context.isVariableDefined(variableName))
+					variableValue = context.getVariableRawValue(variableName);
+				else
+					error("Undefined variable '", variableName, "', assume empty string");
+
+				string[] result;
+				foreach (item; variableValue)
+				{
+					if (result.countUntil(item) == -1)
+						result ~= item;
+				}
+				trace("Variable name: ", variableName);
+				trace("Variable value: ", variableValue);
+				trace("Variable uniqued value: ", result);
+				return result;
+			}
+		);
+
+		// ------------------------------------------------------------------------------------------------------------
+
+		testFunctions["for"] = new ProFunction("for", VariableType.BOOLEAN,
+			false, 2, 0, [VariableType.STRING, VariableType.STRING],
+			(ref ProExecutionContext context, in string[] arguments) {
+				error("Control flow error: currently implemented in project.d");
+				return ["false"];
+			}
+		);
+
 		testFunctions["include"] = new ProFunction("include", VariableType.BOOLEAN, false, 1, 0, [VariableType.STRING],
 			(ref ProExecutionContext context, in string[] arguments) {
-				error("Control flow error: currently implemented in eval.d module");
+				error("Control flow error: currently implemented in project.d");
 				return ["false"];
 			}
 		);
@@ -117,6 +195,33 @@ public class ProFunction
 			}
 		);
 
+		testFunctions["exists"] = new ProFunction("exists", VariableType.BOOLEAN,
+			false, 1, 0, [VariableType.STRING],
+			(ref ProExecutionContext context, in string[] arguments) {
+				string fileName = arguments[0];
+
+				trace("File name: ", fileName);
+				trace("Whether file exists: ", std.file.exists(fileName));
+				return std.file.exists(fileName) ? ["true"] : ["false"];
+			}
+		);
+
+		testFunctions["debug"] = new ProFunction("debug", VariableType.BOOLEAN,
+			true, 2, -1, [VariableType.STRING_LIST],
+			(ref ProExecutionContext /*context*/, in string[] arguments) {
+				assert(arguments.length >= 2);
+
+				// FIXME: implement level usage
+				immutable int level = to!int(arguments[0]);
+				writefln("DEBUG LEVEL: %d", level);
+
+				string message = arguments[1 .. $].join(" ");
+				writefln("Project DEBUG: " ~ message);
+
+				return ["true"];
+			}
+		);
+
 		testFunctions["message"] = new ProFunction("message", VariableType.BOOLEAN,
 			true, 1, -1, [VariableType.STRING_LIST],
 			(ref ProExecutionContext /*context*/, in string[] arguments) {
@@ -149,6 +254,22 @@ public class ProFunction
 				string message = arguments.join(" ");
 				writefln("Project ERROR: " ~ message);
 
+				return ["true"];
+			}
+		);
+
+		testFunctions["unset"] = new ProFunction("unset", VariableType.VOID,
+			false, 1, 0, [VariableType.STRING],
+			(ref ProExecutionContext context, in string[] arguments) {
+				assert(arguments.length == 1);
+
+				string variableName = arguments[0];
+				if (context.isVariableDefined(variableName))
+					context.unsetVariable(variableName);
+				else
+					error("Variable '", variableName, "' was already unset, nothing to do");
+
+				// NOTE: just a workaround to let compiler auto-deduce lambda function return type
 				return ["true"];
 			}
 		);
@@ -186,23 +307,18 @@ public class ProFunction
 	{
         if (isReplaceFunction(functionName))
 		{
-			// FIXME: check
-            // functionName = functionName.substring(STR_FUNCTION_EXPAND_MARKER.length);
 			string pureFunctionName = functionName[STR_FUNCTION_EXPAND_MARKER.length .. $];
-/+            assert.exists(builtinFunctionsModule.replaceFunctions[functionName],
-                "Function '" + functionName + "' have no description");
-            assert.exists(builtinFunctionsModule.replaceFunctions[functionName].operandTypes,
-                "Function '" + functionName + "' description have no operandTypes field");
-+/
+
+			if ((pureFunctionName in replaceFunctions) is null)
+				throw new Exception("Undefined replace function '" ~ pureFunctionName ~ "' found, aborting");
+
             return replaceFunctions[pureFunctionName].m_argumentTypes[argumentIndex];
         }
 		else if (isTestFunction(functionName))
 		{
-/+            assert.exists(builtinFunctionsModule.testFunctions[functionName],
-                "Function '" + functionName + "' have no description");
-            assert.exists(builtinFunctionsModule.testFunctions[functionName].operandTypes,
-                "Function '" + functionName + "' description have no operandTypes field");
-+/
+			if ((functionName in testFunctions) is null)
+				throw new Exception("Undefined test function '" ~ functionName ~ "' found, aborting");
+
             return testFunctions[functionName].m_argumentTypes[argumentIndex];
         }
 		else
@@ -225,7 +341,7 @@ public class ProFunction
 			"packagesExist", "prepareRecursiveTarget", "qtCompileTest", "qtHaveModule"
 		];
 
-		return functionNames.canFind(str);
+		return functionNames.countUntil(str) != -1;
 	}
 	
 	static bool hasTestFunctionDescription(in string name)
@@ -267,7 +383,7 @@ public class ProFunction
 
 		// FIXME: check
 		// return functionNames.canFind(str.substring(STR_FUNCTION_EXPAND_MARKER.length));
-		return functionNames.canFind(str[STR_FUNCTION_EXPAND_MARKER.length .. $]);
+		return functionNames.countUntil(str[STR_FUNCTION_EXPAND_MARKER.length .. $]) != -1;
 	}
 	
 	static bool hasReplaceFunctionDescription(in string name)

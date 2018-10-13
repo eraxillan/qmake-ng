@@ -219,6 +219,16 @@ public string[] convertToRPN(in string expr)
 
             outputQueue.push(token);
         }
+        else if (token == STR_EXPAND_MARKER)
+        {
+            trace("variable expand statement: '", token, "'");
+
+            token ~= exprArray[i + 1];
+            i++;
+            trace(token);
+
+            outputQueue.push(token);
+        }
         else
         {
             throw new Exception("Invalid token '" ~ token ~ "'");

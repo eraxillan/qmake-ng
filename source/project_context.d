@@ -37,6 +37,7 @@ import std.regex;
 import std.process;
 
 import project_variable;
+import persistent_property;
 
 // -------------------------------------------------------------------------------------------------
 
@@ -61,8 +62,8 @@ private const auto environmentVariableExpansionRegex_2 = r"\$\$\(([_a-zA-Z][_a-z
 // 5) target.path = $$[QT_INSTALL_PLUGINS]/designer
 //var qmakePropertyExpansionRegex_1 = /\$\$\[([_a-zA-Z][_a-zA-Z0-9]*)+\]/g;
 //var qmakePropertyExpansionRegex_2 = /\$\$\[([_a-zA-Z][_a-zA-Z0-9]*)+\/get\]/g;
-private const auto qmakePropertyExpansionRegex_1 = r"\$\$\[([_a-zA-Z][_a-zA-Z0-9]*)+\]";
-private const auto qmakePropertyExpansionRegex_2 = r"\$\$\[([_a-zA-Z][_a-zA-Z0-9]*)+\/get\]";
+private const auto qmakePropertyExpansionRegex_1 = r"\$\$\[(?P<name>([_a-zA-Z][_a-zA-Z0-9]*)+)\]";
+private const auto qmakePropertyExpansionRegex_2 = r"\$\$\[(?P<name>([_a-zA-Z][_a-zA-Z0-9]*)+\/get)\]";
 
 // -------------------------------------------------------------------------------------------------
 
@@ -237,6 +238,21 @@ public class ProExecutionContext
             throw new Exception("Undefined variable '" ~ name ~ "'");
     }
 
+    public void unsetVariable(in string name)
+    in
+	{
+		assert(!name.empty, "project variable name cannot be empty");
+	}
+	do
+    {
+        if (isBuiltinVariable(name))
+            m_builtinVariables.remove(name);
+        else if (isUserDefinedVariable(name))
+            m_userVariables.remove(name);
+        else
+            throw new Exception("Undefined variable '" ~ name ~ "'");
+    }
+
     // var = value
     public void assignVariable(in string name, in string[] value, in VariableType variableType)
 	in
@@ -371,7 +387,7 @@ public class ProExecutionContext
         }
     }
 
-    public string expandVariables(in string strSource)
+    public string expandVariables(ref PersistentPropertyStorage persistentStorage, in string strSource)
 	{
         if (strSource.empty)
             return strSource;
@@ -406,19 +422,44 @@ public class ProExecutionContext
 				throw new Exception("variable name cannot be empty");
             
             trace("Expanding variable '", variableName, "'...");
+            if (!isVariableDefined(variableName))
+            {
+                warning("Expand undefined variable '", variableName, "' to empty string");
+                return "";
+            }
+
             trace("Variable pretty value: ", getVariableValue(variableName));
             trace("Variable raw value: ", getVariableRawValue(variableName));
-
 			return getVariableValue(variableName);
 		}
+
+        auto replacePropertyFunc(Captures!string captures)
+        {
+            string propertyName = captures["name"];
+			if (propertyName.empty)
+				throw new Exception("qmake persistent property name cannot be empty");
+            
+            trace("Expanding property '", propertyName, "'...");
+            
+            string propertyValue;
+            if (!persistentStorage.hasValue(propertyName))
+            {
+                warning("Expand undefined persistent property '", propertyName, "' to empty string");
+                return "";
+            }
+
+            propertyValue = persistentStorage.value(propertyName);
+            trace("Property value: ", propertyValue);
+			return propertyValue;
+        }
 		
 		strExpanded = replaceAll!replaceProVarFunc(strExpanded, regex(projectVariableExpansionRegex_1, "g"));
         strExpanded = replaceAll!replaceProVarFunc(strExpanded, regex(projectVariableExpansionRegex_2, "g"));
 		// FIXME: implement
 //        strExpanded = replaceAll(strExpanded, environmentVariableExpansionRegex_2.regex, environment.get("$1", ""));
 //        strExpanded = replaceAll(strExpanded, environmentVariableExpansionRegex_1.regex, environment.get("$1", ""));
-//        strExpanded = strExpanded.replace(qmakePropertyExpansionRegex_1.regex, replacePropertyFunc);
-//        strExpanded = strExpanded.replace(qmakePropertyExpansionRegex_2.regex, replacePropertyFunc);
+        strExpanded = replaceAll!replacePropertyFunc(strExpanded, regex(qmakePropertyExpansionRegex_1, "g"));
+        strExpanded = replaceAll!replacePropertyFunc(strExpanded, regex(qmakePropertyExpansionRegex_2, "g"));
 
         return strExpanded;
     }

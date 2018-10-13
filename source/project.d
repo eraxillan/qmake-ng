@@ -37,15 +37,18 @@ import common_const;
 import eval;
 import project_variable;
 import project_context;
+import persistent_property;
 import rpn;
 
 public class Project
 {
     private ProExecutionContext m_context;
+    private PersistentPropertyStorage m_persistentStorage;
 
-    public this(ref ProExecutionContext context)
+    public this(ref ProExecutionContext context, ref PersistentPropertyStorage persistentStorage)
     {
         m_context = context;
+        m_persistentStorage = persistentStorage;
     }
 
     public bool tryParse(in string fileName) const
@@ -173,7 +176,7 @@ public class Project
         for (int i; i < multilineBlockNode.children.length; i++)
         {
             auto blockStatementNode = multilineBlockNode.children[i];
-            trace("Eval statement [", i, "] of type ", blockStatementNode.name);
+            trace("Eval statement [", i, "] of type ", blockStatementNode.children[0].name);
 
             evalStatementNode(context, blockStatementNode.children[0]);
         }
@@ -181,7 +184,7 @@ public class Project
     }
 
     private void evalVariableAssignmentNode(ref ProExecutionContext context,
-            ref ParseTree statementNode) const
+            ref ParseTree statementNode) /+const+/
     {
         auto variableName = statementNode.matches[0];
         auto variableOperator = statementNode.matches[1];
@@ -189,20 +192,20 @@ public class Project
         trace("Variable name: '" ~ variableName ~ "'");
         trace("Variable assignment operator: '" ~ variableOperator ~ "'");
 
-        // FIXME: add "if defined" statement after all qmake built-in variables will be recognized
-        trace("Variable old raw value: ", context.getVariableRawValue(variableName));
+        if (context.isVariableDefined(variableName))
+            trace("Variable old raw value: ", context.getVariableRawValue(variableName));
         trace("Variable new raw value: ", variableValue);
 
         assignVariable(context, variableName, variableOperator, variableValue);
     }
 
     private void assignVariable(ref ProExecutionContext context, in string name,
-            in string operator, in string[] value) const
+            in string operator, in string[] value) /+const+/
     {
         string[] result;
         if (!value.empty)
         {
-            auto evaluator = new ExpressionEvaluator(context);
+            auto evaluator = new ExpressionEvaluator(context, m_persistentStorage);
             auto rpnExpression = convertToRPN(value.join(" "));
             result = evaluator.evalRPN(rpnExpression);
             trace("Variable '", name, "' new value: ", result);
@@ -416,40 +419,68 @@ public class Project
         trace("Eval function '", functionName, "'...");
 
         // FIXME: looks hacky :( is there another way to break circular dependency project_function <--> eval?
-        if (functionName == "include")
+        if (functionName == "include" || functionName == "load")
         {
             assert(functionNode.children.length == 4);
             assert(functionNode.children[1].matches[0] == STR_OPENING_PARENTHESIS);
             assert(functionNode.children[3].matches[0] == STR_CLOSING_PARENTHESIS);
 
             string projectFileName = functionNode.children[2].matches[0];
-			string projectDirectory = context.getVariableRawValue("PWD")[0];
-			if (!isAbsolute(projectFileName))
-				projectFileName = buildNormalizedPath(absolutePath(projectFileName, projectDirectory));
-			trace("absolute project path: '", projectFileName, "'");
-			if (!exists(projectFileName) || !isFile(projectFileName)) {
-				error("project file '", projectFileName, "' was not found, so return 'false'");
-				return false;
-			}
+            if (functionName == "include")
+            {
+                auto argumentsNode = functionNode.children[2];
+                assert(argumentsNode.name == "QMakeProject.FunctionArgumentList");
+                assert(argumentsNode.children.length == 1);
+                auto listNode = argumentsNode.children[0];
+                assert(listNode.children.length >= 1);
+                projectFileName = listNode.children[0].matches.join("");
+                auto evaluator = new ExpressionEvaluator(context, m_persistentStorage);
+                auto rpnExpression = convertToRPN(projectFileName);
+                auto rpnResult = evaluator.evalRPN(rpnExpression);
+                projectFileName = rpnResult[0];
 
-			auto pro = new Project(context);
-    		if (pro.eval(projectFileName))
+                // FIXME: implement other argument usage
+                if (listNode.children.length >= 2)
+                    warning("'include' test function optional arguments not implemented yet");
+
+			    string projectDirectory = context.getVariableRawValue("PWD")[0];
+			    if (!isAbsolute(projectFileName))
+				    projectFileName = buildNormalizedPath(absolutePath(projectFileName, projectDirectory));
+			    trace("absolute project path: '", projectFileName, "'");
+			    if (!exists(projectFileName) || !isFile(projectFileName))
+                {
+				    error("project file '", projectFileName, "' was not found, so return FALSE");
+				    return false;
+			    }
+            }
+            else
+            {
+                // FIXME: use PlatformInfo class, need to extract it from app.d first
+                string featureDirectory = "/opt/Qt/5.11.1/gcc_64/mkspecs/features";
+                projectFileName = buildNormalizedPath(featureDirectory, projectFileName);
+                projectFileName = std.path.setExtension(projectFileName, "prf");
+                if (!std.file.exists(projectFileName) || !std.file.isFile(projectFileName))
+                {
+                    error("feature file '", projectFileName, "' was not found or not a file, so return FALSE");
+                    assert(false);
+                    //return false;
+                }
+            }
+
+			auto pro = new Project(context, m_persistentStorage);
+    		if (!pro.eval(projectFileName))
     		{
-        		info("qmake project file '" ~ projectFileName ~ "' was successfully parsed");
-        		return true;
+                error("qmake project file '", projectFileName, "' evaluation failed");
+        		return false;
     		}
-            return false;
-        }
-        else if (functionName == "load")
-        {
-            // FIXME: implement
-            trace("include: --- NOT IMPLEMENTED YET ---");
-            return false;
+            info("qmake project file '" ~ projectFileName ~ "' was successfully parsed");
+        	return true;
         }
         else if (functionName == "contains"
-              || functionName == "message" || functionName == "warning" || functionName == "error")
+              || functionName == "debug"   || functionName == "message"
+              || functionName == "warning" || functionName == "error")
         {
-            auto evaluator = new ExpressionEvaluator(context);
+            auto evaluator = new ExpressionEvaluator(context, m_persistentStorage);
             auto rpnExpression = convertToRPN(functionNode.matches.join("") /*.replace(",", ", ")*/ );
             auto rpnResult = evaluator.evalRPN(rpnExpression);
             trace("Function '", functionName, "' result = ", rpnResult);
@@ -459,7 +490,7 @@ public class Project
         }
         else
         {
-            auto evaluator = new ExpressionEvaluator(context);
+            auto evaluator = new ExpressionEvaluator(context, m_persistentStorage);
             // FIXME: whitespaces must not change during conversion! but here we just eliminate them all
             auto rpnExpression = convertToRPN(functionNode.matches.join(" "));
             auto rpnResult = evaluator.evalRPN(rpnExpression);

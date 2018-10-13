@@ -156,7 +156,7 @@ private string[] initQtVariableRange()
 private string[] initQtArchVariableRange()
 {
 	// FIXME: read-only variable
-	return [];
+	return ["i386", "x86_64", "arm"];
 }
 
 private string[] initTemplateVariableRange()
@@ -221,6 +221,7 @@ static this()
     temp1["QMAKE_ARGS"] = ProVariable("QMAKE_ARGS", VariableType.STRING_LIST, [], []);
     temp1["QMAKE_QTCONF"] = ProVariable("QMAKE_QTCONF", VariableType.STRING, [], []);
     temp1["QMAKE_PATH_ENV"] = ProVariable("QMAKE_PATH_ENV", VariableType.STRING_LIST, [], []);
+    temp1["QMAKE_MODULE_PATH"] = ProVariable("QMAKE_MODULE_PATH", VariableType.STRING_LIST, [], []);
     temp1["QMAKE_SH"] = ProVariable("QMAKE_SH", VariableType.STRING, [], []);
 
     temp1["QMAKE_HOST.cpu_count"] = ProVariable("QMAKE_HOST.cpu_count", VariableType.STRING, [], []);
@@ -231,6 +232,21 @@ static this()
     temp1["QMAKE_HOST.arch"] = ProVariable("QMAKE_HOST.arch", VariableType.STRING, [], []);
 
     temp1["QMAKE_TARGET.arch"] = ProVariable("QMAKE_TARGET.arch", VariableType.STRING, [], []);
+
+    // qtconfig.pri
+    temp1["QT_BUILDABI"] = ProVariable("QT_BUILDABI", VariableType.STRING, [], []);
+    temp1["QT.global.enabled_features"] = ProVariable("QT.global.enabled_features", VariableType.STRING_LIST, [], []);
+    temp1["QT.global.disabled_features"] = ProVariable("QT.global.disabled_features", VariableType.STRING_LIST, [], []);
+    temp1["QT_VERSION"] = ProVariable("QT_VERSION", VariableType.STRING, [], []);
+    temp1["QT_MAJOR_VERSION"] = ProVariable("QT_MAJOR_VERSION", VariableType.STRING, [], []);
+    temp1["QT_MINOR_VERSION"] = ProVariable("QT_MINOR_VERSION", VariableType.STRING, [], []);
+    temp1["QT_PATCH_VERSION"] = ProVariable("QT_PATCH_VERSION", VariableType.STRING, [], []);
+    temp1["QT_GCC_MAJOR_VERSION"] = ProVariable("QT_GCC_MAJOR_VERSION", VariableType.STRING, [], []);
+    temp1["QT_GCC_MINOR_VERSION"] = ProVariable("QT_GCC_MINOR_VERSION", VariableType.STRING, [], []);
+    temp1["QT_GCC_PATCH_VERSION"] = ProVariable("QT_GCC_PATCH_VERSION", VariableType.STRING, [], []);
+    temp1["QT_EDITION"] = ProVariable("QT_EDITION", VariableType.STRING, [], []);
+    temp1["QT_LICHECK"] = ProVariable("QT_LICHECK", VariableType.STRING, [], []);
+    temp1["QT_RELEASE_DATE"] = ProVariable("QT_RELEASE_DATE", VariableType.STRING, [], []);
 
     temp1["QMAKE_EXT_C"] = ProVariable("QMAKE_EXT_C", VariableType.STRING_LIST, [], []);
     temp1["QMAKE_EXT_CPP"] = ProVariable("QMAKE_EXT_CPP", VariableType.STRING_LIST, [], []);
@@ -255,6 +271,8 @@ static this()
     temp1["QMAKE_EXT_C"] = ProVariable("QMAKE_EXT_C", VariableType.STRING_LIST, [], []);
 
 	temp1["CONFIG"] = ProVariable("CONFIG", VariableType.RESTRICTED_STRING_LIST, initConfigVariableRange(), initConfigVariableValue());
+    temp1["QT_CONFIG"] = ProVariable("QT_CONFIG", VariableType.STRING, initConfigVariableRange(), []);
+
 	temp1["DEFINES"] = ProVariable("DEFINES", VariableType.STRING_LIST, [], []);
 	temp1["DESTDIR"] = ProVariable("DESTDIR", VariableType.STRING, [], []);
 	temp1["DISTFILES"] = ProVariable("DISTFILES", VariableType.STRING_LIST, [], []);
@@ -455,6 +473,7 @@ static this()
     temp1["QMAKE_PCH_OUTPUT_EXT"] = ProVariable("QMAKE_PCH_OUTPUT_EXT", VariableType.STRING_LIST, [], []);
     temp1["QMAKE_PREFIX_SHLIB"] = ProVariable("QMAKE_PREFIX_SHLIB", VariableType.STRING_LIST, [], []);
     temp1["QMAKE_PREFIX_STATICLIB"] = ProVariable("QMAKE_PREFIX_STATICLIB", VariableType.STRING_LIST, [], []);
+    temp1["QMAKE_QT_CONFIG"] = ProVariable("QMAKE_QT_CONFIG", VariableType.STRING_LIST, [], []);
     temp1["QMAKE_RANLIB"] = ProVariable("QMAKE_RANLIB", VariableType.STRING_LIST, [], []);
     temp1["QMAKE_RANLIB_LTCG"] = ProVariable("QMAKE_RANLIB_LTCG", VariableType.STRING_LIST, [], []);
     temp1["QMAKE_REL_RPATH_BASE"] = ProVariable("QMAKE_REL_RPATH_BASE", VariableType.STRING_LIST, [], []);
