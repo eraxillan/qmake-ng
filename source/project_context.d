@@ -41,27 +41,15 @@ import persistent_property;
 
 // -------------------------------------------------------------------------------------------------
 
-//var builtinVariablesModule = require("./builtin_variable_description");
-//var persistentStorage = require("./persistent_property_storage");
-//const VariableTypeEnum = builtinVariablesModule.VariableTypeEnum;
-
-// -------------------------------------------------------------------------------------------------
-
 // 1) OUTPUT_LIB = $${LIB_NAME}
-//var projectVariableExpansionRegex_1 = /\$\$\{([_a-zA-Z][_a-zA-Z0-9]*)+\}/g;
 private const auto projectVariableExpansionRegex_1 = r"\$\$\{(?P<name>([_a-zA-Z][_a-zA-Z0-9]*)+)\}";
 // 2) OUTPUT_LIB = $$LIB_NAME
-//var projectVariableExpansionRegex_2 = /\$\$([_a-zA-Z][_a-zA-Z0-9]*)+\b/g;
 private const auto projectVariableExpansionRegex_2 = r"\$\$(?P<name>([_a-zA-Z][_a-zA-Z0-9]*)+)\b";
 // 3) DESTDIR = $(PWD)
-//var environmentVariableExpansionRegex_1 = /\$\(([_a-zA-Z][_a-zA-Z0-9]*)+\)/g;
-private const auto environmentVariableExpansionRegex_1 = r"\$\(([_a-zA-Z][_a-zA-Z0-9]*)+\)";
+private const auto environmentVariableExpansionRegex_1 = r"\$\((?P<name>(([_a-zA-Z][_a-zA-Z0-9]*)+))\)";
 // 4) DESTDIR = $$(PWD)
-//var environmentVariableExpansionRegex_2 = /\$\$\(([_a-zA-Z][_a-zA-Z0-9]*)+\)/g;
-private const auto environmentVariableExpansionRegex_2 = r"\$\$\(([_a-zA-Z][_a-zA-Z0-9]*)+\)";
+private const auto environmentVariableExpansionRegex_2 = r"\$\$\((?P<name>(([_a-zA-Z][_a-zA-Z0-9]*)+))\)";
 // 5) target.path = $$[QT_INSTALL_PLUGINS]/designer
-//var qmakePropertyExpansionRegex_1 = /\$\$\[([_a-zA-Z][_a-zA-Z0-9]*)+\]/g;
-//var qmakePropertyExpansionRegex_2 = /\$\$\[([_a-zA-Z][_a-zA-Z0-9]*)+\/get\]/g;
 private const auto qmakePropertyExpansionRegex_1 = r"\$\$\[(?P<name>([_a-zA-Z][_a-zA-Z0-9]*)+)\]";
 private const auto qmakePropertyExpansionRegex_2 = r"\$\$\[(?P<name>([_a-zA-Z][_a-zA-Z0-9]*)+\/get)\]";
 
@@ -433,6 +421,25 @@ public class ProExecutionContext
 			return getVariableValue(variableName);
 		}
 
+        auto replaceEnvVarFunc(Captures!string captures)
+        {
+            string environmentVariableName = captures["name"];
+			if (environmentVariableName.empty)
+				throw new Exception("environment variable name cannot be empty");
+            
+            trace("Expanding environment variable '", environmentVariableName, "'...");
+
+            auto value = environment.get(environmentVariableName);
+            if (value is null)
+            {
+                error("Expand undefined environment variable '", environmentVariableName, "' to empty string");
+                return "";
+            }
+
+            trace("Environment variable value: ", value);
+            return value;
+        }
+
         auto replacePropertyFunc(Captures!string captures)
         {
             string propertyName = captures["name"];
@@ -445,7 +452,9 @@ public class ProExecutionContext
             if (!persistentStorage.hasValue(propertyName))
             {
                 warning("Expand undefined persistent property '", propertyName, "' to empty string");
-                return "";
+                //return "";
+                // FIXME: temponary for debug
+                throw new Exception("Undefined persistent property '" ~ propertyName ~ "'");
             }
 
             propertyValue = persistentStorage.value(propertyName);
@@ -455,9 +464,8 @@ public class ProExecutionContext
 		
 		strExpanded = replaceAll!replaceProVarFunc(strExpanded, regex(projectVariableExpansionRegex_1, "g"));
         strExpanded = replaceAll!replaceProVarFunc(strExpanded, regex(projectVariableExpansionRegex_2, "g"));
-		// FIXME: implement
-//        strExpanded = replaceAll(strExpanded, environmentVariableExpansionRegex_2.regex, environment.get("$1", ""));
-//        strExpanded = replaceAll(strExpanded, environmentVariableExpansionRegex_1.regex, environment.get("$1", ""));
+        strExpanded = replaceAll!replaceEnvVarFunc(strExpanded, regex(environmentVariableExpansionRegex_2, "g"));
+        strExpanded = replaceAll!replaceEnvVarFunc(strExpanded, regex(environmentVariableExpansionRegex_1, "g"));
         strExpanded = replaceAll!replacePropertyFunc(strExpanded, regex(qmakePropertyExpansionRegex_1, "g"));
         strExpanded = replaceAll!replacePropertyFunc(strExpanded, regex(qmakePropertyExpansionRegex_2, "g"));
 
