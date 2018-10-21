@@ -33,7 +33,7 @@ import std.getopt;
 import std.path;
 import std.string;
 import std.range;
-
+import std.regex;
 import common_const;
 import project_variable;
 import project_context;
@@ -50,6 +50,32 @@ public class ProFunction
 				return [arguments[0]];
 			}
 		);
+		replaceFunctions["files"] = new ProFunction("files", VariableType.STRING_LIST,
+			false, 1, 1, [VariableType.STRING_LIST],
+			(ref ProExecutionContext context, in string[] arguments) {
+				string[] result;
+
+				immutable string pattern = arguments[0];
+				immutable bool recursive = arguments.length == 2 ? (arguments[1] == "true" ? true : false) : false;
+
+				immutable string dir = std.path.dirName(pattern);
+				immutable string filenamePattern = std.path.baseName(pattern);
+
+				trace("Glob pattern: ", pattern);
+				trace("Directory: ", dir);
+				trace("File name pattern: ", filenamePattern);
+				assert(std.file.exists(dir));
+				auto deResult = std.file.dirEntries(dir, filenamePattern, recursive ? SpanMode.depth : SpanMode.shallow, true);
+				foreach (DirEntry de; deResult)
+				{
+					assert(std.file.exists(de.name));
+					trace("Match: ", de.name);
+
+					result ~= de.name;
+				}				
+				return result;
+			}
+		);
 		replaceFunctions["list"] = new ProFunction("list", VariableType.STRING_LIST, true, 1, -1, [VariableType.STRING],
 			(ref ProExecutionContext context, in string[] arguments) {
 				return arguments;
@@ -63,11 +89,13 @@ public class ProFunction
 				string sourceString = arguments[1];
 				string targetString = arguments[2];
 
+				// FIXME: avoid join() usage
 				string variableValue = context.getVariableRawValue(variableName).join("");
-				string result = variableValue.replace(sourceString, targetString);
-				trace("Variable name: ", variableName);
-				trace("Variable value: ", variableValue);
-				trace("Variable replaced value: ", result);
+
+				string result = replaceAll(variableValue, regex(sourceString, "g"), targetString);
+				trace("Source: ", variableValue);
+				trace("Regular expression: ", sourceString);
+				trace("Result: ", result);
 				return [result];
 			}
 		);
