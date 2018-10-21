@@ -166,6 +166,10 @@ class PersistentPropertyStorage
         m_values["QMAKE_XSPEC"] = "linux-g++";
         m_values["QMAKE_VERSION"] = "3.1";
         m_values["QT_VERSION"] = "5.11.1";
+
+        // Internal for mkspec/feature eval
+        m_values["QMAKEMODULES"] = "";
+        m_values["QMAKE_MKSPECS"] = "/opt/Qt/5.11.1/gcc_64/mkspecs";
     }
 
     public string value(in string name)
@@ -173,6 +177,7 @@ class PersistentPropertyStorage
         if ((name in m_values) !is null)
             return m_values[name];
 
+        // FIXME: implement
         throw new NotImplementedException("Persistent storage not implemented yet");
     }
 
@@ -183,11 +188,13 @@ class PersistentPropertyStorage
 
     public void setValue(in string var, in string val)
     {
+        // FIXME: implement
         throw new NotImplementedException("Persistent storage not implemented yet");
     }
 
     public void remove(in string var)
     {
+        // FIXME: implement
         throw new NotImplementedException("Persistent storage not implemented yet");
     }
 }
