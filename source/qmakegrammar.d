@@ -136,10 +136,16 @@ enum QMakeGrammar = `
         EvalArg <- (QualifiedIdentifier :space* "=" :space* Statement) / Statement
 
         # cache(variablename, [set|add|sub] [transient] [super|stash], [source variablename])
+        #
+        # E.g.:
+        # cache(CONFIG, add, $$list(config_clang))
+        # cache(QMAKE_MAC_SDK.$${sdk}.$${info}, set stash, QMAKE_MAC_SDK.$${sdk}.$${info})
+        # cache(QT.$${mod}.$$var, transient)
+        #
         # Special case:
         # cache(, super)
         CacheTestFunctionCall       <- "cache" OPEN_PAR_WS CacheTestFunctionCallParams? CLOSE_PAR_WS
-        CacheTestFunctionCallParams <- QualifiedIdentifier? (COMMA_WS CacheTestFunctionParam2)? (COMMA_WS QualifiedIdentifier)?
+        CacheTestFunctionCallParams <- QualifiedIdentifier? (COMMA_WS CacheTestFunctionParam2)? (COMMA_WS FunctionFirstArgument)?
         CacheTestFunctionParam2     <- ("set" / "add" / "sub")? :space* ("transient")? :space* ("super" / "stash")?
         
         # contains(variablename, value)

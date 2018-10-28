@@ -115,10 +115,16 @@ This module was automatically generated from the following grammar:
         EvalArg <- (QualifiedIdentifier :space* "=" :space* Statement) / Statement
 
         # cache(variablename, [set|add|sub] [transient] [super|stash], [source variablename])
+        #
+        # E.g.:
+        # cache(CONFIG, add, $$list(config_clang))
+        # cache(QMAKE_MAC_SDK.$${sdk}.$${info}, set stash, QMAKE_MAC_SDK.$${sdk}.$${info})
+        # cache(QT.$${mod}.$$var, transient)
+        #
         # Special case:
         # cache(, super)
         CacheTestFunctionCall       <- "cache" OPEN_PAR_WS CacheTestFunctionCallParams? CLOSE_PAR_WS
-        CacheTestFunctionCallParams <- QualifiedIdentifier? (COMMA_WS CacheTestFunctionParam2)? (COMMA_WS QualifiedIdentifier)?
+        CacheTestFunctionCallParams <- QualifiedIdentifier? (COMMA_WS CacheTestFunctionParam2)? (COMMA_WS FunctionFirstArgument)?
         CacheTestFunctionParam2     <- ("set" / "add" / "sub")? :space* ("transient")? :space* ("super" / "stash")?
         
         # contains(variablename, value)
@@ -2373,7 +2379,7 @@ struct GenericQMakeProject(TParseTree)
     {
         if(__ctfe)
         {
-            return         pegged.peg.defined!(pegged.peg.and!(pegged.peg.option!(QualifiedIdentifier), pegged.peg.option!(pegged.peg.and!(COMMA_WS, CacheTestFunctionParam2)), pegged.peg.option!(pegged.peg.and!(COMMA_WS, QualifiedIdentifier))), "QMakeProject.CacheTestFunctionCallParams")(p);
+            return         pegged.peg.defined!(pegged.peg.and!(pegged.peg.option!(QualifiedIdentifier), pegged.peg.option!(pegged.peg.and!(COMMA_WS, CacheTestFunctionParam2)), pegged.peg.option!(pegged.peg.and!(COMMA_WS, FunctionFirstArgument))), "QMakeProject.CacheTestFunctionCallParams")(p);
         }
         else
         {
@@ -2381,7 +2387,7 @@ struct GenericQMakeProject(TParseTree)
                 return *m;
             else
             {
-                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.and!(pegged.peg.option!(QualifiedIdentifier), pegged.peg.option!(pegged.peg.and!(COMMA_WS, CacheTestFunctionParam2)), pegged.peg.option!(pegged.peg.and!(COMMA_WS, QualifiedIdentifier))), "QMakeProject.CacheTestFunctionCallParams"), "CacheTestFunctionCallParams")(p);
+                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.and!(pegged.peg.option!(QualifiedIdentifier), pegged.peg.option!(pegged.peg.and!(COMMA_WS, CacheTestFunctionParam2)), pegged.peg.option!(pegged.peg.and!(COMMA_WS, FunctionFirstArgument))), "QMakeProject.CacheTestFunctionCallParams"), "CacheTestFunctionCallParams")(p);
                 memo[tuple(`CacheTestFunctionCallParams`, p.end)] = result;
                 return result;
             }
@@ -2392,12 +2398,12 @@ struct GenericQMakeProject(TParseTree)
     {
         if(__ctfe)
         {
-            return         pegged.peg.defined!(pegged.peg.and!(pegged.peg.option!(QualifiedIdentifier), pegged.peg.option!(pegged.peg.and!(COMMA_WS, CacheTestFunctionParam2)), pegged.peg.option!(pegged.peg.and!(COMMA_WS, QualifiedIdentifier))), "QMakeProject.CacheTestFunctionCallParams")(TParseTree("", false,[], s));
+            return         pegged.peg.defined!(pegged.peg.and!(pegged.peg.option!(QualifiedIdentifier), pegged.peg.option!(pegged.peg.and!(COMMA_WS, CacheTestFunctionParam2)), pegged.peg.option!(pegged.peg.and!(COMMA_WS, FunctionFirstArgument))), "QMakeProject.CacheTestFunctionCallParams")(TParseTree("", false,[], s));
         }
         else
         {
             forgetMemo();
-            return hooked!(pegged.peg.defined!(pegged.peg.and!(pegged.peg.option!(QualifiedIdentifier), pegged.peg.option!(pegged.peg.and!(COMMA_WS, CacheTestFunctionParam2)), pegged.peg.option!(pegged.peg.and!(COMMA_WS, QualifiedIdentifier))), "QMakeProject.CacheTestFunctionCallParams"), "CacheTestFunctionCallParams")(TParseTree("", false,[], s));
+            return hooked!(pegged.peg.defined!(pegged.peg.and!(pegged.peg.option!(QualifiedIdentifier), pegged.peg.option!(pegged.peg.and!(COMMA_WS, CacheTestFunctionParam2)), pegged.peg.option!(pegged.peg.and!(COMMA_WS, FunctionFirstArgument))), "QMakeProject.CacheTestFunctionCallParams"), "CacheTestFunctionCallParams")(TParseTree("", false,[], s));
         }
     }
     static string CacheTestFunctionCallParams(GetName g)

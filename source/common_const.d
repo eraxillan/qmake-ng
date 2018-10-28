@@ -24,19 +24,26 @@ module common_const;
 
 public const auto STR_EMPTY = "";
 
+public const auto CHAR_WS = ' ';
 public const auto STR_WS = " ";
 
 public const auto STR_HASH = "#";
 public const auto STR_BACKSLASH = "\\";
 
+public const auto CHAR_OPENING_PARENTHESIS = '(';
+public const auto CHAR_CLOSING_PARENTHESIS = ')';
 public const auto STR_OPENING_PARENTHESIS = "(";
 public const auto STR_CLOSING_PARENTHESIS = ")";
 public const auto STR_OPENING_CURLY_BRACE = "{";
 public const auto STR_CLOSING_CURLY_BRACE = "}";
 
+public const auto CHAR_DOUBLE_QUOTE = '"';
 public const auto STR_DOUBLE_QUOTE = "\"";
 public const auto STR_SINGLE_QUOTE = "'";
 
+public const auto STR_SEMICOLON = ";";
+
+public const auto CHAR_COMMA = ',';
 public const auto STR_COMMA = ",";
 
 public const auto STR_DOG = "@";

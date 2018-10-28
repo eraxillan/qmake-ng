@@ -22,7 +22,7 @@
 
 module preprocessor;
 
-import std.typecons : BitFlags;
+import std.typecons;
 
 import std.experimental.logger;
 
@@ -35,14 +35,21 @@ import std.getopt;
 import std.path;
 import std.string;
 import std.range;
+static import std.regex;
 
 import common_const;
 
 private const auto STR_ELSE = "else";
 private const auto STR_ELSE_SINGLELINE = "else:";
 
-private const auto CONTAINS_STR = "contains(";
-private const auto QTCONFIG_STR = "qtConfig(";
+private const auto EXISTS_FUNCTION_STR = "exists";      // test function, argument 1
+private const auto CONTAINS_FUNCTION_STR = "contains";  // test function, argument 2
+private const auto QTCONFIG_FUNCTION_STR = "qtConfig";  // test function, argument 1
+
+private const auto FIND_FUNCTION_STR = "find";          // replace function, argument 2
+private const auto REESCAPE_FUNCTION_STR = "re_escape"; // replace function, argument 1
+private const auto REPLACE_FUNCTION_STR = "replace";    // replace function, arguments 2 and 3
+
 
 private struct QuotesInfo
 {
@@ -55,12 +62,13 @@ private enum PreprocessorModifications
 {
     None,
     WhitespaceStripped       = 1 << 0,
-    CommentRemoved           = 1 << 1,
-    MultilineMerged          = 1 << 2,
-    SinglelineScopeFixed     = 1 << 3,
-    MultilineScopeFixed      = 1 << 4,
-    SinglelineScopeElseFixed = 1 << 5,
-    FunctionArgumentEnquoted = 1 << 6
+    TrailingSemicolonRemoved = 1 << 1,
+    CommentRemoved           = 1 << 2,
+    MultilineMerged          = 1 << 3,
+    SinglelineScopeFixed     = 1 << 4,
+    MultilineScopeFixed      = 1 << 5,
+    SinglelineScopeElseFixed = 1 << 6,
+    FunctionArgumentEnquoted = 1 << 7
 } 
 
 private enum ParenhesisType
@@ -70,9 +78,10 @@ private enum ParenhesisType
     Closing
 }
 
+// FIXME: use this function instead of direct while loop
 private void skipWhitespaces(in string sourceLine, ref long index)
 {
-    while (isWhite(sourceLine[cast(uint)index]) && (cast(uint)index < sourceLine.length))
+    while (isWhite(sourceLine[index]) && (index < sourceLine.length))
         index++;
 }
 
@@ -202,91 +211,123 @@ private string cutInlineComment(in string sourceLine, ref bool commentFound)
     return result;
 }
 
-private bool hasFunctionCall(in string functionName, in string sourceLine)
+private alias ExtractResult = Tuple!(string[], "arguments", long, "endIndex");
+
+// NOTE: regex may contain paired parenthesis which don't handled by grammar now
+private ExtractResult extractFunctionArguments(
+    in string functionName, in long functionArgumentCount,
+    in long startIndex, in string sourceLine)
+in
 {
-    return sourceLine.indexOf(functionName) != -1;
+    assert(!functionName.empty);
+    assert(functionArgumentCount >= 1);
+    assert((startIndex >= 0) && startIndex < (sourceLine.length));
+    assert(sourceLine.length > functionName.length);
 }
-
-private long skipFunctionArguments(in string functionName, in long functionIndex, in int argumentIndex,
-    in string sourceLine)
+out(result)
 {
-    // Skip previous arguments
-    long commaIndex = functionIndex;
-    auto currentArgumentIndex = 1;
-    while (currentArgumentIndex < argumentIndex)
-    {
-        commaIndex = sourceLine.indexOf(STR_COMMA, cast(uint)commaIndex);
-        if (commaIndex == -1)
-        {
-            trace("function call '" ~ functionName ~ "' argument count is "
-                ~ std.conv.to!string(currentArgumentIndex));
-            break;
-        }
+    assert(result.arguments.length == functionArgumentCount);
+    // NOTE: some of arguments can be empty, need further investigion
+    //for (int i; i < result.arguments.length; i++) assert(!result.arguments[i].empty);
+}
+do
+{
+    trace("Extracting function '", functionName, "' arguments, expect ", functionArgumentCount, " items");
 
-        currentArgumentIndex++;
+    ExtractResult result;
+    int argumentIndex;
+    long[] parenthesisStack;
+
+    // Search for function call statement: function name + opening parenthehis
+    // FIXME: allow whitespace* between function name and parenthesis
+    immutable auto functionCallIndex = sourceLine.indexOf(functionName ~ STR_OPENING_PARENTHESIS, startIndex);
+    if (functionCallIndex < 0)
+    {
+        trace("no function '", functionName, "' call found");
+        return result;
+    }
+        
+    // Save opening parenthesis in the stack
+    immutable auto functionOpenParIndex = functionCallIndex + functionName.length;
+    assert(sourceLine[functionOpenParIndex] == CHAR_OPENING_PARENTHESIS);
+    // NOTE: we do not save function opening parenthesis intentionally:
+    //       to recognize function argument list end correctly
+
+    // Extract function arguments
+    long i = functionOpenParIndex + 1;
+    while (argumentIndex < functionArgumentCount)
+    {
+        // If it is not last arguments, just consume all chars until comma found
+        immutable bool lastArgument = argumentIndex == functionArgumentCount - 1;
+        if (!lastArgument)
+        {
+            long commaIndex = -1;
+            long j = i;
+            while (j < sourceLine.length)
+            {
+                if (sourceLine[j] == CHAR_COMMA)
+                {
+                    commaIndex = j;
+                    break;
+                }
+                
+                j++;
+            }
+            assert(j > i);
+            assert(sourceLine[j] == CHAR_COMMA);
+            assert(sourceLine[commaIndex] == CHAR_COMMA);
+
+            string argument = sourceLine[i .. j];
+            assert(!argument.empty);
+            trace("Middle function argument ", argumentIndex, ": ", argument);
+
+            // Skip possible whitespaces after comma
+            j ++;
+            while (j < sourceLine.length)
+            {
+                if (sourceLine[j] != CHAR_WS)
+                    break;
+                j++;
+            }
+            
+            result.arguments ~= argument;
+            i = j;
+            argumentIndex++;
+        }
+        else
+        {
+            // Skip paired parenthesis until got unpaired close one
+            long j = i;
+            while (j < sourceLine.length)
+            {
+                if (sourceLine[j] == CHAR_OPENING_PARENTHESIS)
+                    parenthesisStack ~= j;
+                else if (sourceLine[j] == CHAR_CLOSING_PARENTHESIS)
+                {
+                    if (!parenthesisStack.empty)
+                        parenthesisStack.popBack();
+                    else
+                        break;
+                }
+
+                j++;
+            }
+            // NOTE: argument can be empty, e.g. `VCLIBS = Microsoft.VCLibs.$$replace(MSVC_VER, \\., ).00`
+            assert(j >= i);
+            assert(sourceLine[j] == CHAR_CLOSING_PARENTHESIS);
+            assert(parenthesisStack.length == 0);
+
+            string argument = sourceLine[i .. j];
+            //assert(!argument.empty);
+            trace("Last function argument ", argumentIndex, ": ", argument);
+
+            result.arguments ~= argument;
+            i = j + 1;
+            argumentIndex++;
+        }
     }
 
-    trace("sourceLine[commaIndex] = '" ~ sourceLine[cast(uint)commaIndex] ~ "'");
-    if (argumentIndex >= 2)
-        commaIndex++;
-    
-    return commaIndex;
-}
-
-private string enquoteFunctionArgument(in string functionName, in int argumentIndex, in string sourceLine)
-{
-    string result;
-
-    // contains(id, regex)
-    // NOTE: regex may contain paired parenthesis which don't handled by grammar now
-    long functionIndex, newFunctionEndIndex = -1;
-    while (true)
-    {
-        // TODO: implement regex search using "contains\\s*\\("
-        functionIndex = sourceLine.indexOf(functionName, cast(uint)functionIndex);
-        if (functionIndex == -1)
-        {
-            result ~= sourceLine[newFunctionEndIndex == -1 ? 0 : cast(uint)newFunctionEndIndex .. $];
-            break;
-        }
-        trace("function call detected at index " ~ std.conv.to!string(functionIndex));
-        functionIndex += functionName.length;
-
-        // Skip previous arguments
-        auto commaIndex = skipFunctionArguments(functionName, functionIndex, argumentIndex, sourceLine);
-
-        // Skip whitespaces between comma and next argument value
-        auto secondArgumentBeginIndex = commaIndex;
-        skipWhitespaces(sourceLine, secondArgumentBeginIndex);
-
-        // Search for second argument end - skip paired parenthesis
-        auto secondArgumentEndIndex = secondArgumentBeginIndex;
-        trace("strLine[secondArgumentEndIndex] = '" ~ sourceLine[cast(uint)secondArgumentEndIndex] ~ "'");
-        if (!isInsideParenthesis(sourceLine, secondArgumentBeginIndex - 1, ParenhesisType.Closing,
-            secondArgumentEndIndex, true))
-        {
-            trace("closing parenthesis is absent");
-            continue;
-        }
-
-        string wsSuffix;
-        if (argumentIndex >= 2)
-            wsSuffix ~= STR_WS;
-
-        // Enquote specified argument value
-        auto secondArgument = sourceLine[cast(uint)secondArgumentBeginIndex .. cast(uint)secondArgumentEndIndex];
-        auto secondArgumentQuoted = secondArgument;
-        if (("" ~ secondArgument[0] != STR_DOUBLE_QUOTE) && ("" ~ secondArgument[secondArgument.length - 1] != STR_DOUBLE_QUOTE))
-            secondArgumentQuoted = STR_DOUBLE_QUOTE ~ secondArgument ~ STR_DOUBLE_QUOTE;
-        result ~= sourceLine[newFunctionEndIndex == -1 ? 0 : cast(uint)newFunctionEndIndex .. cast(uint)commaIndex] ~ wsSuffix;
-        result ~= secondArgumentQuoted ~ STR_CLOSING_PARENTHESIS;
-
-        trace("secondArgument = '" ~ secondArgument ~ "'");
-        trace("secondArgumentQuoted = '" ~ secondArgumentQuoted ~ "'");
-
-        newFunctionEndIndex = secondArgumentEndIndex + 1;
-    }
-    
+    result.endIndex = i;
     return result;
 }
 
@@ -467,6 +508,13 @@ private bool fixSinglelineScopeElse(in string sourceLine, out string resultLine)
 
 private void prettifyLine(ref LineInfo li)
 {
+    if (li.line.endsWith(STR_SEMICOLON))
+    {
+        li.mods |= PreprocessorModifications.TrailingSemicolonRemoved;
+        li.line = li.line[0 .. $-1];
+        assert(!li.line.endsWith(STR_SEMICOLON));
+    }
+
     auto temp = li.line.strip();
     if (li.line != temp)
     {
@@ -525,24 +573,102 @@ private void fixScope(ref LineInfo li)
     }
 }
 
+private bool isEnquotedString(in string str)
+{
+    if (str.length < 2)
+        return false;
+    
+    return (str.front == CHAR_DOUBLE_QUOTE) && (str.back == CHAR_DOUBLE_QUOTE);
+}
+
+private string enquoteString(in string str)
+{
+    assert(!isEnquotedString(str));
+
+    return CHAR_DOUBLE_QUOTE ~ str ~ CHAR_DOUBLE_QUOTE;
+}
+
+/**
+ * Enquotes (add quotes around) specified functionName arguments
+ * with indeces targetArgumentIndeces
+ * Params:
+ *      functionName          = the name of function to search for
+ *      argumentCount         = expected function argument count
+ *      targetArgumentIndeces = one-based argument indeces to enquote
+ *      li                    = reference to current line information structure to modify
+ */
+private void enquoteAmbiguousFunctionArguments(in string functionName, in long argumentCount,
+    in long[] targetArgumentIndeces, ref LineInfo li)
+{
+    long functionCallIndex;
+    while (functionCallIndex < li.line.length)
+    {
+        functionCallIndex = li.line.indexOf(functionName ~ STR_OPENING_PARENTHESIS, functionCallIndex);
+        if (functionCallIndex == -1)
+            break;
+
+        auto replaceArguments = extractFunctionArguments(functionName, argumentCount, functionCallIndex, li.line);
+        assert(!replaceArguments.arguments.empty);
+        assert(replaceArguments.endIndex > functionCallIndex);
+
+        foreach (i; targetArgumentIndeces)
+        {
+            // NOTE: function argument indeces are one-based, not zero-ones
+            if (!isEnquotedString(replaceArguments.arguments[i - 1]))
+            {
+                li.mods |= PreprocessorModifications.FunctionArgumentEnquoted;
+                replaceArguments.arguments[i - 1] = enquoteString(replaceArguments.arguments[i - 1]);
+            }
+        }
+
+        string lineBefore = li.line[0 .. functionCallIndex];
+        string lineAfter = li.line[replaceArguments.endIndex .. $];
+        string finalLine =
+              lineBefore
+            ~ functionName
+            ~ STR_OPENING_PARENTHESIS
+            ~ replaceArguments.arguments.join(STR_COMMA ~ STR_WS)
+            ~ STR_CLOSING_PARENTHESIS
+            ~ lineAfter;
+        trace("lineBefore: ", lineBefore);
+        trace("lineAfter: ", lineAfter);
+        trace("finalLine: ", finalLine);
+
+        li.line = finalLine;
+        functionCallIndex++;
+    }
+
+    // FIXME: add error handling above, e.g. exception generation
+}
+
 private void fixAmbiguousFunctionCalls(ref LineInfo li)
 {
+    // E.g.:
+    // replace(string, old_string, new_string)
     // qtConfig(opengl(es1|es2)?)
     // contains(var, regex)
 
-    // Enquote contains test function second argument
-    if (hasFunctionCall(CONTAINS_STR, li.line))
-    {
-        li.mods |= PreprocessorModifications.FunctionArgumentEnquoted;
-        li.line = enquoteFunctionArgument(CONTAINS_STR, 2, li.line);
-    }
+    // Test functions
 
-    // Enquote qtConfig test function first argument
-    if (hasFunctionCall(QTCONFIG_STR, li.line))
-    {
-        li.mods |= PreprocessorModifications.FunctionArgumentEnquoted;
-        li.line = enquoteFunctionArgument(QTCONFIG_STR, 1, li.line);
-    }
+    // Enquote `exists` test function second argument
+    enquoteAmbiguousFunctionArguments(EXISTS_FUNCTION_STR, 1, [1], li);
+
+    // Enquote `contains` test function second argument
+    enquoteAmbiguousFunctionArguments(CONTAINS_FUNCTION_STR, 2, [2], li);
+
+    // Enquote `qtConfig` test function first argument
+    enquoteAmbiguousFunctionArguments(QTCONFIG_FUNCTION_STR, 1, [1], li);
+
+    // Replace functions
+
+    // Enquote `find` replace function second and third arguments
+    enquoteAmbiguousFunctionArguments(FIND_FUNCTION_STR, 2, [2], li);
+
+    // Enquote `re_escape` replace function second and third arguments
+    enquoteAmbiguousFunctionArguments(REESCAPE_FUNCTION_STR, 1, [1], li);
+
+    // Enquote `replace` replace function second and third arguments
+    enquoteAmbiguousFunctionArguments(REPLACE_FUNCTION_STR, 3, [2, 3], li);
 }
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -591,7 +717,6 @@ unittest
     // detectFunctionArgument
     // detectPairedCharacter
     // cutInlineComment
-    // enquoteFunctionArgument
     // preprocessLines
     writeln("<<< >>>");
 }
