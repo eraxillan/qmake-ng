@@ -37,6 +37,7 @@ import std.range;
 
 // -------------------------------------------------------------------------------------------------
 
+// FIXME: use alias this to eliminate dublicated with std.array properties
 public class QStack(DataType)
 {
 	DataType[] m_array;
@@ -117,6 +118,16 @@ public auto getDateTimeString()
 	}
 }
 
+@property public string left(in string str, in long count)
+{
+	return str[0 .. count - 1];
+}
+
+@property public string right(in string str, in long count)
+{
+	return str[$ - count .. $];
+}
+
 public bool isWhitespaceToken(in string str)
 {
 	// FIXME: implement
@@ -158,4 +169,10 @@ public bool isHexNumeric(in string n)
 	{
 		return false;
 	}
+}
+
+unittest
+{
+	assert("pineapple".left(4) == "pine");
+	assert("pineapple".right(5) == "apple");
 }
