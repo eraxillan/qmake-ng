@@ -4,7 +4,7 @@ This module was automatically generated from the following grammar:
 
     QMakeProject:
         Project <- Statement* eoi
-        Statement <- FunctionDeclaration / Assignment / Scope / Block / BooleanExpression / ReplaceFunctionCall / TestFunctionCall / Comment / EmptyStatement
+        Statement <- FunctionDeclaration / Assignment / ForStatement / Scope / Block / BooleanExpression / ReplaceFunctionCall / TestFunctionCall / Comment / EmptyStatement
 
         # No input
         EmptyStatement <- eps :eol*
@@ -109,6 +109,10 @@ This module was automatically generated from the following grammar:
         BooleanConst                 <- "true" / "false"
 
         # FIXME: move built-in test and replace function to separate module
+
+        ForStatement <- "for" OPEN_PAR_WS ForIteratorVariableName COMMA_WS ForIterableList CLOSE_PAR_WS Block
+        ForIteratorVariableName <- QualifiedIdentifier
+        ForIterableList <- List(:space+, :space) / FunctionFirstArgument #/ Statement
 
         # eval(string)
         EvalTestFunctionCall <- "eval" OPEN_PAR_WS EvalArg CLOSE_PAR_WS
@@ -281,6 +285,9 @@ struct GenericQMakeProject(TParseTree)
         rules["IfTestFunctionCall"] = toDelegate(&IfTestFunctionCall);
         rules["BooleanAtom"] = toDelegate(&BooleanAtom);
         rules["BooleanConst"] = toDelegate(&BooleanConst);
+        rules["ForStatement"] = toDelegate(&ForStatement);
+        rules["ForIteratorVariableName"] = toDelegate(&ForIteratorVariableName);
+        rules["ForIterableList"] = toDelegate(&ForIterableList);
         rules["EvalTestFunctionCall"] = toDelegate(&EvalTestFunctionCall);
         rules["EvalArg"] = toDelegate(&EvalArg);
         rules["CacheTestFunctionCall"] = toDelegate(&CacheTestFunctionCall);
@@ -420,7 +427,7 @@ struct GenericQMakeProject(TParseTree)
     {
         if(__ctfe)
         {
-            return         pegged.peg.defined!(pegged.peg.or!(FunctionDeclaration, Assignment, Scope, Block, BooleanExpression, ReplaceFunctionCall, TestFunctionCall, Comment, EmptyStatement), "QMakeProject.Statement")(p);
+            return         pegged.peg.defined!(pegged.peg.or!(FunctionDeclaration, Assignment, ForStatement, Scope, Block, BooleanExpression, ReplaceFunctionCall, TestFunctionCall, Comment, EmptyStatement), "QMakeProject.Statement")(p);
         }
         else
         {
@@ -428,7 +435,7 @@ struct GenericQMakeProject(TParseTree)
                 return *m;
             else
             {
-                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.or!(FunctionDeclaration, Assignment, Scope, Block, BooleanExpression, ReplaceFunctionCall, TestFunctionCall, Comment, EmptyStatement), "QMakeProject.Statement"), "Statement")(p);
+                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.or!(FunctionDeclaration, Assignment, ForStatement, Scope, Block, BooleanExpression, ReplaceFunctionCall, TestFunctionCall, Comment, EmptyStatement), "QMakeProject.Statement"), "Statement")(p);
                 memo[tuple(`Statement`, p.end)] = result;
                 return result;
             }
@@ -439,12 +446,12 @@ struct GenericQMakeProject(TParseTree)
     {
         if(__ctfe)
         {
-            return         pegged.peg.defined!(pegged.peg.or!(FunctionDeclaration, Assignment, Scope, Block, BooleanExpression, ReplaceFunctionCall, TestFunctionCall, Comment, EmptyStatement), "QMakeProject.Statement")(TParseTree("", false,[], s));
+            return         pegged.peg.defined!(pegged.peg.or!(FunctionDeclaration, Assignment, ForStatement, Scope, Block, BooleanExpression, ReplaceFunctionCall, TestFunctionCall, Comment, EmptyStatement), "QMakeProject.Statement")(TParseTree("", false,[], s));
         }
         else
         {
             forgetMemo();
-            return hooked!(pegged.peg.defined!(pegged.peg.or!(FunctionDeclaration, Assignment, Scope, Block, BooleanExpression, ReplaceFunctionCall, TestFunctionCall, Comment, EmptyStatement), "QMakeProject.Statement"), "Statement")(TParseTree("", false,[], s));
+            return hooked!(pegged.peg.defined!(pegged.peg.or!(FunctionDeclaration, Assignment, ForStatement, Scope, Block, BooleanExpression, ReplaceFunctionCall, TestFunctionCall, Comment, EmptyStatement), "QMakeProject.Statement"), "Statement")(TParseTree("", false,[], s));
         }
     }
     static string Statement(GetName g)
@@ -2265,6 +2272,114 @@ struct GenericQMakeProject(TParseTree)
     static string BooleanConst(GetName g)
     {
         return "QMakeProject.BooleanConst";
+    }
+
+    static TParseTree ForStatement(TParseTree p)
+    {
+        if(__ctfe)
+        {
+            return         pegged.peg.defined!(pegged.peg.and!(pegged.peg.literal!("for"), OPEN_PAR_WS, ForIteratorVariableName, COMMA_WS, ForIterableList, CLOSE_PAR_WS, Block), "QMakeProject.ForStatement")(p);
+        }
+        else
+        {
+            if (auto m = tuple(`ForStatement`, p.end) in memo)
+                return *m;
+            else
+            {
+                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.and!(pegged.peg.literal!("for"), OPEN_PAR_WS, ForIteratorVariableName, COMMA_WS, ForIterableList, CLOSE_PAR_WS, Block), "QMakeProject.ForStatement"), "ForStatement")(p);
+                memo[tuple(`ForStatement`, p.end)] = result;
+                return result;
+            }
+        }
+    }
+
+    static TParseTree ForStatement(string s)
+    {
+        if(__ctfe)
+        {
+            return         pegged.peg.defined!(pegged.peg.and!(pegged.peg.literal!("for"), OPEN_PAR_WS, ForIteratorVariableName, COMMA_WS, ForIterableList, CLOSE_PAR_WS, Block), "QMakeProject.ForStatement")(TParseTree("", false,[], s));
+        }
+        else
+        {
+            forgetMemo();
+            return hooked!(pegged.peg.defined!(pegged.peg.and!(pegged.peg.literal!("for"), OPEN_PAR_WS, ForIteratorVariableName, COMMA_WS, ForIterableList, CLOSE_PAR_WS, Block), "QMakeProject.ForStatement"), "ForStatement")(TParseTree("", false,[], s));
+        }
+    }
+    static string ForStatement(GetName g)
+    {
+        return "QMakeProject.ForStatement";
+    }
+
+    static TParseTree ForIteratorVariableName(TParseTree p)
+    {
+        if(__ctfe)
+        {
+            return         pegged.peg.defined!(QualifiedIdentifier, "QMakeProject.ForIteratorVariableName")(p);
+        }
+        else
+        {
+            if (auto m = tuple(`ForIteratorVariableName`, p.end) in memo)
+                return *m;
+            else
+            {
+                TParseTree result = hooked!(pegged.peg.defined!(QualifiedIdentifier, "QMakeProject.ForIteratorVariableName"), "ForIteratorVariableName")(p);
+                memo[tuple(`ForIteratorVariableName`, p.end)] = result;
+                return result;
+            }
+        }
+    }
+
+    static TParseTree ForIteratorVariableName(string s)
+    {
+        if(__ctfe)
+        {
+            return         pegged.peg.defined!(QualifiedIdentifier, "QMakeProject.ForIteratorVariableName")(TParseTree("", false,[], s));
+        }
+        else
+        {
+            forgetMemo();
+            return hooked!(pegged.peg.defined!(QualifiedIdentifier, "QMakeProject.ForIteratorVariableName"), "ForIteratorVariableName")(TParseTree("", false,[], s));
+        }
+    }
+    static string ForIteratorVariableName(GetName g)
+    {
+        return "QMakeProject.ForIteratorVariableName";
+    }
+
+    static TParseTree ForIterableList(TParseTree p)
+    {
+        if(__ctfe)
+        {
+            return         pegged.peg.defined!(pegged.peg.or!(List!(pegged.peg.discard!(pegged.peg.oneOrMore!(space)), pegged.peg.discard!(space)), FunctionFirstArgument), "QMakeProject.ForIterableList")(p);
+        }
+        else
+        {
+            if (auto m = tuple(`ForIterableList`, p.end) in memo)
+                return *m;
+            else
+            {
+                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.or!(List!(pegged.peg.discard!(pegged.peg.oneOrMore!(space)), pegged.peg.discard!(space)), FunctionFirstArgument), "QMakeProject.ForIterableList"), "ForIterableList")(p);
+                memo[tuple(`ForIterableList`, p.end)] = result;
+                return result;
+            }
+        }
+    }
+
+    static TParseTree ForIterableList(string s)
+    {
+        if(__ctfe)
+        {
+            return         pegged.peg.defined!(pegged.peg.or!(List!(pegged.peg.discard!(pegged.peg.oneOrMore!(space)), pegged.peg.discard!(space)), FunctionFirstArgument), "QMakeProject.ForIterableList")(TParseTree("", false,[], s));
+        }
+        else
+        {
+            forgetMemo();
+            return hooked!(pegged.peg.defined!(pegged.peg.or!(List!(pegged.peg.discard!(pegged.peg.oneOrMore!(space)), pegged.peg.discard!(space)), FunctionFirstArgument), "QMakeProject.ForIterableList"), "ForIterableList")(TParseTree("", false,[], s));
+        }
+    }
+    static string ForIterableList(GetName g)
+    {
+        return "QMakeProject.ForIterableList";
     }
 
     static TParseTree EvalTestFunctionCall(TParseTree p)

@@ -25,7 +25,7 @@ module qmakegrammar;
 enum QMakeGrammar = `
     QMakeProject:
         Project <- Statement* eoi
-        Statement <- FunctionDeclaration / Assignment / Scope / Block / BooleanExpression / ReplaceFunctionCall / TestFunctionCall / Comment / EmptyStatement
+        Statement <- FunctionDeclaration / Assignment / ForStatement / Scope / Block / BooleanExpression / ReplaceFunctionCall / TestFunctionCall / Comment / EmptyStatement
 
         # No input
         EmptyStatement <- eps :eol*
@@ -130,6 +130,10 @@ enum QMakeGrammar = `
         BooleanConst                 <- "true" / "false"
 
         # FIXME: move built-in test and replace function to separate module
+
+        ForStatement <- "for" OPEN_PAR_WS ForIteratorVariableName COMMA_WS ForIterableList CLOSE_PAR_WS Block
+        ForIteratorVariableName <- QualifiedIdentifier
+        ForIterableList <- List(:space+, :space) / FunctionFirstArgument #/ Statement
 
         # eval(string)
         EvalTestFunctionCall <- "eval" OPEN_PAR_WS EvalArg CLOSE_PAR_WS

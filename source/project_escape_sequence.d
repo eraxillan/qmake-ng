@@ -121,6 +121,11 @@ public class EscapeSequence
             return "\v";
         };
 
+        convertMap["\\$"] = (in string str, in int from, in int length) {
+            trace("'\\$' escape sequence");
+            return "$";
+        };
+
         // Add octal character codes: from 0 to 777
 		// FIXME: implement
 		/+
@@ -187,18 +192,15 @@ public class EscapeSequence
 
     public string getEscapeSequence(in string str, in int indexFrom, in int length)
 	{
-		// FIXME: check
-        // auto key = str.substr(indexFrom, length);
-        // auto key_1 = key.substr(0, 4);   // \777
-        // auto key_2 = key.substr(0, 2);   // \r
-		auto key = str[indexFrom .. length];
-		auto key_1 = key[0 .. 4];   // \777
-        auto key_2 = key[0 .. 2];   // \r
-        if (key_1 in m_convertMap)
-            return m_convertMap[key_1](str, indexFrom, length);
-        else if (key_2 in m_convertMap)
-            return m_convertMap[key_2](str, indexFrom, length);
-        else {
+		auto key = str[indexFrom .. indexFrom + length];
+        assert(key.length == 2 || key.length == 4);
+
+        if (key in m_convertMap)
+        {
+            return m_convertMap[key](str, indexFrom, length);
+        }
+        else
+        {
             throw new Exception("invalid sequence '" ~ key ~ "'");
         }
     }
