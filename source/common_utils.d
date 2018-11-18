@@ -120,7 +120,7 @@ public auto getDateTimeString()
 
 @property public string left(in string str, in long count)
 {
-	return str[0 .. count - 1];
+	return str[0 .. count];
 }
 
 @property public string right(in string str, in long count)
