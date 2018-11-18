@@ -51,6 +51,47 @@ public class Project
         m_persistentStorage = persistentStorage;
     }
 
+    public void dump() /*const*/
+    {
+        // FIXME: distinguish unset variables from empty ones!!!
+
+        trace("\n\nqmake built-in variable values:");
+        foreach (variableName; m_context.getBuiltinVariableNames())
+        {
+            string[] variableValue = m_context.getVariableRawValue(variableName);
+            if (!variableValue.empty)
+                trace(variableName, " = ", variableValue);
+        }
+        
+        trace("\n\nqmake user-defined variable values:");
+        foreach (variableName; m_context.getUserDefinedVariableNames())
+        {
+            string[] variableValue = m_context.getVariableRawValue(variableName);
+            if (!variableValue.empty)
+            {
+                trace(variableName, " = ", variableValue);
+            }
+        }
+        trace("\n\n");
+    }
+
+    public bool tryParseSnippet(in string snippet)
+    {
+        LineInfo[] li;
+        string preprocessedSnippet = preprocessLines(splitLines(snippet), li);
+
+        auto parseTree = QMakeProject(preprocessedSnippet);
+        if (!parseTree.successful)
+        {
+            trace(parseTree);
+//            trace("Parsing project file '" ~ fileName ~ "' FAILED");
+        }
+//        else
+//            trace("Project file '" ~ fileName ~ "' successfully parsed");
+
+        return parseTree.successful;
+    }
+
     public bool tryParse(in string fileName) const
     {
         trace("Trying to parse project file '" ~ fileName ~ "'...");
@@ -63,7 +104,7 @@ public class Project
         if (!parseTree.successful)
         {
             trace(parseTree);
-            trace("Parsing project file '" ~ fileName ~ "' FAILED:");
+            trace("Parsing project file '" ~ fileName ~ "' FAILED");
         }
         else
             trace("Project file '" ~ fileName ~ "' successfully parsed");
@@ -144,12 +185,77 @@ public class Project
             evalScopeConditionNode(context, statementNode);
             break;
         case "QMakeProject.FunctionDeclaration":
+            // FIXME: implement
             error("NOT IMPLEMENTED YET");
             break;
+        case "QMakeProject.ForStatement":
+            evalForStatement(context, statementNode);
+            break;
         default:
+            trace(statementNode);
             error("Invalid statement type '" ~ statementNode.name ~ "'");
             throw new Exception("Invalid statement type '" ~ statementNode.name ~ "'");
         }
+    }
+
+    private void evalForStatement(ref ProExecutionContext context, ref ParseTree forNode)
+    {
+        trace("");
+
+        assert(forNode.name == "QMakeProject.ForStatement");
+        assert(forNode.children.length == 6);
+
+        // Get iterator variable name
+        auto variableNameMetaNode = forNode.children[1];
+        assert(variableNameMetaNode.name == "QMakeProject.ForIteratorVariableName");
+        assert(variableNameMetaNode.children.length == 1);
+        auto variableNameNode = variableNameMetaNode.children[0];
+        assert(variableNameNode.name == "QMakeProject.QualifiedIdentifier");
+        assert(variableNameNode.children.length == 0);
+        assert(variableNameNode.matches.length == 1);
+        string variableName = variableNameNode.matches[0];
+        trace("For iterator variable name: ", variableName);
+
+        // Eval string list to iterate on
+        string[] iterableList;
+        auto listMetaNode = forNode.children[3];
+        assert(listMetaNode.name == "QMakeProject.ForIterableList");
+        assert(listMetaNode.children.length == 1);
+        auto listNode = listMetaNode.children[0];
+        assert(listNode.name == "QMakeProject.FunctionFirstArgument" || listNode.name == "QMakeProject.List");
+        switch (listNode.name)
+        {
+            case "QMakeProject.FunctionFirstArgument":
+                string value = listNode.matches.join("");
+                auto evaluator = new ExpressionEvaluator(context, m_persistentStorage);
+                auto rpnExpression = convertToRPN(value);
+                auto result = evaluator.evalRPN(rpnExpression);
+                trace("List variable name: ", result);
+                if (!context.isVariableDefined(result[0]))
+                    throw new Exception("Undefined list variable '" ~ result[0] ~ "', aborting");
+                iterableList = context.getVariableRawValue(result[0]);
+                assert(iterableList.length >= 1);
+                trace("List to iterate on: ", iterableList);
+                break;
+            default:
+                throw new Exception("Unknown type of for-iterable list");
+        }
+
+        auto blockMetaNode = forNode.children[5];
+        assert(blockMetaNode.name == "QMakeProject.Block");
+
+        foreach (listValue; iterableList)
+        {
+            // Declare local counter variable
+            context.assignVariable(variableName, [listValue], VariableType.STRING);
+
+            evalBlock(context, blockMetaNode);
+        }
+
+        // Unset the already unneeded variable
+        context.unsetVariable(variableName);
+
+        trace("");
     }
 
     private void evalBlock(ref ProExecutionContext context, ref ParseTree bodyNode)
@@ -226,6 +332,7 @@ public class Project
             context.removeAssignVariable(name, result);
             break;
         case STR_TILDE_EQUALS:
+            // FIXME: implement
             throw new Exception("Not implemented yet");
         default:
             throw new Exception("Invalid assignment operator '" ~ operator ~ "'");
@@ -374,8 +481,10 @@ public class Project
         switch (boolExprNode.name)
         {
         case "QMakeProject.ParenthesedBooleanExpression":
+            // FIXME: implement
             throw new Exception("Not implemented");
         case "QMakeProject.IfTestFunctionCall":
+            // FIXME: implement
             throw new Exception("Not implemented");
         case "QMakeProject.BooleanAtom":
             // BooleanAtom <- ReplaceFunctionCall / TestFunctionCall / QualifiedIdentifier / BooleanConst
@@ -383,12 +492,14 @@ public class Project
             switch (boolAtomNode.name)
             {
             case "QMakeProject.ReplaceFunctionCall":
+                // FIXME: implement
                 throw new Exception("Not implemented yet");
             case "QMakeProject.TestFunctionCall":
                 return evalTestFunctionNode(context, boolAtomNode);
             case "QMakeProject.QualifiedIdentifier":
                 return evalBooleanVariableNode(context, boolAtomNode);
             case "QMakeProject.BooleanConst":
+                // FIXME: implement
                 throw new Exception("Not implemented yet");
             default:
                 throw new Exception("Unknown boolean atom type");
@@ -575,4 +686,106 @@ unittest
     assert(pro.tryParse("tests/uikit_qt.prf"));
     assert(pro.tryParse("tests/compositor_api.pri"));
     assert(pro.tryParse("tests/linux-clang-qmake.conf"));
+
+     assert(pro.tryParseSnippet(
+`
+for(_, $$list(_)) { # just a way to break easily
+    isEmpty(FORCE_MINGW_QDOC_BUILD): FORCE_MINGW_QDOC_BUILD = $$(FORCE_MINGW_QDOC_BUILD)
+    equals(QMAKE_HOST.os, Windows):gcc:isEmpty(FORCE_MINGW_QDOC_BUILD) {
+            log("QDoc build is disabled on MinGW in Qt 5.11.0, because of a missing feature in the release infrastructure.(\\n)")
+            log("You can enable it by setting FORCE_MINGW_QDOC_BUILD")
+            break()
+    }
+}
+`));
+
+    // Qt projects
+    // FIXME: detect Qt path during run-time
+    assert(pro.tryParse("/opt/Qt/5.11.1/Src/qt3d/tests/auto/render/render.pro"));
+    assert(pro.tryParse("/opt/Qt/5.11.1/Src/qttools/mkspecs/features/qt_find_clang.prf"));
+    assert(pro.tryParse("/opt/Qt/5.11.1/Src/qtwebengine/mkspecs/features/configure.prf"));
+    assert(pro.tryParse("/opt/Qt/5.11.1/Src/qtwebengine/mkspecs/features/platform.prf"));
+    assert(pro.tryParse("/opt/Qt/5.11.1/Src/qtmultimedia/examples/multimedia/multimedia.pro"));
+    assert(pro.tryParse("/opt/Qt/5.11.1/Src/qtremoteobjects/tests/auto/integration_multiprocess/server/server.pro"));
+    assert(pro.tryParse("/opt/Qt/5.11.1/Src/qtbase/tests/auto/network/ssl/ssl.pro"));
+    assert(pro.tryParse("/opt/Qt/5.11.1/Src/qtbase/src/plugins/sqldrivers/configure.pri"));
+    assert(pro.tryParse("/opt/Qt/5.11.1/Src/qtbase/src/widgets/util/util.pri"));
+    assert(pro.tryParse("/opt/Qt/5.11.1/Src/qtbase/mkspecs/features/spec_post.prf"));
+    assert(pro.tryParse("/opt/Qt/5.11.1/Src/qtbase/mkspecs/features/winrt/package_manifest.prf"));
+    assert(pro.tryParse("/opt/Qt/5.11.1/Src/qtbase/mkspecs/features/qt_configure.prf"));
+    assert(pro.tryParse("/opt/Qt/5.11.1/Src/qtdeclarative/tests/auto/quick/pointerhandlers/pointerhandlers.pro"));
+    assert(pro.tryParse("/opt/Qt/5.11.1/Src/qtdeclarative/tests/auto/qml/qml.pro"));
+
+    int parseQtSourceProjects(string qtDir)
+    {
+        import std.stdio : writefln;
+        import std.conv : to;
+
+        auto projectFiles = std.file.dirEntries(qtDir, std.file.SpanMode.depth).filter!(
+            f => f.name.endsWith(".pro") || f.name.endsWith(".pri") || f.name.endsWith(".prf") || f.name.endsWith(".conf")
+        );
+    
+        int successfulCount, failedCount;
+        string[] failedProjects;
+        foreach (d; projectFiles)
+        {
+            if (d.name.indexOf("qtbase/qmake/doc/snippets/") != -1
+                || d.name.indexOf("qtdoc/doc/src/snippets/") != -1
+                || d.name.indexOf("qtdoc/doc/snippets/") != -1
+                || d.name.indexOf("activeqt/doc/snippets/") != -1
+                || d.name.indexOf("qtxmlpatterns/src/xmlpatterns/doc/snippets/") != -1
+                || d.name.indexOf("qtscript/src/script/doc/snippets/") != -1
+                || d.name.indexOf("qtscript/src/scripttools/doc/snippets/") != -1
+                || d.name.indexOf("qttools/src/designer/src/designer/doc/snippets/") != -1
+                || d.name.indexOf("qttools/src/designer/src/uitools/doc/snippets/") != -1
+                || d.name.indexOf("qttools/src/linguist/linguist/doc/snippets/") != -1
+                || d.name.indexOf("qttools/examples/designer/doc/snippets/") != -1
+                || d.name.indexOf("qtdatavis3d/src/datavisualization/doc/snippets/") != -1
+                || d.name.indexOf("qtsvg/src/svg/doc/snippets/") != -1
+                || d.name.indexOf("qtquickcontrols2.conf") != -1
+                || d.name.indexOf("Sensors.conf") != -1
+                || d.name.indexOf("3rdparty/chromium") != -1
+                || d.name.indexOf("shared/deviceskin/") != -1
+                )
+            {
+                trace("Skipping documentation snippet...");
+                continue;
+            }
+
+            if (d.name.indexOf("tests/auto/qquickstyle/data/") != -1)
+            {
+                trace("Skipping Qt Quick style configuration file...");
+                continue;
+            }
+
+            auto context = new ProExecutionContext();
+            auto prop = new PersistentPropertyStorage();
+		    auto pro = new Project(context, prop);
+            if (pro.tryParse(d.name))
+            {
+                successfulCount++;
+            }
+            else
+            {
+                failedCount++;
+                failedProjects ~= d.name;
+            }
+        }
+
+        immutable int totalCount = successfulCount + failedCount;
+        writefln("Total file count: " ~ to!string(totalCount));
+        writefln("Successfully parsed: " ~ to!string(successfulCount));
+        writefln("Failed to parse: " ~ to!string(failedCount) ~ " or "
+            ~ to!string(100 * failedCount / totalCount) ~ "%%");
+        if (failedCount > 0)
+        {
+            writefln("");
+            writefln("Failed projects:");
+            foreach (project; failedProjects)
+                writefln(project);
+        }
+
+        return (failedCount == 0) ? 0 : 1;
+    }
+    assert(parseQtSourceProjects("/opt/Qt/5.11.1/Src") == 0);
 }
