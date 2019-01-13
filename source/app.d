@@ -37,6 +37,13 @@ import persistent_property;
 import command_line_options;
 
 
+static bool getDefaultSpecName(ref string name)
+{
+    // FIXME: implement auto-detection for all platforms
+    name = "linux-g++";
+    return true;
+}
+
 struct QtVersionInfo
 {
     string qtRootDir;
@@ -56,8 +63,11 @@ class QtVersion
     private static const string MKSPECS_DIR = "mkspecs";
     private static const string FEATURES_DIR = "features";
     
-    public static const string QMAKE_PRE_FILE = "spec_pre.prf";
-    public static const string QMAKE_POST_FILE = "spec_post.prf";
+    public static const string QMAKE_SPEC_PRE_FILE = "spec_pre.prf";
+    public static const string QMAKE_SPEC_POST_FILE = "spec_post.prf";
+
+    public static const string QMAKE_PRE_FILE = "default_pre.prf";
+    public static const string QMAKE_POST_FILE = "default_post.prf";
 
     private QtVersionInfo m_qt;
 
@@ -78,12 +88,12 @@ class QtVersion
 
     string specPreFilePath() const
     {
-        return std.path.buildPath(featureDirPath(), QMAKE_PRE_FILE);
+        return std.path.buildPath(featureDirPath(), QMAKE_SPEC_PRE_FILE);
     }
 
     string specPostFilePath() const
     {
-        return std.path.buildPath(featureDirPath(), QMAKE_POST_FILE);
+        return std.path.buildPath(featureDirPath(), QMAKE_SPEC_POST_FILE);
     }
 
     bool isValid() const
@@ -257,16 +267,16 @@ private static bool loadQmakeFeature(ref ProExecutionContext context, ref Persis
     return true;
 }
 
+// FIXME: change return type to void and enbrace usages in try-catch
 private static bool loadQmakeSpec(ref ProExecutionContext context, ref PersistentPropertyStorage persistentStorage,
     in QtVersion qt, in string name)
 {
     assert(context.getVariableRawValue("DIR_SEPARATOR")[0] == "/");
 
     // 1) Eval pre-feature
-    if (!loadQmakeFeature(context, persistentStorage, qt, QtVersion.QMAKE_PRE_FILE))
+    if (!loadQmakeFeature(context, persistentStorage, qt, QtVersion.QMAKE_SPEC_PRE_FILE))
     {
-        throw new Exception("Post feature eval failed");
-        //return false;
+        throw new Exception("Spec pre-feature eval failed");
     }
 
 	trace("\n\nqmake built-in variable values:");
@@ -301,9 +311,9 @@ private static bool loadQmakeSpec(ref ProExecutionContext context, ref Persisten
     info("qmake mkspec file '" ~ mkspecFilePath ~ "' was successfully parsed");
 
     // 3) Eval post-feature
-    if (!loadQmakeFeature(context, persistentStorage, qt, QtVersion.QMAKE_POST_FILE))
+    if (!loadQmakeFeature(context, persistentStorage, qt, QtVersion.QMAKE_SPEC_POST_FILE))
     {
-        throw new Exception("Post feature eval failed");
+        throw new Exception("Spec post-feature eval failed");
         //return false;
     }
     assert(context.getVariableRawValue("DIR_SEPARATOR")[0] == "/");
@@ -443,6 +453,31 @@ int main(string[] argv)
         return execPropertyAction(options.propertyAction, options.properties, persistentStorage) ? 0 : 101;
     }
 
+    // Validate mkspec
+    if (options.specFileName.empty || !std.file.exists(options.specFileName))
+    {
+        warning("No spec file command line option found");
+        
+        string defaultSpecName;
+        if (getDefaultSpecName(defaultSpecName))
+        {
+            warning("Using default spec: " ~ defaultSpecName);
+            options.specFileName = defaultSpecName;
+        }
+        else
+        {
+            error("Invalid default spec name '{}'", defaultSpecName);
+            return 1;
+        }
+    }
+
+    // Validate mode
+    if (options.mode == QmakeMode.invalid || options.mode == QmakeMode.nothing)
+    {
+        warning("No mode specified, selecting makefile mode by default");
+        options.mode = QmakeMode.makefile;
+    }
+
     /+
     ProFileCache proFileCache;
     Option::proFileCache = &proFileCache;
@@ -450,7 +485,7 @@ int main(string[] argv)
     Option::parser = &parser;
     +/
 
-    // FIXME: process assignments
+    // FIXME: process command-line variable assignments
 
     // FIXME: my custom code //////////////////////////////////////////
     immutable(QtVersionInfo) qtInfo = QtVersionInfo("/opt/Qt", "5.11.1", "gcc_64");
@@ -491,6 +526,13 @@ int main(string[] argv)
             }
 
             //Option::prepareProject(fn);
+
+            // Eval default_pre
+            if (!loadQmakeFeature(context, persistentStorage, qt, QtVersion.QMAKE_PRE_FILE))
+            {
+                throw new Exception("Pre-feature eval failed");
+            }
+            //assert(context.getVariableRawValue("DIR_SEPARATOR")[0] == "/");
 
             auto project = new Project(context, persistentStorage);
             if (!project.eval(fn))
