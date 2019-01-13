@@ -53,6 +53,10 @@ public const auto STR_INVOKE_TEST = "#FUNCTION_INVOKE_TEST";
 public const auto STR_BLOCK_BEGIN = "#CODE_BLOCK_BEGIN";
 public const auto STR_BLOCK_END = "#CODE_BLOCK_END";
 
+static const bool verboseTokenize = false;
+static const bool verboseConvert = false;
+static const bool verboseUnquote = false;
+
 //#region Internal util functions
 public bool isArityMarker(in string str)
 {
@@ -83,8 +87,8 @@ public string[] convertToRPN(in string expr)
     auto arityStack = new QStack!int;
 
     auto exprArray = tokenizeString(expr);
-    trace("Raw expression: '" ~ expr ~ "'");
-    trace("Tokenized expression: ", exprArray);
+    if (verboseConvert) trace("Raw expression: '" ~ expr ~ "'");
+    if (verboseConvert) trace("Tokenized expression: ", exprArray);
 
     auto pushOperator = () {
         auto op = operatorStack.pop();
@@ -97,14 +101,14 @@ public string[] convertToRPN(in string expr)
             if (ProFunction.isReplaceFunction(op))
             {
 				auto functionName = op[STR_EXPAND_MARKER.length .. $];
-                trace("replace function call (2): '" ~ functionName ~ "' with " ~ to!string(functionArity) ~ " arguments");
+                if (verboseConvert) trace("replace function call (2): '" ~ functionName ~ "' with " ~ to!string(functionArity) ~ " arguments");
 
                 outputQueue.push(STR_INTERNAL_MARKER ~ functionName);
                 outputQueue.push(STR_INVOKE_REPLACE);
             }
             else
             {
-                trace("test function call (2): '" ~ op ~ "' with " ~ to!string(functionArity) ~ " arguments");
+                if (verboseConvert) trace("test function call (2): '" ~ op ~ "' with " ~ to!string(functionArity) ~ " arguments");
 
                 outputQueue.push(STR_INTERNAL_MARKER ~ op);
                 outputQueue.push(STR_INVOKE_TEST);
@@ -112,7 +116,7 @@ public string[] convertToRPN(in string expr)
         }
         else
         {
-            trace("operand: '" ~ op ~ "'");
+            if (verboseConvert) trace("operand: '" ~ op ~ "'");
 
             outputQueue.push(op);
         }
@@ -125,7 +129,7 @@ public string[] convertToRPN(in string expr)
 
         if (ProFunction.isReplaceFunction(token) && (i + 1 < exprArray.length) && (exprArray[i + 1] == STR_OPENING_PARENTHESIS))
         {
-            trace("replace function call (1): '" ~ token[STR_EXPAND_MARKER.length .. $] ~ "'");
+            if (verboseConvert) trace("replace function call (1): '" ~ token[STR_EXPAND_MARKER.length .. $] ~ "'");
 
             auto o1 = token;
             auto o2 = operatorStack.top();
@@ -140,7 +144,7 @@ public string[] convertToRPN(in string expr)
         }
 		else if (ProFunction.isTestFunction(token) && (i + 1 < exprArray.length) && (exprArray[i + 1] == STR_OPENING_PARENTHESIS))
 		{
-            trace("test function call (1): '" ~ token ~ "'");
+            if (verboseConvert) trace("test function call (1): '" ~ token ~ "'");
 
             auto o1 = token;
             auto o2 = operatorStack.top();
@@ -156,13 +160,13 @@ public string[] convertToRPN(in string expr)
         }
         else if (token == STR_OPENING_PARENTHESIS)
         {
-            trace("opening parenthesis");
+            if (verboseConvert) trace("opening parenthesis");
 
             operatorStack.push(token);
         }
         else if (token == STR_CLOSING_PARENTHESIS)
         {
-            trace("closing parenthesis");
+            if (verboseConvert) trace("closing parenthesis");
 
             while (operatorStack.top() != STR_OPENING_PARENTHESIS)
             {
@@ -172,7 +176,7 @@ public string[] convertToRPN(in string expr)
         }
         else if (token == STR_COMMA)
         {
-            trace("comma");
+            if (verboseConvert) trace("comma");
 
             assert(arityStack.length() >= 1);
             arityStack.setTop(arityStack.top() + 1);
@@ -184,7 +188,7 @@ public string[] convertToRPN(in string expr)
         }
         else if (token == STR_COLON)
         {
-            trace("colon");
+            if (verboseConvert) trace("colon");
 
             while (operatorStack.length > 0)
             {
@@ -195,7 +199,7 @@ public string[] convertToRPN(in string expr)
         }
         else if (token == STR_OPENING_CURLY_BRACE)
         {
-            trace("opening curly brace");
+            if (verboseConvert) trace("opening curly brace");
 
             while (operatorStack.length > 0)
             {
@@ -205,7 +209,7 @@ public string[] convertToRPN(in string expr)
         }
         else if (token == STR_CLOSING_CURLY_BRACE)
         {
-            trace("closing curly brace");
+            if (verboseConvert) trace("closing curly brace");
 
             while (operatorStack.length > 0)
             {
@@ -215,17 +219,17 @@ public string[] convertToRPN(in string expr)
         }
         else if (isStringValue(token))
         {
-            trace("string operand: '" ~ token ~ "'");
+            if (verboseConvert) trace("string operand: '" ~ token ~ "'");
 
             outputQueue.push(token);
         }
         else if (token == STR_EXPAND_MARKER)
         {
-            trace("variable expand statement: '", token, "'");
+            if (verboseConvert) trace("variable expand statement: '", token, "'");
 
             token ~= exprArray[i + 1];
             i++;
-            trace(token);
+            if (verboseConvert) trace(token);
 
             outputQueue.push(token);
         }
@@ -240,9 +244,9 @@ public string[] convertToRPN(in string expr)
         pushOperator();
     }
 
-    trace();
-    trace("RPN: ", outputQueue.data());
-    trace();
+    if (verboseConvert) trace();
+    if (verboseConvert) trace("RPN: ", outputQueue.data());
+    if (verboseConvert) trace();
 
     return outputQueue.data();
 }
@@ -267,22 +271,23 @@ private EnquotedString getEnquotedString(in int startIndex, in string str, in ch
             break;
 
         string token; token ~= str[i];
-        trace("token: '" ~ token ~ "'");
+        if (verboseUnquote) trace("token: '" ~ token ~ "'");
 
         if (token == STR_HASH)
 		{
-            trace("hash token (start comment)");
+            if (verboseUnquote) trace("hash token (start comment)");
             break;
         }
 		else if (token == STR_BACKSLASH)
 		{
-            trace("backslash (escape sequence)");
+            if (verboseUnquote) trace("backslash (escape sequence)");
 
             auto es = new EscapeSequence();
             auto result = es.isEscapeSequence(str, i);
             if (result.result)
 			{
-                trace("escape sequence length = " ~ to!string(result.length));
+                if (verboseUnquote) trace("escape sequence length = " ~ to!string(result.length));
+
                 auto esStrExpanded = es.getEscapeSequence(str, i, result.length);
                 enquotedStr ~= esStrExpanded;
                 i += result.length - 1;
@@ -292,7 +297,7 @@ private EnquotedString getEnquotedString(in int startIndex, in string str, in ch
         }
 		else if (token == "" ~ quoteChar)
 		{
-            trace("closing quote char found");
+            if (verboseUnquote) trace("closing quote char found");
 
             count ++;
             i ++;
@@ -319,7 +324,7 @@ private string[] tokenizeString(in string str)
 		int argumentIndex;
 	}
 
-    trace("input: '" ~ str ~ "'");
+    if (verboseTokenize) trace("input: '" ~ str ~ "'");
 
     auto result = new QStack!string;
     string currentStr = "";
@@ -327,7 +332,7 @@ private string[] tokenizeString(in string str)
 
     auto pushOperand = () {
         if (!currentStr.empty) {
-            trace("token: '" ~ currentStr ~ "'");
+            if (verboseTokenize) trace("token: '" ~ currentStr ~ "'");
 
             result.push(currentStr);
         }
@@ -351,16 +356,16 @@ private string[] tokenizeString(in string str)
 
         // Single-line comment
         if (token == STR_HASH) {
-            trace("hash token (start comment)");
+            if (verboseTokenize) trace("hash token (start comment)");
 
             break;
         } else if (token == STR_BACKSLASH) {
-            trace("ProParser::tokenizeString: backslash (escape sequence)");
+            if (verboseTokenize) trace("ProParser::tokenizeString: backslash (escape sequence)");
 
             auto es = new EscapeSequence();
             auto result_1 = es.isEscapeSequence(str, i);
             if (result_1.result) {
-                trace("escape sequence length = " ~ to!string(result_1.length));
+                if (verboseTokenize) trace("escape sequence length = " ~ to!string(result_1.length));
                 
 				auto esStrExpanded = es.getEscapeSequence(str, i, result_1.length);
                 currentStr ~= esStrExpanded;
@@ -368,15 +373,15 @@ private string[] tokenizeString(in string str)
             } else
                   currentStr ~= token;
         } else if ((token == STR_DOUBLE_QUOTE) || (token == STR_SINGLE_QUOTE)) {
-            trace("Special token: '" ~ token ~ "'");
+            if (verboseTokenize) trace("Special token: '" ~ token ~ "'");
 
             auto enquotedStrObj = getEnquotedString(i, str, token[0]);
-            trace("enquoted string: '" ~ enquotedStrObj[0] ~ "', length: " ~ to!string(enquotedStrObj[1] - i - 2));
+            if (verboseTokenize) trace("enquoted string: '" ~ enquotedStrObj[0] ~ "', length: " ~ to!string(enquotedStrObj[1] - i - 2));
 
 			result.push(enquotedStrObj[0]);
             i = enquotedStrObj[1] - 1;  // NOTE: 'i' will be incremented in 'for'
         } else if (token == STR_OPENING_PARENTHESIS) {
-            trace("opening parenthesis token");
+            if (verboseTokenize) trace("opening parenthesis token");
 
             // NOTE: "(" can be either syntax item (function call) or just part of arbitrary string value;
             //       however, it must have corresponding ")" or syntax error will be thrown
@@ -384,8 +389,8 @@ private string[] tokenizeString(in string str)
             if (ProFunction.isReplaceFunction(functionName) || ProFunction.isTestFunction(functionName)) {
                 pushOperand();
 
-                trace("function name: '" ~ functionName ~ "'");
-                trace("opening parenthesis");
+                if (verboseTokenize) trace("function name: '" ~ functionName ~ "'");
+                if (verboseTokenize) trace("opening parenthesis");
 
                 result.push(token);
             } else {
@@ -395,12 +400,12 @@ private string[] tokenizeString(in string str)
 
             parenthesisStack.push(Argument(functionName, 0));
         } else if (token == STR_CLOSING_PARENTHESIS) {
-            trace("closing parenthesis token");
+            if (verboseTokenize) trace("closing parenthesis token");
 
             if (hasTopFunction()) {
                 pushOperand();
 
-                trace("closing parenthesis");
+                if (verboseTokenize) trace("closing parenthesis");
                 result.push(token);
             } else {
                 currentStr ~= token;
@@ -408,7 +413,7 @@ private string[] tokenizeString(in string str)
 
             parenthesisStack.pop();
         } else if (token == STR_OPENING_CURLY_BRACE) {
-            trace("Special token: '" ~ token ~ "'");
+            if (verboseTokenize) trace("Special token: '" ~ token ~ "'");
 
             // NOTE: "{" can be either code block begin or part of variable expansion statement e.g. "$${MY_VAR}"
 			// FIXME: check correctness
@@ -424,7 +429,7 @@ private string[] tokenizeString(in string str)
                         break;
 
                     token = "" ~ str[i];
-                    trace("token: '" ~ token ~ "'");
+                    if (verboseTokenize) trace("token: '" ~ token ~ "'");
 
                     currentStr ~= token;
                     if (token == STR_CLOSING_CURLY_BRACE)
@@ -445,20 +450,20 @@ private string[] tokenizeString(in string str)
             } else {
                 pushOperand();
 
-                trace("closing parenthesis");
+                if (verboseTokenize) trace("closing parenthesis");
                 result.push(token);
             }
         } else if (token == STR_CLOSING_CURLY_BRACE) {
-            trace("Special token: '" ~ token ~ "'");
+            if (verboseTokenize) trace("Special token: '" ~ token ~ "'");
 
             result.push(token);
         } else if (token == STR_COMMA) {
-            trace("Special token: '" ~ token ~ "'");
+            if (verboseTokenize) trace("Special token: '" ~ token ~ "'");
 
             if (hasTopFunction() && (getTopFunctionArgumentType() != VariableType.RAW_STRING)) {
                 pushOperand();
 
-				trace("comma as function argument separator");
+				if (verboseTokenize) trace("comma as function argument separator");
 				result.push(token);
 
                 // NOTE: only in this case argument index should be increased
@@ -467,11 +472,11 @@ private string[] tokenizeString(in string str)
                 currentStr ~= token;
             }
 		} else if (isWhitespaceToken(token)) {
-            trace("Whitespace token");
+            if (verboseTokenize) trace("Whitespace token");
 
             // Add comma to whitespace-separated list for corresponding functions
             if (hasTopFunction() && (getTopFunctionArgumentType() == VariableType.STRING_LIST)) {
-                trace("processing function '" ~ getTopFunctionName() ~ "' argument list...");
+                if (verboseTokenize) trace("processing function '" ~ getTopFunctionName() ~ "' argument list...");
 
                 auto shouldAddComma = (currentStr.length > 0);
 
@@ -486,19 +491,21 @@ private string[] tokenizeString(in string str)
 
                         token = "" ~ str[i];
                         if (isWhitespaceToken(token))
-                            trace("Whitespace token");
+                        {
+                            if (verboseTokenize) trace("Whitespace token");
+                        }
                         else
                             break;
                     } while (true);
 
                     if (token == STR_HASH) {
-                        trace("Hash token");
+                        if (verboseTokenize) trace("Hash token");
                         break;
                     }
 
                     shouldAddComma = (token != STR_CLOSING_PARENTHESIS);
                     if (shouldAddComma) {
-                        trace("comma as function argument separator (added instead of whitespace)");
+                        if (verboseTokenize) trace("comma as function argument separator (added instead of whitespace)");
 
                         result.push(STR_COMMA);
                     }
@@ -515,7 +522,7 @@ private string[] tokenizeString(in string str)
                 pushOperand();
             }
         } else if (token == STR_COLON) {
-            trace("Special token: '" ~ token ~ "'");
+            if (verboseTokenize) trace("Special token: '" ~ token ~ "'");
 
             if ((!parenthesisStack.isEmpty()) && !parenthesisStack.top().functionName.empty &&
                 (ProFunction.getFunctionArgumentType(parenthesisStack.top().functionName, parenthesisStack.top().argumentIndex) == VariableType.RAW_STRING)) {
@@ -523,17 +530,17 @@ private string[] tokenizeString(in string str)
             } else {
                 pushOperand();
 
-                trace("colon (as single-line code block start marker)");
+                if (verboseTokenize) trace("colon (as single-line code block start marker)");
                 result.push(STR_COLON);
             }
         } else if (token == STR_SINGLE_EXPAND_MARKER) {
             // NOTE: statement like ${VAR} can be used in custom compiler generation (?); attention: SINGLE dollar sign
             // FIXME: need further investigion!
-            trace("Expand token: '", token, "'");
+            if (verboseTokenize) trace("Expand token: '", token, "'");
 
             auto twoTokens = joinTokens(str, i, 2);
             if (twoTokens == STR_GENERATOR_EXPAND_MARKER) {
-                trace("Generator expression detected");
+                if (verboseTokenize) trace("Generator expression detected");
 
                 currentStr ~= twoTokens;
                 i += 2;
@@ -549,7 +556,7 @@ private string[] tokenizeString(in string str)
                 currentStr ~= token;
             }
         } else {
-            trace("Other token: '" ~ token ~ "'");
+            if (verboseTokenize) trace("Other token: '" ~ token ~ "'");
 
             currentStr ~= token;
         }
