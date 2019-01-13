@@ -69,3 +69,9 @@ public const auto STR_PLUS_EQUALS = "+=";       // DEFINES += USE_MY_STUFF
 public const auto STR_ASTERISK_EQUALS = "*=";   // DEFINES *= USE_MY_STUFF
 public const auto STR_MINUS_EQUALS = "-=";      // DEFINES -= USE_MY_STUFF
 public const auto STR_TILDE_EQUALS = "~=";      // DEFINES ~= s/QT_[DT].+/QT
+
+// Boolean constants
+public const auto STR_TRUE = "true";
+public const auto STR_FALSE = "false";
+
+public const auto STR_HOSTBUILD = "host_build";

@@ -34,13 +34,68 @@ import std.path;
 import std.string;
 import std.range;
 import std.regex;
+import qmakeexception;
 import common_const;
+import common_utils;
 import project_variable;
 import project_context;
 // -------------------------------------------------------------------------------------------------
 
 public class ProFunction
 {
+	// Helper
+	private static string[] returnBoolString(in bool b)
+	{
+		return b ? [STR_TRUE] : [STR_FALSE];
+	}
+
+	private static bool isActiveConfig(in string config, in string specName, in string[] configVarValues, in bool useRegex = false)
+	{
+    	// Magic types for easy flipping
+    	if (config == STR_TRUE)
+        	return true;
+    	if (config == STR_FALSE)
+        	return false;
+
+		// FIXME: implement "host_build { ... }" scope statement in parser first
+    	/+
+		if (config == STR_HOSTBUILD)
+        	return m_hostBuild;
+		+/
+
+		if (useRegex && (config.canFind('*') || config.canFind('?')))
+		{
+			// FIXME: need testing!
+			bool b = true; if (b) assert(0);
+
+			auto re = regex(wildcardToRegex(config));
+
+        	// mkspecs
+			if (specName.matchFirst(re))
+            	return true;
+
+        	// CONFIG variable
+        	foreach (configValue; configVarValues)
+			{
+            	if (configValue.matchFirst(re))
+                	return true;
+        	}
+    	}
+		else
+		{
+        	// mkspecs
+        	if (specName == config)
+            	return true;
+
+        	// CONFIG variable
+        	if (configVarValues.canFind(config))
+            	return true;
+    	}
+
+    	return false;
+	}
+
+
 	static this()
 	{
 		replaceFunctions["first"] = new ProFunction("first", VariableType.STRING, true, 1, -1, [VariableType.STRING_LIST],
@@ -69,10 +124,16 @@ public class ProFunction
 				foreach (DirEntry de; deResult)
 				{
 					assert(std.file.exists(de.name));
-					trace("Match: ", de.name);
 
 					result ~= de.name;
-				}				
+				}
+
+				// Showcase stable sorting
+				import std.algorithm.mutation : SwapStrategy;
+				std.algorithm.sort!("a < b", SwapStrategy.unstable)(result);
+				trace("Matches:");
+				writeln(result);
+
 				return result;
 			}
 		);
@@ -110,6 +171,31 @@ public class ProFunction
 				trace("Variable name: ", variableName);
 				trace("Variable value: ", variableValue);
 				trace("Variable reversed value: ", result);
+				return result;
+			}
+		);
+
+		replaceFunctions["section"] = new ProFunction("section", VariableType.STRING_LIST,
+			false, 3, 1, [VariableType.STRING],
+			(ref ProExecutionContext context, in string[] arguments) {
+				trace(arguments);
+				assert(arguments.length == 3 || arguments.length == 4);
+
+				string variableName = arguments[0];
+				string separator = arguments[1];
+				int begin = to!int(arguments[2]);
+				int end = -1;
+				if (arguments.length == 4)
+					end = to!int(arguments[3]);
+
+				string[] value = context.getVariableRawValue(variableName);
+
+				string[] result;
+				foreach (str; value)
+				{
+					result ~= sectionString(str, separator, begin, end);
+				}
+
 				return result;
 			}
 		);
@@ -154,6 +240,87 @@ public class ProFunction
 		);
 
 		// ------------------------------------------------------------------------------------------------------------
+
+		testFunctions["defined"] = new ProFunction("defined", VariableType.BOOLEAN,
+			false, 1, 1, [VariableType.STRING, VariableType.STRING],
+			(ref ProExecutionContext context, in string[] arguments) {
+				trace(arguments);
+				assert(arguments.length == 1 || arguments.length == 2);
+
+				immutable string name = arguments[0];
+				if (arguments.length == 2)
+				{
+					immutable string type = arguments[1];
+					switch (type)
+					{
+						case "test":
+						{
+							// return returnBool(m_functionDefs.testFunctions.contains(var));
+							throw new NotImplementedException("test");
+						}
+						case "replace":
+						{
+							// return returnBool(m_functionDefs.replaceFunctions.contains(var));
+							throw new NotImplementedException("replace");
+						}
+						case "var":
+						{
+							immutable bool b = context.isVariableDefined(name);
+							trace("Variable name: ", name);
+							trace("Whether variable defined: ", b);
+							return returnBoolString(b);
+						}
+						default: throw new Exception("Unexpected type " ~ type);
+					}
+				}
+				// return returnBool(m_functionDefs.replaceFunctions.contains(var) || m_functionDefs.testFunctions.contains(var));
+				throw new NotImplementedException("test || replace"); 
+			}
+		);
+
+		testFunctions["CONFIG"] = new ProFunction("CONFIG", VariableType.BOOLEAN,
+			false, 1, 1, [VariableType.STRING, VariableType.STRING],
+			(ref ProExecutionContext context, in string[] arguments) {
+				trace(arguments);
+				assert(arguments.length == 1 || arguments.length == 2);
+
+				// FIXME: add spec to built-in variables and remove this hardcode
+				const string specName = "linux-g++";
+
+				string[] configValue = context.getVariableRawValue("CONFIG");
+				immutable(bool) isConfigValueEmpty = configValue.empty || configValue[0].empty;
+				assert(!isConfigValueEmpty);
+				trace("CONFIG variable value:");
+				trace(configValue);
+
+				if (arguments.length == 1)
+				{
+					immutable bool b = isActiveConfig(arguments[0], specName, configValue, false);
+					trace("CONFIG result 1: ", b);
+					return returnBoolString(b);
+				}
+
+				const auto mutuals = splitString(arguments[1], "|", true);
+				trace("Mutual conditions: ", mutuals);
+
+				for (ulong i = configValue.length - 1; i >= 0; i--)
+				{
+            		for (ulong mut = 0; mut < mutuals.length; mut++)
+					{
+                		if (configValue[i] == mutuals[mut].strip())
+						{
+							bool b = configValue[i] == arguments[0];
+							trace("CONFIG result 2: ", b);
+                    		return returnBoolString(b);
+						}
+            		}
+        		}
+
+				trace("CONFIG result 3: ", false);
+				return returnBoolString(false);
+			}
+		);
+		testFunctions["isActiveConfig"] = testFunctions["CONFIG"];
 
 		testFunctions["for"] = new ProFunction("for", VariableType.BOOLEAN,
 			false, 2, 0, [VariableType.STRING, VariableType.STRING],

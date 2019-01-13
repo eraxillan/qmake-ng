@@ -130,7 +130,9 @@ public auto getDateTimeString()
 
 public bool isWhitespaceToken(in string str)
 {
-	// FIXME: implement
+	// FIXME: use `isWhite` function
+	//
+	// FIXME: implement unit-test
 	// if (/\s/.test(token)
 	return !matchFirst(str, r"\s+").empty;
 }
@@ -141,6 +143,47 @@ public string joinTokens(in string str, in int index, in int count)
     for (int j = index; j < min(index + count, str.length); j++)
         result ~= str[j];
     return result;
+}
+
+public string[] splitString(in string str, in string delim, in bool skipEmptyParts)
+{
+    string[] temp = str.split(delim);
+
+	if (!skipEmptyParts)
+		return temp;
+
+    string[] temp_2;
+    foreach (value; temp)
+    {
+        if (!value.empty)
+            temp_2 ~= value;
+    }
+	return temp_2;
+}
+
+public string sectionString(in string str, in string delim, in int start, in int end = -1, in bool skipEmptyParts = false)
+{
+	string[] temp = splitString(str, delim, skipEmptyParts);
+
+	// Naive optimization: no or just one section items
+	if (temp.length <= 1)
+		return str;	
+	if (start == end)
+	{
+		immutable int startNew = (start >= 0) ? start : (cast(int)temp.length - (-start));
+		return temp[startNew];
+	}
+
+	int startNew = start;
+	if (start < 0)
+		startNew = cast(int)temp.length - (-startNew);
+	int endNew = end;
+	if ((start >= 0) && (end == -1))
+		endNew = cast(int)temp.length - 1;
+	else if (end < 0)
+		endNew = cast(int)temp.length - (-endNew);
+
+	return temp[startNew .. endNew + 1].join(delim);
 }
 
 /+
@@ -171,8 +214,50 @@ public bool isHexNumeric(in string n)
 	}
 }
 
+public string wildcardToRegex(in string pattern)
+{
+    /*return "^" + Regex.Escape(pattern)
+                      .Replace(@"\*", ".*")
+                      .Replace(@"\?", ".")
+               + "$";*/
+	string result;
+	result ~= "^";
+
+	string escapedPattern = to!string(pattern.escaper.array);
+	result ~= escapedPattern.replace(`\*`, `.*`).replace(`\?`, `.`);
+
+	result ~= "$";
+	return result;
+}
+
 unittest
 {
+	// left
 	assert("pineapple".left(4) == "pine");
+	// right
 	assert("pineapple".right(5) == "apple");
+	// FIXME: isWhitespaceToken
+	// FIXME: joinTokens
+
+	// FIXME: splitString
+
+	// sectionString
+	void testSplit()
+	{
+		immutable string csv = "forename,middlename,surname,phone";
+  		immutable string path = "/usr/local/bin/myapp";
+
+		assert(sectionString(csv, ",", 2, 2) == "surname");
+		assert(sectionString(path, "/", 3, 4) == "bin/myapp");
+		assert(sectionString(path, "/", 3, 3, true) == "myapp");
+    	assert(sectionString(csv, ",", -3, -2) == "middlename,surname");
+    	assert(sectionString(path, "/", -1) == "myapp");
+	}
+	testSplit();
+	
+	// FIXME: isNumeric
+	// FIXME: isHexNumeric
+	// FIXME: wildcardToRegex
+	
+	//assert(false);
 }
