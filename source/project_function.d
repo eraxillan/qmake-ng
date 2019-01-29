@@ -196,6 +196,10 @@ public class ProFunction
 					result ~= sectionString(str, separator, begin, end);
 				}
 
+				trace("Variable name: ", variableName);
+				trace("Variable value: ", value);
+				trace("Sectioned value: ", result);
+
 				return result;
 			}
 		);

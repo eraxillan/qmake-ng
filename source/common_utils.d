@@ -34,7 +34,7 @@ import std.getopt;
 import std.path;
 import std.string;
 import std.range;
-
+import common_const;
 // -------------------------------------------------------------------------------------------------
 
 // FIXME: use alias this to eliminate dublicated with std.array properties
@@ -100,22 +100,28 @@ public class QStack(DataType)
 
 // -------------------------------------------------------------------------------------------------
 
+public void setupDatetimeLocale()
+{
+	import std.process : environment;
+	import core.stdc.locale: setlocale, LC_ALL, LC_TIME;
+
+	auto value = environment.get("LC_TIME");
+	if (value is null)
+		throw new Exception("LC_TIME is not defined");
+	
+	setlocale(LC_TIME, value.ptr);
+}
+
 public auto getDateTimeString()
 {
-	import std.string : format, split;
-	import std.datetime : DateTime, Clock;
-
-	DateTime dateTime = cast(DateTime)Clock.currTime();
-	with (dateTime)
-	{
-		return format(
-			"%s " ~ // day of the week (eg. 'Saturday')
-			"%s.%02s.%s " ~ // date, month, year
-			"[%s:%02s:%02s%s]", // hour:minute:second am/pm
-			split("Sunday Monday Tuesday Wednesday Thursday Friday Saturday")[dayOfWeek],
-				day, cast(int)month, year,
-				hour == 0 || hour == 12 ? 12 : hour % 12, minute, second, hour <= 11 ? "am" : "pm");
-	}
+	import core.stdc.time : time, localtime, strftime;
+	auto unixTime = time(null);
+	auto tmVar = localtime(&unixTime);
+	char[256] buffer;
+    auto len = strftime(buffer.ptr, 80, toStringz("%a %b. %d %T %Y"), tmVar);
+	auto prettyStr = buffer[0 .. len].idup;
+	prettyStr = toLower(prettyStr);
+	return prettyStr;
 }
 
 @property public string left(in string str, in long count)
@@ -137,10 +143,30 @@ public bool isWhitespaceToken(in string str)
 	return !matchFirst(str, r"\s+").empty;
 }
 
-public string joinTokens(in string str, in int index, in int count)
+public bool isUnderscore(in char ch)
+{
+	return (ch == CHAR_UNDERSCORE);
+}
+
+public bool isAlphascore(in char ch)
+{
+	return (isAlpha(ch) || isUnderscore(ch));
+}
+
+public bool containsQuote(in string str)
+{
+	foreach (ch; str)
+	{
+		if ((ch == CHAR_SINGLE_QUOTE) || (ch == CHAR_DOUBLE_QUOTE))
+			return true;
+	}
+	return false;
+}
+
+public string joinTokens(in string str, in long index, in long count)
 {
     string result = "";
-    for (int j = index; j < min(index + count, str.length); j++)
+    for (long j = index; j < min(index + count, str.length); j++)
         result ~= str[j];
     return result;
 }
@@ -228,6 +254,46 @@ public string wildcardToRegex(in string pattern)
 
 	result ~= "$";
 	return result;
+}
+
+/**
+  * Read the file.
+  * Params:
+  *      persistentStorage = qmake persistent storage object reference
+  *      strSource = expression string to be expanded
+  * Returns: strSource with all project/environment variables and persistent properties expanded
+  *          (i.e. replaced with their actual values)
+  */
+public bool isExpandable(in string str, in long from = 0)
+{
+	// Naive optimization
+	if ((str.length < 2) || (str.length - from - 1 < 2) || (str[from] != CHAR_SINGLE_EXPAND_MARKER))
+		return false;
+
+	immutable auto twoTokens = joinTokens(str, from, 2);
+	immutable auto threeTokens = joinTokens(str, from, 3);
+	assert(twoTokens.length >= 2);
+	assert(threeTokens.length >= 2);
+	assert(twoTokens[0] == CHAR_SINGLE_EXPAND_MARKER);
+	assert(threeTokens[0] == CHAR_SINGLE_EXPAND_MARKER);
+
+	// generator expression: $VAR, ${VAR}
+	if (isAlphascore(twoTokens[1]) || (twoTokens == STR_GENERATOR_EXPAND_MARKER))
+		return true;
+    
+	// project variable: $$VAR, $${VAR}
+	if ((twoTokens == STR_EXPAND_MARKER) || (threeTokens == STR_VARIABLE_EXPAND_MARKER))
+		return true;
+    
+	// environment variable: $$(VAR)
+	if (threeTokens == STR_ENV_VARIABLE_EXPAND_MARKER)
+		return true;
+    
+	// persistent property: $$[VAR]
+	if (threeTokens == STR_PROPERTY_EXPAND_MARKER)
+		return true;
+	
+	return false;
 }
 
 unittest

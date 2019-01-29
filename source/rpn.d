@@ -90,6 +90,15 @@ public string[] convertToRPN(in string expr)
     if (verboseConvert) trace("Raw expression: '" ~ expr ~ "'");
     if (verboseConvert) trace("Tokenized expression: ", exprArray);
 
+    return convertToRPN(exprArray);
+}
+
+public string[] convertToRPN(in string[] exprArray)
+{
+    auto outputQueue = new QStack!string;
+    auto operatorStack = new QStack!string;
+    auto arityStack = new QStack!int;
+
     auto pushOperator = () {
         auto op = operatorStack.pop();
         if (ProFunction.isReplaceFunction(op) || ProFunction.isTestFunction(op))
@@ -124,7 +133,7 @@ public string[] convertToRPN(in string expr)
 
     for (int i = 0; i < exprArray.length; i++)
 	{
-        auto token = exprArray[i];
+        string token = exprArray[i];
         //trace("token[" ~ to!string(i) ~ "]: ", token);
 
         if (ProFunction.isReplaceFunction(token) && (i + 1 < exprArray.length) && (exprArray[i + 1] == STR_OPENING_PARENTHESIS))
@@ -539,6 +548,7 @@ private string[] tokenizeString(in string str)
             if (verboseTokenize) trace("Expand token: '", token, "'");
 
             auto twoTokens = joinTokens(str, i, 2);
+            // FIXME: $VAR also used as makefile-time variable - any code here?
             if (twoTokens == STR_GENERATOR_EXPAND_MARKER) {
                 if (verboseTokenize) trace("Generator expression detected");
 
@@ -552,6 +562,8 @@ private string[] tokenizeString(in string str)
                     if ("" ~ str[i] == STR_CLOSING_CURLY_BRACE)
                         break;
                 } while (i < str.length);
+
+                currentStr ~= STR_CLOSING_CURLY_BRACE;
             } else {
                 currentStr ~= token;
             }

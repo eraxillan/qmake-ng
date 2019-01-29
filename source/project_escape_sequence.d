@@ -65,7 +65,7 @@ public class EscapeSequence
             return "\\";
         };
         convertMap["\\\""] = (in string str, in int from, in int length) {
-            trace("'\'' escape sequence");
+            trace("'\" escape sequence");
             return "\"";
         };
         convertMap["\\\'"] = (in string str, in int from, in int length) {

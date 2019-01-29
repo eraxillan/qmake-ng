@@ -36,6 +36,8 @@ public const auto STR_WS = " ";
 public const auto STR_HASH = "#";
 public const auto STR_BACKSLASH = "\\";
 
+public const auto CHAR_UNDERSCORE = '_';
+
 public const auto CHAR_OPENING_PARENTHESIS = '(';
 public const auto CHAR_CLOSING_PARENTHESIS = ')';
 public const auto STR_OPENING_PARENTHESIS = "(";
@@ -44,6 +46,7 @@ public const auto STR_OPENING_CURLY_BRACE = "{";
 public const auto STR_CLOSING_CURLY_BRACE = "}";
 
 public const auto CHAR_DOUBLE_QUOTE = '"';
+public const auto CHAR_SINGLE_QUOTE = '\'';
 public const auto STR_DOUBLE_QUOTE = "\"";
 public const auto STR_SINGLE_QUOTE = "'";
 
@@ -57,8 +60,14 @@ public const auto STR_EXCLAMATION_MARK = "!";
 public const auto STR_COLON = ":";
 public const auto STR_VERTICAL_BAR = "|";
 
+public const auto CHAR_SINGLE_EXPAND_MARKER = '$';
 public const auto STR_SINGLE_EXPAND_MARKER = "$";
+// FIXME: single dollar means "expand variable at the makefile processing, not project file one"
 public const auto STR_GENERATOR_EXPAND_MARKER = "${";
+public const auto STR_VARIABLE_EXPAND_MARKER = "$${";
+public const auto STR_ENV_VARIABLE_EXPAND_MARKER = "$$(";
+public const auto STR_PROPERTY_EXPAND_MARKER = "$$[";
+public const auto STR_PROPERTY_GET_SUFFIX = "/get";
 
 public const auto STR_EXPAND_MARKER = "$$";
 public const auto STR_FUNCTION_EXPAND_MARKER = "$$";

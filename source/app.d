@@ -435,6 +435,8 @@ int main(string[] argv)
         //setTraceConditionFunction(function(string ruleName, const ref ParseTree p) {return ruleName.startsWith("QMakeProject.");});
     }
 
+    setupDatetimeLocale();
+
     string oldpwd = qmake_getpwd();
 
     // Parse command line options

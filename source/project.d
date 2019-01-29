@@ -602,8 +602,7 @@ public class Project
         else
         {
             auto evaluator = new ExpressionEvaluator(context, m_persistentStorage);
-            // FIXME: whitespaces must not change during conversion! but here we just eliminate them all
-            auto rpnExpression = convertToRPN(functionNode.matches.join(" "));
+            auto rpnExpression = convertToRPN(functionNode.matches);
             auto rpnResult = evaluator.evalRPN(rpnExpression);
             trace("Function '", functionName, "' result = ", rpnResult);
             return (rpnResult[0] == "true");
