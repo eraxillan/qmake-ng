@@ -52,6 +52,7 @@ public const auto STR_SINGLE_QUOTE = "'";
 
 public const auto STR_SEMICOLON = ";";
 
+public const auto CHAR_DOT = '.';
 public const auto CHAR_COMMA = ',';
 public const auto STR_COMMA = ",";
 

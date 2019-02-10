@@ -148,6 +148,11 @@ public bool isUnderscore(in char ch)
 	return (ch == CHAR_UNDERSCORE);
 }
 
+public bool isDot(in char ch)
+{
+	return (ch == CHAR_DOT);
+}
+
 public bool isAlphascore(in char ch)
 {
 	return (isAlpha(ch) || isUnderscore(ch));
