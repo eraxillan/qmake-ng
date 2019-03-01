@@ -219,6 +219,103 @@ public class ProFunction
 			}
 		);
 
+		replaceFunctions["system"] = new ProFunction("system", VariableType.STRING_LIST,
+			false, 1, 2, [VariableType.STRING, VariableType.STRING, VariableType.STRING],
+			(ref ProExecutionContext context, in string[] arguments) {
+				trace(arguments);
+				assert(arguments.length == 1 || arguments.length == 2 || arguments.length == 3);
+
+				string command = arguments[0];
+
+				/+
+				bool blob = false;
+                bool lines = false;
+                bool singleLine = true;
+                if (arguments.length >= 2)
+				{
+					if (toLower(arguments[1]) == "false")
+						singleLine = false;
+                    else if (toLower(arguments[1]) == "blob")
+                        blob = true;
+                    else if (toLower(arguments[1]) == "lines")
+                        lines = true;
+                }
+
+				/*string exitStatusVar = arguments[2];*/
+
+				import std.process : pipeProcess, pipeShell, wait, Redirect;
+
+				// Launch external process
+				// NOTE: assume that it writes to stdout and might write to stderr
+				command = "LC_ALL=C g++ -pipe -E -v -xc++ - 2>&1 </dev/null >/dev/null";
+				auto pipes = pipeShell(command, Redirect.stdout | Redirect.stderr);
+				
+				// Wait for process completion
+				int exitCode = wait(pipes.pid);
+				trace("External process finished with code `", exitCode, "`");
+
+				// Save exit status value in the specified variable (if any)
+				if (arguments.length >= 3)
+				{
+					immutable string variableName = arguments[2];
+					// FIXME: also check using regex whether such name is suitable as ID
+					assert(!variableName.empty);
+					// NOTE: whether this variable defined or not doesn't matter
+					context.assignVariable(variableName, [to!string(exitCode)], VariableType.STRING);
+					trace("Exit code was saved into project variable `", variableName, "`");
+				}
+
+				// Store lines of errors.
+				/*string[] errors;
+				foreach (line; pipes.stderr.byLine) errors ~= line.idup;
+				writeln("");
+				writeln(errors);*/
+lines = false;
+				if (lines)
+				{
+					/*
+                    QTextStream stream(bytes);
+                    while (!stream.atEnd())
+                        ret += ProString(stream.readLine());
+					*/
+					
+					// Store lines of output
+					string[] output;
+					foreach (line; pipes.stdout.byLine) output ~= line.idup;
+					writeln("");
+					foreach (line; output)
+						writeln(line);
+					writeln("");
+                }
+				else
+				{
+					string output;
+					char[256] buffer;
+					while (!pipes.stdout.eof())
+					{
+						output ~= pipes.stdout.rawRead(buffer);
+					}
+					writeln("");
+					writeln(output);
+					writeln("");
+
+                    /*QString output = QString::fromLocal8Bit(bytes);
+                    if (blob) {
+                        ret += ProString(output);
+                    } else {
+                        output.replace(QLatin1Char('\t'), QLatin1Char(' '));
+                        if (singleLine)
+                            output.replace(QLatin1Char('\n'), QLatin1Char(' '));
+                        ret += split_value_list(QStringRef(&output));
+                    }*/
+                }
+                +/
+
+				bool b = true; if (b) assert(0);
+				return [""];
+			}
+		);
+
 		replaceFunctions["unique"] = new ProFunction("unique", VariableType.STRING_LIST,
 			false, 1, 0, [VariableType.STRING],
 			(ref ProExecutionContext context, in string[] arguments) {
@@ -357,6 +454,7 @@ public class ProFunction
 				return (variableRawValue[0] == value) ? ["true"] : ["false"];
 			}
 		);
+		testFunctions["isEqual"] = testFunctions["equals"];
 
 		testFunctions["isEmpty"] = new ProFunction("isEmpty", VariableType.BOOLEAN,
 			false, 1, 0, [VariableType.STRING],
@@ -473,7 +571,7 @@ public class ProFunction
 			}
 		);
 	}
-	
+
 	this(in string name, in VariableType returnType, in bool isVariadic, in int requiredArgumentCount, in int optionalArgumentCount, VariableType[] argumentTypes, Action action)
 	{
 		m_name = name;
@@ -494,9 +592,17 @@ public class ProFunction
 	public VariableType[] m_argumentTypes;
 	
 	// Run-time function info
-	public string[] m_arguments;
-	alias Action = const(string[]) function(ref ProExecutionContext context, in string[] arguments);
-	public Action m_action;
+	// Function arguments
+	//public string[] m_arguments;
+	
+	// Function code aka action
+	private alias Action = const(string[]) function(ref ProExecutionContext context, in string[] arguments);
+	private Action m_action;
+
+	public const(string[]) exec(ref ProExecutionContext context, in string[] arguments)
+	{
+		return m_action(context, arguments);
+	}
 
 	// qmake builtin test and replace functions
 	private static ProFunction[string] testFunctions;
@@ -580,8 +686,6 @@ public class ProFunction
 		if (!str.startsWith(STR_FUNCTION_EXPAND_MARKER))
 			return false;
 
-		// FIXME: check
-		// return functionNames.canFind(str.substring(STR_FUNCTION_EXPAND_MARKER.length));
 		return functionNames.countUntil(str[STR_FUNCTION_EXPAND_MARKER.length .. $]) != -1;
 	}
 	

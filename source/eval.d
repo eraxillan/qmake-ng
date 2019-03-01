@@ -209,11 +209,40 @@ class ExpressionEvaluator
             }
             else if (isStringValue(token))
             {
-                string tokenExpanded = m_executionContext.expandVariables(m_persistentStorage, token);
-                trace("RPN string operand: '", token, "', expanded: '", tokenExpanded, "', expanded-splitted: ", tokenExpanded.split(" "));
+                /*string tokenExpanded = m_executionContext.expandVariables(m_persistentStorage, token);
+                string[] expandedArray = tokenExpanded.split(" ");
 
                 // FIXME HACK: expand function deal only with raw string, but functions works with lists
-                array.push(tokenExpanded.split(" "));
+                // FIXME HACK: Remove empty items from list
+                string[] temp;
+                foreach (value; expandedArray)
+                {
+                    if (!value.empty)
+                        temp ~= value;
+                }
+
+                trace("RPN string operand: '", token, "', expanded: '", tokenExpanded, "', expanded-splitted: ", temp);
+                //if (temp.empty) temp = [" "];
+                array.push(temp);*/
+
+// FIXME: need to recursively (or not) expand enquoted expression!
+                if (token == STR_DOUBLE_QUOTE)
+                {
+                    assert(i + 2 < values.length);
+                    assert(values[i + 1] != STR_DOUBLE_QUOTE);
+                    assert(values[i + 2] == STR_DOUBLE_QUOTE);
+
+                    token = values[i + 1];
+                    trace("Enquoted string detected: ", token);
+                    i += 2;
+                }
+                
+                string[] tokenExpanded = m_executionContext.expandAllVariables(m_persistentStorage, token);
+//                writeln();
+//                writeln("ORIGINAL: ", token);
+//                writeln("EXPANDED: ", tokenExpanded);
+//                writeln();
+                array.push(tokenExpanded);
             }
             else
             {
@@ -254,7 +283,7 @@ class ExpressionEvaluator
 
         // FIXME: can throw ConvException/ConvOverflowException
         int operandCount = to!int(operandCountStr);
-        trace("Operand count: " ~ operandCountStr);
+        trace("Operand count: ", operandCountStr, "; array count: ", array.length);
 
         string[] val;
         if (functionDescription.m_isVariadic)
@@ -304,7 +333,7 @@ class ExpressionEvaluator
         }
 
         // Call function
-        const(string[]) result = functionDescription.m_action(m_executionContext, val);
+        const(string[]) result = functionDescription.exec(m_executionContext, val);
 
         // Validate and save execution result
         array.push(result);
@@ -419,7 +448,7 @@ class ExpressionEvaluator
 
         // Call function
         // NOTE: test function can return boolean or void
-        const(string[]) result = functionDescription.m_action(m_executionContext, val);
+        const(string[]) result = functionDescription.exec(m_executionContext, val);
         
         // Validate and save execution result
         array.push(result);

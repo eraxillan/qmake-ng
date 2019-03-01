@@ -21,6 +21,7 @@
 ****************************************************************************/
 
 module project;
+import std.stdio;
 
 import std.file;
 import std.path;
@@ -34,6 +35,7 @@ import qmakeexception;
 import qmakeparser;
 
 import common_const;
+import common_utils;
 import eval;
 import project_variable;
 import project_context;
@@ -185,8 +187,7 @@ public class Project
             evalScopeConditionNode(context, statementNode);
             break;
         case "QMakeProject.FunctionDeclaration":
-            // FIXME: implement
-            error("NOT IMPLEMENTED YET");
+            evalFunctionDeclaration(context, statementNode);
             break;
         case "QMakeProject.ForStatement":
             evalForStatement(context, statementNode);
@@ -196,6 +197,94 @@ public class Project
             error("Invalid statement type '" ~ statementNode.name ~ "'");
             throw new Exception("Invalid statement type '" ~ statementNode.name ~ "'");
         }
+    }
+
+    private void evalFunctionDeclaration(ref ProExecutionContext context, ref ParseTree declNode)
+    {
+        // FunctionDeclaration        <- ReplaceFunctionDeclaration / TestFunctionDeclaration
+        // ReplaceFunctionDeclaration <- "defineReplace" OPEN_PAR_WS FunctionArgumentList? CLOSE_PAR_WS :space* :eol* Block
+        // TestFunctionDeclaration    <- "defineTest"    OPEN_PAR_WS FunctionArgumentList? CLOSE_PAR_WS :space* :eol* Block
+        trace("");
+
+        assert(declNode.name == "QMakeProject.FunctionDeclaration");
+        assert(declNode.children.length == 1);
+
+        auto declChildNode = declNode.children[0];
+        writeln(declChildNode.name);
+        writeln(declChildNode.children.length);
+        assert(declChildNode.name == "QMakeProject.ReplaceFunctionDeclaration"
+            || declChildNode.name == "QMakeProject.TestFunctionDeclaration");
+        assert(declChildNode.children.length == 4);
+
+        switch (declChildNode.name)
+        {
+            case "QMakeProject.ReplaceFunctionDeclaration":
+            {
+                // FIXME: implement
+                assert(declChildNode.children[0].name == "QMakeProject.OPEN_PAR_WS");
+                assert(declChildNode.children[1].name == "QMakeProject.FunctionArgumentList");
+                assert(declChildNode.children[2].name == "QMakeProject.CLOSE_PAR_WS");
+                assert(declChildNode.children[3].name == "QMakeProject.Block");
+
+                assert(declChildNode.children[1].matches.length == 1);
+                string functionName = declChildNode.children[1].matches[0];
+                auto codeBlockNode = declChildNode.children[3];
+                writeln("Decl: ", functionName);
+                writeln("Action: ", codeBlockNode);
+
+                /*auto evaluator = new ExpressionEvaluator(context, m_persistentStorage);
+                auto rpnExpression = convertToRPN(codeBlockNode.matches);
+                auto rpnResult = evaluator.evalRPN(rpnExpression);
+                writeln("RPN: ", rpnExpression);*/
+
+                /*
+                1  procedure DFS-iterative(G,v):
+                2      let S be a stack
+                3      S.push(v)
+                4      while S is not empty
+                5          v = S.pop()
+                6          if v is not labeled as discovered:
+                7              label v as discovered
+                8              for all edges from v to w in G.adjacentEdges(v) do 
+                9                  S.push(w)
+                */
+                import std.algorithm.comparison : equal;
+                import std.container : DList;
+
+                struct Node
+                {
+                    ParseTree node;
+                    bool discovered;
+                }
+                auto v = Node(codeBlockNode, false);
+                auto stack = new DList!Node;
+                stack.insertFront(v);
+                while (!stack.empty)
+                {
+                    v = stack.back;
+                    stack.removeBack();
+                    if (!v.discovered)
+                    {
+                        v.discovered = true;
+
+                        //
+                    }
+                }
+
+                bool b = true; if (b) assert(0);
+                break;
+            }
+            case "QMakeProject.TestFunctionDeclaration":
+            {
+                // FIXME: implement
+                //bool b = true; if (b) assert(0);
+                break;
+            }
+            default:
+                throw new Exception("Syntax error");
+        }
+
+//        bool b = true; if (b) assert(0);
     }
 
     private void evalForStatement(ref ProExecutionContext context, ref ParseTree forNode)
@@ -258,7 +347,7 @@ public class Project
         trace("");
     }
 
-    private void evalBlock(ref ProExecutionContext context, ref ParseTree bodyNode)
+    private void evalBlock(ref ProExecutionContext context, ref ParseTree bodyNode) /+const+/
     {
         assert(bodyNode.name == "QMakeProject.Block");
         assert(bodyNode.children.length == 1);
@@ -312,7 +401,8 @@ public class Project
         if (!value.empty)
         {
             auto evaluator = new ExpressionEvaluator(context, m_persistentStorage);
-            auto rpnExpression = convertToRPN(value.join(" "));
+            // FIXME: does whitespace information get losed here like in da black hole?
+            auto rpnExpression = convertToRPN( value.join(" ") );
             result = evaluator.evalRPN(rpnExpression);
             trace("Variable '", name, "' new value: ", result);
         }
@@ -407,6 +497,13 @@ public class Project
 
     private bool evalScopeConditionNode(ref ProExecutionContext context, ref ParseTree statementNode) /+const+/
     {
+        /*
+        BooleanExpression            <- LogicalORExpression
+        LogicalORExpression          <- LogicalANDExpression (:space* "|" :space* LogicalANDExpression)*
+        LogicalANDExpression         <- LogicalNOTExpression (:space* ":" :space* LogicalNOTExpression)*
+        LogicalNOTExpression         <- (:space* "!" :space*)? PrimaryBooleanExpression
+        */
+
         assert(statementNode.name == "QMakeProject.BooleanExpression");
         assert(statementNode.children.length == 1);
 
@@ -420,7 +517,7 @@ public class Project
             assert(andStatementNode.name == "QMakeProject.LogicalANDExpression");
             assert(andStatementNode.children.length >= 1);
 
-            bool andResult /*= false*/;
+            bool andResult = true;
             for (int j /*= 0*/; j < andStatementNode.children.length; j++)
             {
                 auto notStatementNode = andStatementNode.children[j];
@@ -429,11 +526,13 @@ public class Project
 
                 // Apply NOT boolean operator
                 bool notMarker;
-                //assert(notStatementNode.matches.length == 1 || notStatementNode.matches.length == 2);
-                trace(notStatementNode.matches);
+                assert(notStatementNode.children.length == 1);
+
+                writeln("\nAND expression [", j, "]: ", notStatementNode.matches, "\n");
+
                 if (notStatementNode.matches[0] == STR_EXCLAMATION_MARK)
                 {
-                    trace("NOT-expression found");
+                    trace("Add NOT operator");
                     notMarker = true;
                 }
 
@@ -442,28 +541,17 @@ public class Project
                 assert(boolMetaExprNode.children.length == 1);
 
                 auto boolExprNode = boolMetaExprNode.children[0];
-                if (j == 0)
+                bool exprResult = evalBooleanExressionNode(context, boolExprNode);
+                if (notMarker)
                 {
-                    andResult = evalBooleanExressionNode(context, boolExprNode);
-                    if (notMarker)
-                    {
-                        trace("Apply NOT 1: '", andResult, "' --> '", !andResult, "'");
-                        andResult = !andResult;
-                    }
+                    exprResult = !exprResult;
                 }
-                else
+                if (!exprResult)
                 {
-                    andResult = andResult && evalBooleanExressionNode(context, boolExprNode);
-                    if (!andResult)
-                    {
-                        trace("operand [", j, "] of AND-expression is FALSE, aborting");
-                        if (notMarker)
-                        {
-                            trace("Apply NOT 2: '", andResult, "' --> '", !andResult, "'");
-                            andResult = !andResult;
-                        }
-                        break;
-                    }
+                    trace("Already got false, so lazily skip remaining ",
+                        andStatementNode.children.length - j - 1, " AND expression(s)");
+                    andResult = false;
+                    break;
                 }
             }
             trace("AND-expression result: ", andResult);
@@ -514,6 +602,10 @@ public class Project
 
     private bool evalTestFunctionNode(ref ProExecutionContext context, ref ParseTree testFunctionNode) /+const+/
     {
+        // TestFunctionCall <- EvalTestFunctionCall / CacheTestFunctionCall / ContainsTestFunctionCall
+        //                   / ReturnFunctionCall / RequiresFunctionCall
+        //                   / FunctionCall
+
         assert(testFunctionNode.name == "QMakeProject.TestFunctionCall");
         assert(testFunctionNode.children.length == 1);
 
@@ -592,7 +684,7 @@ public class Project
               || functionName == "warning" || functionName == "error")
         {
             auto evaluator = new ExpressionEvaluator(context, m_persistentStorage);
-            auto rpnExpression = convertToRPN(functionNode.matches.join("") /*.replace(",", ", ")*/ );
+            auto rpnExpression = convertToRPN(functionNode.matches);
             auto rpnResult = evaluator.evalRPN(rpnExpression);
             trace("Function '", functionName, "' result = ", rpnResult);
             if (functionName == "error")
@@ -601,6 +693,7 @@ public class Project
         }
         else
         {
+            writeln("\nTrying to convert: `", functionNode.matches, "`");
             auto evaluator = new ExpressionEvaluator(context, m_persistentStorage);
             auto rpnExpression = convertToRPN(functionNode.matches);
             auto rpnResult = evaluator.evalRPN(rpnExpression);

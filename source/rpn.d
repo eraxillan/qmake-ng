@@ -236,9 +236,40 @@ public string[] convertToRPN(in string[] exprArray)
         {
             if (verboseConvert) trace("variable expand statement: '", token, "'");
 
-            token ~= exprArray[i + 1];
-            i++;
-            if (verboseConvert) trace(token);
+            // $${VAR}blabla
+            if ((i + 1 < exprArray.length) && (exprArray[i + 1] == STR_OPENING_CURLY_BRACE))
+            {
+                assert(i + 3 < exprArray.length);
+                assert(exprArray[i + 3] == STR_CLOSING_CURLY_BRACE);
+
+                token ~= exprArray[i + 1];
+                token ~= exprArray[i + 2];
+                token ~= exprArray[i + 3];
+                i += 4;
+
+                // Consume string leftover: can start with letter or digit, dot, underscore
+                for ( ; i < exprArray.length; i++)
+                {
+                    immutable char ch = exprArray[i][0];
+                    if (!isAlphaNum(ch) && !isDot(ch) && !isUnderscore(ch))
+                    {
+                        // NOTE: `i` will be increased in outer `for` loop
+                        i--;
+                        break;
+                    }
+                    
+                    token ~= exprArray[i];
+                }
+
+                if (verboseConvert) trace("expandable token: ", token);
+            }
+            // $$VAR whitespace+ blabla
+            else
+            {
+                token ~= exprArray[i + 1];
+                i++;
+                if (verboseConvert) trace(token);
+            }
 
             outputQueue.push(token);
         }
@@ -403,6 +434,8 @@ private string[] tokenizeString(in string str)
 
                 result.push(token);
             } else {
+                if (verboseTokenize) trace("NOT A FUNCTION: '" ~ currentStr ~ "'");
+
                 functionName = "";
                 currentStr ~= token;
             }
