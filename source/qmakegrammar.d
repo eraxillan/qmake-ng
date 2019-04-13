@@ -45,16 +45,36 @@ enum QMakeGrammar = `
         # Variable or variable property assignment
         Assignment <- (DirectAssignment / AppendAssignment / AppendUniqueAssignment / RemoveAssignment / ReplaceAssignment)
  
-        StringList              <- String (:space* String)*
-        String                  <- StringChars?
-        StringChars             <- ~(StringChar+)
-        StringChar              <- !(blank / LineTerminator) SourceCharacter
-        
-        DirectAssignment        <- QualifiedIdentifier :space* "="  :space* StringList? :eol*
-        AppendAssignment        <- QualifiedIdentifier :space* "+=" :space* StringList? :eol*
-        AppendUniqueAssignment  <- QualifiedIdentifier :space* "*=" :space* StringList? :eol*
-        RemoveAssignment        <- QualifiedIdentifier :space* "-=" :space* StringList? :eol*
-        ReplaceAssignment       <- QualifiedIdentifier :space* "~=" :space* StringList? :eol*
+        RvalueExpression       <- RvalueList / RvalueChain
+        RvalueList             <- RvalueChain (:space+ RvalueChain)+
+        RvalueChain            <- Rvalue Rvalue*
+        Rvalue                 <- ReplaceFunctionCall / ExpandStatement / TestFunctionCall / EnquotedRvalue / WhitespaceFreeLeftover
+
+        EnquotedRvalue         <- DoubleEnquotedRvalue / SingleEnquotedRvalue
+        DoubleEnquotedRvalue   <- doublequote EnquotedRvalueChain(doublequote)? doublequote
+        SingleEnquotedRvalue   <- quote EnquotedRvalueChain(quote)? quote
+        EnquotedRvalueChain(T) <- Rvalue_2(T) Rvalue_2(T)*
+        Rvalue_2(T)            <- ReplaceFunctionCall / ExpandStatement / TestFunctionCall / EnquotedRvalue / WhitespaceIncludingLeftover(T)
+
+        WhitespaceFreeLeftover                 <- ~(WhitespaceFreeLeftoverChar+)
+        WhitespaceFreeLeftoverStopChar         <- eol / ExpandStatement / space / BACKSLASH / quote / doublequote
+        WhitespaceFreeLeftoverChar             <- !WhitespaceFreeLeftoverStopChar SourceCharacter
+                                                / BACKSLASH EscapeSequence
+
+        WhitespaceIncludingLeftover(T)          <- ~(WhitespaceIncludingLeftoverChar(T)+)
+        WhitespaceIncludingLeftoverStopChar(T)  <- eol / ExpandStatement / BACKSLASH / T
+        WhitespaceIncludingLeftoverChar(T)      <- !WhitespaceIncludingLeftoverStopChar(T) SourceCharacter
+                                                 / BACKSLASH EscapeSequence
+
+        RegularExpression <- ~(RegularExpressionChar+)
+        RegularExpressionStopChar <- eol
+        RegularExpressionChar <- !RegularExpressionStopChar SourceCharacter
+
+        DirectAssignment        <- QualifiedIdentifier :space* "="  :space* RvalueExpression? :eol*
+        AppendAssignment        <- QualifiedIdentifier :space* "+=" :space* RvalueExpression? :eol*
+        AppendUniqueAssignment  <- QualifiedIdentifier :space* "*=" :space* RvalueExpression? :eol*
+        RemoveAssignment        <- QualifiedIdentifier :space* "-=" :space* RvalueExpression? :eol*
+        ReplaceAssignment       <- QualifiedIdentifier :space* "~=" :space* RegularExpression? :eol*
 
         # Test function call
         # E.g.:
@@ -70,12 +90,14 @@ enum QMakeGrammar = `
 
         # NOTE: "$${call}($$opt, $$val, $$nextok)" is also a valid function call statement;
         #       also is \$\$"$$call"()
-        FunctionCall <- FunctionId OPEN_PAR_WS FunctionArgumentList? CLOSE_PAR_WS :space* :eol*
+        FunctionCall <- FunctionId OPEN_PAR_WS FunctionArgumentList? CLOSE_PAR_WS
         FunctionId   <- (!("defineReplace" / "defineTest" / "eval" / "cache" / "contains" / "return" / "requires")
                         ("{" :space* QualifiedIdentifier :space* "}" / QualifiedIdentifier / EnquotedString))
 
         FunctionArgumentList       <- List(COMMA_WS, COMMA) / List(:space+, :space) / FunctionFirstArgument
         List(delimRule, delimChar) <- FunctionFirstArgument (delimRule (FunctionNextArgument(delimChar))?)+
+
+        # FIXME: use Rvalue / Rvalue_2 expressions as functions arguments
         
         FunctionFirstArgument           <- FunctionFirstArgumentImpl FunctionFirstArgumentImpl*
         FunctionFirstArgumentImpl       <- ReplaceFunctionCall / ExpandStatement / TestFunctionCall / EnquotedString / FunctionFirstArgumentString
@@ -98,11 +120,12 @@ enum QMakeGrammar = `
             / "(" / ")"
             / EXPAND_MARKER
             / "@" / "{" / "}" / ":" / "|"
+            / "\""
         )
 
         FunctionDeclaration        <- ReplaceFunctionDeclaration / TestFunctionDeclaration
-        ReplaceFunctionDeclaration <- "defineReplace" OPEN_PAR_WS FunctionArgumentList? CLOSE_PAR_WS :space* :eol* Block
-        TestFunctionDeclaration    <- "defineTest"    OPEN_PAR_WS FunctionArgumentList? CLOSE_PAR_WS :space* :eol* Block
+        ReplaceFunctionDeclaration <- "defineReplace" OPEN_PAR_WS FunctionArgumentList? CLOSE_PAR_WS Block
+        TestFunctionDeclaration    <- "defineTest"    OPEN_PAR_WS FunctionArgumentList? CLOSE_PAR_WS Block
 
         # Conditional statement
         # E.g.:
@@ -131,9 +154,11 @@ enum QMakeGrammar = `
 
         # FIXME: move built-in test and replace function to separate module
 
-        ForStatement <- "for" OPEN_PAR_WS ForIteratorVariableName COMMA_WS ForIterableList CLOSE_PAR_WS Block
+        ForStatement <- ForEachInListStatement / ForEverStatement
+        ForEachInListStatement <- "for" OPEN_PAR_WS ForIteratorVariableName COMMA_WS ForIterableList CLOSE_PAR_WS Block
         ForIteratorVariableName <- QualifiedIdentifier
         ForIterableList <- List(:space+, :space) / FunctionFirstArgument #/ Statement
+        ForEverStatement <- "for" OPEN_PAR_WS "ever" CLOSE_PAR_WS Block
 
         # eval(string)
         EvalTestFunctionCall <- "eval" OPEN_PAR_WS EvalArg CLOSE_PAR_WS
@@ -169,25 +194,35 @@ enum QMakeGrammar = `
         # Enquoted string: can contain any character except of quote
         EnquotedString            <- DoubleEnquotedString / SingleEnquotedString
         DoubleEnquotedString      <- doublequote ~(NonDoubleQuoteCharacter*) doublequote
-        NonDoubleQuoteCharacter   <- !(doublequote / BACKSLASH) SourceCharacter / BACKSLASH EscapeSequence
+        NonDoubleQuoteCharacter   <- !(doublequote / BACKSLASH / eol) SourceCharacter / BACKSLASH EscapeSequence
         SingleEnquotedString      <- quote ~(NonSingleQuoteCharacter*) quote
-        NonSingleQuoteCharacter   <- !(quote / BACKSLASH) SourceCharacter / BACKSLASH EscapeSequence
+        NonSingleQuoteCharacter   <- !(quote / BACKSLASH / eol) SourceCharacter / BACKSLASH EscapeSequence
 
         # NOTE: "a-b" and "c++11" are valid qmake identifiers too
         #Identifier <- identifier
         Identifier      <~ [a-zA-Z_] [a-zA-Z_0-9\-\+\*]*
-        QMakeIdentifier <~ [a-zA-Z_0-9\-\+\*]+
+        QMakeIdentifier <~ [_a-zA-Z0-9\-+*]+
 
-        ExpandStatement                    <- ProjectVariableExpandStatement / EnvironmentVariableExpandStatement / PropertyVariableExpandStatement
-        ProjectVariableExpandStatement     <- EXPAND_MARKER :space* QualifiedIdentifier
-                                            / EXPAND_MARKER :space* "{" :space* QualifiedIdentifier :space* "}"
+        ExpandStatement                    <- FunctionArgumentExpandStatement
+                                            / ProjectVariableExpandStatement
+                                            / MakefileVariableExpandStatement
+                                            / EnvironmentVariableExpandStatement
+                                            / PropertyVariableExpandStatement
+        FunctionArgumentExpandStatement    <- EXPAND_MARKER DecNumber
+                                            / EXPAND_MARKER "{" DecNumber "}"
+        MakefileVariableExpandStatement    <- SINGLE_EXPAND_MARKER QualifiedIdentifier
+                                            / SINGLE_EXPAND_MARKER "{" QualifiedIdentifier "}"
+        ProjectVariableExpandStatement     <- EXPAND_MARKER QualifiedIdentifier
+                                            / EXPAND_MARKER "{" QualifiedIdentifier "}"
                                             # E.g. result = \$\$"$$call"
                                             / EXPAND_MARKER doublequote ExpandStatement doublequote
         EnvironmentVariableExpandStatement <- (EXPAND_MARKER / SINGLE_EXPAND_MARKER) OPEN_PAR_WS QualifiedIdentifier CLOSE_PAR_WS
-        PropertyVariableExpandStatement    <- EXPAND_MARKER :space* "[" :space* QualifiedIdentifier ("/get" / "/src")? :space* "]"
+        PropertyVariableExpandStatement    <- EXPAND_MARKER "[" QualifiedIdentifier ("/get" / "/src")? "]"
 
         # lvalue
-        LValueImpl          <- ExpandStatement / QMakeIdentifier
+        # FIXME: need further investigion! e.g. what another number-returning functions exist
+        NumberFunctionCall  <- EXPAND_MARKER "size" OPEN_PAR_WS QualifiedIdentifier CLOSE_PAR_WS
+        LValueImpl          <- NumberFunctionCall / ExpandStatement / QMakeIdentifier
         LValue              <- LValueImpl LValueImpl*
         QualifiedIdentifier <~ "."? LValue ("." LValue)*
 
@@ -211,6 +246,7 @@ enum QMakeGrammar = `
             / "+"
             / "-"
             / "*"
+            / "|"
             / "("
             / ")"
             / "["
@@ -221,6 +257,7 @@ enum QMakeGrammar = `
         OctDigit <- [0-7]
         DecDigit <- [0-9]
         HexDigit <- [0-9a-fA-F]
+        DecNumber <- DecDigit+
 
         SINGLE_EXPAND_MARKER <- "$"
         # FIXME: implement second rule as escape sequence
@@ -236,4 +273,3 @@ enum QMakeGrammar = `
         SourceCharacter <- [\u0000-\uFFFC]
         LineTerminator  <- "\u000A" / "\u000D" / "\u2028" / "\u2029"
     `;
-
