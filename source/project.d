@@ -567,7 +567,7 @@ public class Project
             else
             {
                 // FIXME: use PlatformInfo class, need to extract it from app.d first
-                string featureDirectory = "/opt/Qt/5.11.1/gcc_64/mkspecs/features";
+                string featureDirectory = "/opt/Qt/5.11.3/gcc_64/mkspecs/features";
                 projectFileName = buildNormalizedPath(featureDirectory, projectFileName);
                 projectFileName = std.path.setExtension(projectFileName, "prf");
                 if (!std.file.exists(projectFileName) || !std.file.isFile(projectFileName))
@@ -700,20 +700,20 @@ for(_, $$list(_)) { # just a way to break easily
 
     // Qt projects
     // FIXME: detect Qt path during run-time
-    assert(pro.tryParse("/opt/Qt/5.11.1/Src/qt3d/tests/auto/render/render.pro"));
-    assert(pro.tryParse("/opt/Qt/5.11.1/Src/qttools/mkspecs/features/qt_find_clang.prf"));
-    assert(pro.tryParse("/opt/Qt/5.11.1/Src/qtwebengine/mkspecs/features/configure.prf"));
-    assert(pro.tryParse("/opt/Qt/5.11.1/Src/qtwebengine/mkspecs/features/platform.prf"));
-    assert(pro.tryParse("/opt/Qt/5.11.1/Src/qtmultimedia/examples/multimedia/multimedia.pro"));
-    assert(pro.tryParse("/opt/Qt/5.11.1/Src/qtremoteobjects/tests/auto/integration_multiprocess/server/server.pro"));
-    assert(pro.tryParse("/opt/Qt/5.11.1/Src/qtbase/tests/auto/network/ssl/ssl.pro"));
-    assert(pro.tryParse("/opt/Qt/5.11.1/Src/qtbase/src/plugins/sqldrivers/configure.pri"));
-    assert(pro.tryParse("/opt/Qt/5.11.1/Src/qtbase/src/widgets/util/util.pri"));
-    assert(pro.tryParse("/opt/Qt/5.11.1/Src/qtbase/mkspecs/features/spec_post.prf"));
-    assert(pro.tryParse("/opt/Qt/5.11.1/Src/qtbase/mkspecs/features/winrt/package_manifest.prf"));
-    assert(pro.tryParse("/opt/Qt/5.11.1/Src/qtbase/mkspecs/features/qt_configure.prf"));
-    assert(pro.tryParse("/opt/Qt/5.11.1/Src/qtdeclarative/tests/auto/quick/pointerhandlers/pointerhandlers.pro"));
-    assert(pro.tryParse("/opt/Qt/5.11.1/Src/qtdeclarative/tests/auto/qml/qml.pro"));
+    assert(pro.tryParse("/opt/Qt/5.11.3/Src/qt3d/tests/auto/render/render.pro"));
+    assert(pro.tryParse("/opt/Qt/5.11.3/Src/qttools/mkspecs/features/qt_find_clang.prf"));
+    assert(pro.tryParse("/opt/Qt/5.11.3/Src/qtwebengine/mkspecs/features/configure.prf"));
+    assert(pro.tryParse("/opt/Qt/5.11.3/Src/qtwebengine/mkspecs/features/platform.prf"));
+    assert(pro.tryParse("/opt/Qt/5.11.3/Src/qtmultimedia/examples/multimedia/multimedia.pro"));
+    assert(pro.tryParse("/opt/Qt/5.11.3/Src/qtremoteobjects/tests/auto/integration_multiprocess/server/server.pro"));
+    assert(pro.tryParse("/opt/Qt/5.11.3/Src/qtbase/tests/auto/network/ssl/ssl.pro"));
+    assert(pro.tryParse("/opt/Qt/5.11.3/Src/qtbase/src/plugins/sqldrivers/configure.pri"));
+    assert(pro.tryParse("/opt/Qt/5.11.3/Src/qtbase/src/widgets/util/util.pri"));
+    assert(pro.tryParse("/opt/Qt/5.11.3/Src/qtbase/mkspecs/features/spec_post.prf"));
+    assert(pro.tryParse("/opt/Qt/5.11.3/Src/qtbase/mkspecs/features/winrt/package_manifest.prf"));
+    assert(pro.tryParse("/opt/Qt/5.11.3/Src/qtbase/mkspecs/features/qt_configure.prf"));
+    assert(pro.tryParse("/opt/Qt/5.11.3/Src/qtdeclarative/tests/auto/quick/pointerhandlers/pointerhandlers.pro"));
+    assert(pro.tryParse("/opt/Qt/5.11.3/Src/qtdeclarative/tests/auto/qml/qml.pro"));
 
     int parseQtSourceProjects(string qtDir)
     {
@@ -786,5 +786,5 @@ for(_, $$list(_)) { # just a way to break easily
 
         return (failedCount == 0) ? 0 : 1;
     }
-    assert(parseQtSourceProjects("/opt/Qt/5.11.1/Src") == 0);
+    assert(parseQtSourceProjects("/opt/Qt/5.11.3/Src") == 0);
 }

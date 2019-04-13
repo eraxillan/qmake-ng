@@ -25,8 +25,8 @@ module common_const;
 const string QMAKE_VERSION_STR = "3.1";
 
 // FIXME: detect Qt on run-time
-const string QT_VERSION_STR = "5.11.1";
-const string QT_LIB_DIR = "/opt/Qt/5.11.1/gcc_64/lib";
+const string QT_VERSION_STR = "5.11.3";
+const string QT_LIB_DIR = "/opt/Qt/5.11.3/gcc_64/lib";
 
 public const auto STR_EMPTY = "";
 

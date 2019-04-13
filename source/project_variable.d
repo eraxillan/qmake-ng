@@ -98,7 +98,7 @@ public struct ProVariable
 private string[] initQmakeSpecVariableValue()
 {
     // FIXME: platform autodetect
-    return ["/opt/Qt/5.11.1/gcc_64/mkspecs/linux-g++"];
+    return ["/opt/Qt/5.11.3/gcc_64/mkspecs/linux-g++"];
 }
 
 private string[] initConfigVariableValue()

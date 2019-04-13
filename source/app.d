@@ -490,7 +490,7 @@ int main(string[] argv)
     // FIXME: process command-line variable assignments
 
     // FIXME: my custom code //////////////////////////////////////////
-    immutable(QtVersionInfo) qtInfo = QtVersionInfo("/opt/Qt", "5.11.1", "gcc_64");
+    immutable(QtVersionInfo) qtInfo = QtVersionInfo("/opt/Qt", "5.11.3", "gcc_64");
     const(QtVersion) qt = new const QtVersion(qtInfo);
 
     auto context = new ProExecutionContext();
