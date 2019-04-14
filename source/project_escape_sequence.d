@@ -172,7 +172,7 @@ public class EscapeSequence
             do
 			{
                 index++;
-                if (!isHexNumeric("" ~ str[index]))
+                if (!isNumeric("" ~ str[index], 16))
                     break;
 
                 digitCount++;

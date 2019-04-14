@@ -217,29 +217,14 @@ public string sectionString(in string str, in string delim, in int start, in int
 	return temp[startNew .. endNew + 1].join(delim);
 }
 
-/+
-public bool isNumeric(in string n)
+public bool isNumeric(in string n, in int base)
 {
 	try
 	{
-		/*auto a =*/ to!double(n);
+		/*auto a =*/ to!uint(n, base);
 		return true;
 	}
-	catch(std.conv.ConvException exc)
-	{
-		return false;
-	}
-}
-+/
-
-public bool isHexNumeric(in string n)
-{
-	try
-	{
-		/*auto a =*/ to!uint(n, 16);
-		return true;
-	}
-	catch(std.conv.ConvException exc)
+	catch (std.conv.ConvException exc)
 	{
 		return false;
 	}
@@ -262,12 +247,11 @@ public string wildcardToRegex(in string pattern)
 }
 
 /**
-  * Read the file.
+  * Check whether string contains expandable entities.
   * Params:
-  *      persistentStorage = qmake persistent storage object reference
-  *      strSource = expression string to be expanded
-  * Returns: strSource with all project/environment variables and persistent properties expanded
-  *          (i.e. replaced with their actual values)
+  *      str = string to search in
+  *      from = index to start from
+  * Returns: true if input contains expandable entities, false otherwise
   */
 public bool isExpandable(in string str, in long from = 0)
 {
