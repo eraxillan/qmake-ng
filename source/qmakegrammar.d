@@ -97,18 +97,40 @@ enum QMakeGrammar = `
         FunctionArgumentList       <- List(COMMA_WS, COMMA) / List(:space+, :space) / FunctionFirstArgument
         List(delimRule, delimChar) <- FunctionFirstArgument (delimRule (FunctionNextArgument(delimChar))?)+
 
-        # FIXME: use Rvalue / Rvalue_2 expressions as functions arguments
-        
         FunctionFirstArgument           <- FunctionFirstArgumentImpl FunctionFirstArgumentImpl*
-        FunctionFirstArgumentImpl       <- ReplaceFunctionCall / ExpandStatement / TestFunctionCall / EnquotedString / FunctionFirstArgumentString
+        FunctionFirstArgumentImpl       <- ReplaceFunctionCall / ExpandStatement / TestFunctionCall
+                                         / EnquotedFunctionFirstArgument
+                                         / FunctionFirstArgumentString
+        
+        EnquotedFunctionFirstArgument         <- DoubleEnquotedFunctionFirstArgument / SingleEnquotedFunctionFirstArgument
+        DoubleEnquotedFunctionFirstArgument   <- doublequote EnquotedFunctionFirstArgumentChain(doublequote)? doublequote
+        SingleEnquotedFunctionFirstArgument   <- quote EnquotedFunctionFirstArgumentChain(quote)? quote
+        EnquotedFunctionFirstArgumentChain(Q) <- FunctionFirstArgumentImpl_2(Q) FunctionFirstArgumentImpl_2(Q)*
+        FunctionFirstArgumentImpl_2(Q)        <- ReplaceFunctionCall / ExpandStatement / TestFunctionCall
+                                               / EnquotedFunctionFirstArgument
+                                               / FunctionFirstArgumentString
+                                               / WhitespaceIncludingLeftover(Q)
+        
         FunctionFirstArgumentString     <- ~(FunctionFirstArgumentStringChar+)
-        FunctionFirstArgumentStringChar <- !(eol / EXPAND_MARKER / space / COMMA / quote / doublequote / BACKSLASH / EndOfFunction) SourceCharacter
+        FunctionFirstArgumentStringChar <- !(eol / ExpandStatement / space / COMMA / quote / doublequote / BACKSLASH / EndOfFunction) SourceCharacter
                                            / BACKSLASH EscapeSequence
 
         FunctionNextArgument(delim)           <- FunctionNextArgumentImpl(delim) (FunctionNextArgumentImpl(delim))*
-        FunctionNextArgumentImpl(delim)       <- ReplaceFunctionCall / ExpandStatement / TestFunctionCall / EnquotedString / FunctionNextArgumentString(delim)
+        FunctionNextArgumentImpl(delim)       <- ReplaceFunctionCall / ExpandStatement / TestFunctionCall
+                                               / EnquotedFunctionNextArgument(delim)
+                                               / FunctionNextArgumentString(delim)
+        
+        EnquotedFunctionNextArgument(delim)         <- DoubleEnquotedFunctionNextArgument(delim) / SingleEnquotedFunctionNextArgument(delim)
+        DoubleEnquotedFunctionNextArgument(delim)   <- doublequote EnquotedFunctionNextArgumentChain(delim, doublequote)? doublequote
+        SingleEnquotedFunctionNextArgument(delim)   <- quote EnquotedFunctionNextArgumentChain(delim, quote)? quote
+        EnquotedFunctionNextArgumentChain(delim, Q) <- FunctionNextArgumentImpl_2(delim, Q) FunctionNextArgumentImpl_2(delim, Q)*
+        FunctionNextArgumentImpl_2(delim, Q)        <- ReplaceFunctionCall / ExpandStatement / TestFunctionCall
+                                                     / EnquotedFunctionNextArgument(delim)
+                                                     / FunctionNextArgumentString(delim)
+                                                     / WhitespaceIncludingLeftover(Q)
+
         FunctionNextArgumentString(delim)     <- ~(FunctionNextArgumentStringChar(delim)+)
-        FunctionNextArgumentStringChar(delim) <- !(eol / EXPAND_MARKER / delim / quote / doublequote / BACKSLASH / EndOfFunction) SourceCharacter
+        FunctionNextArgumentStringChar(delim) <- !(eol / ExpandStatement / delim / quote / doublequote / BACKSLASH / EndOfFunction) SourceCharacter
                                                / BACKSLASH EscapeSequence
 
         # NOTE: function arguments can contain "("/")" themselves, so we need special rule to detect function argument list end
@@ -208,16 +230,16 @@ enum QMakeGrammar = `
                                             / MakefileVariableExpandStatement
                                             / EnvironmentVariableExpandStatement
                                             / PropertyVariableExpandStatement
-        FunctionArgumentExpandStatement    <- EXPAND_MARKER DecNumber
-                                            / EXPAND_MARKER "{" DecNumber "}"
-        MakefileVariableExpandStatement    <- SINGLE_EXPAND_MARKER QualifiedIdentifier
-                                            / SINGLE_EXPAND_MARKER "{" QualifiedIdentifier "}"
-        ProjectVariableExpandStatement     <- EXPAND_MARKER QualifiedIdentifier
-                                            / EXPAND_MARKER "{" QualifiedIdentifier "}"
+        FunctionArgumentExpandStatement    <- "$$" DecNumber
+                                            / "$${" DecNumber "}"
+        MakefileVariableExpandStatement    <- "$" QualifiedIdentifier
+                                            / "${" QualifiedIdentifier "}"
+        ProjectVariableExpandStatement     <- "$$" QualifiedIdentifier
+                                            / "$${" QualifiedIdentifier "}"
                                             # E.g. result = \$\$"$$call"
-                                            / EXPAND_MARKER doublequote ExpandStatement doublequote
-        EnvironmentVariableExpandStatement <- (EXPAND_MARKER / SINGLE_EXPAND_MARKER) OPEN_PAR_WS QualifiedIdentifier CLOSE_PAR_WS
-        PropertyVariableExpandStatement    <- EXPAND_MARKER "[" QualifiedIdentifier ("/get" / "/src")? "]"
+                                            / "$$" doublequote ExpandStatement doublequote
+        EnvironmentVariableExpandStatement <- ("$$" / "$") OPEN_PAR_WS QualifiedIdentifier CLOSE_PAR_WS
+        PropertyVariableExpandStatement    <- "$$[" QualifiedIdentifier ("/get" / "/src")? "]"
 
         # lvalue
         # FIXME: need further investigion! e.g. what another number-returning functions exist
