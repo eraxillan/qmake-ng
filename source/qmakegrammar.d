@@ -42,19 +42,22 @@ enum QMakeGrammar = `
         SingleLineCommentChars          <- SingleLineCommentChar+
         SingleLineCommentChar           <- !LineTerminator SourceCharacter
 
+        # Base rvalue statement: function call or variable/property expand
+        RvalueAtom <- ReplaceFunctionCall / ExpandStatement / TestFunctionCall
+
         # Variable or variable property assignment
         Assignment <- (DirectAssignment / AppendAssignment / AppendUniqueAssignment / RemoveAssignment / ReplaceAssignment)
  
         RvalueExpression       <- RvalueList / RvalueChain
         RvalueList             <- RvalueChain (:space+ RvalueChain)+
         RvalueChain            <- Rvalue Rvalue*
-        Rvalue                 <- ReplaceFunctionCall / ExpandStatement / TestFunctionCall / EnquotedRvalue / WhitespaceFreeLeftover
+        Rvalue                 <- RvalueAtom / EnquotedRvalue / WhitespaceFreeLeftover
 
         EnquotedRvalue         <- DoubleEnquotedRvalue / SingleEnquotedRvalue
         DoubleEnquotedRvalue   <- doublequote EnquotedRvalueChain(doublequote)? doublequote
         SingleEnquotedRvalue   <- quote EnquotedRvalueChain(quote)? quote
         EnquotedRvalueChain(T) <- Rvalue_2(T) Rvalue_2(T)*
-        Rvalue_2(T)            <- ReplaceFunctionCall / ExpandStatement / TestFunctionCall / EnquotedRvalue / WhitespaceIncludingLeftover(T)
+        Rvalue_2(T)            <- RvalueAtom / EnquotedRvalue / WhitespaceIncludingLeftover(T)
 
         WhitespaceFreeLeftover                 <- ~(WhitespaceFreeLeftoverChar+)
         WhitespaceFreeLeftoverStopChar         <- eol / ExpandStatement / space / BACKSLASH / quote / doublequote
@@ -98,7 +101,7 @@ enum QMakeGrammar = `
         List(delimRule, delimChar) <- FunctionFirstArgument (delimRule (FunctionNextArgument(delimChar))?)+
 
         FunctionFirstArgument           <- FunctionFirstArgumentImpl FunctionFirstArgumentImpl*
-        FunctionFirstArgumentImpl       <- ReplaceFunctionCall / ExpandStatement / TestFunctionCall
+        FunctionFirstArgumentImpl       <- RvalueAtom
                                          / EnquotedFunctionFirstArgument
                                          / FunctionFirstArgumentString
         
@@ -106,7 +109,7 @@ enum QMakeGrammar = `
         DoubleEnquotedFunctionFirstArgument   <- doublequote EnquotedFunctionFirstArgumentChain(doublequote)? doublequote
         SingleEnquotedFunctionFirstArgument   <- quote EnquotedFunctionFirstArgumentChain(quote)? quote
         EnquotedFunctionFirstArgumentChain(Q) <- FunctionFirstArgumentImpl_2(Q) FunctionFirstArgumentImpl_2(Q)*
-        FunctionFirstArgumentImpl_2(Q)        <- ReplaceFunctionCall / ExpandStatement / TestFunctionCall
+        FunctionFirstArgumentImpl_2(Q)        <- RvalueAtom
                                                / EnquotedFunctionFirstArgument
                                                / FunctionFirstArgumentString
                                                / WhitespaceIncludingLeftover(Q)
@@ -116,7 +119,7 @@ enum QMakeGrammar = `
                                            / BACKSLASH EscapeSequence
 
         FunctionNextArgument(delim)           <- FunctionNextArgumentImpl(delim) (FunctionNextArgumentImpl(delim))*
-        FunctionNextArgumentImpl(delim)       <- ReplaceFunctionCall / ExpandStatement / TestFunctionCall
+        FunctionNextArgumentImpl(delim)       <- RvalueAtom
                                                / EnquotedFunctionNextArgument(delim)
                                                / FunctionNextArgumentString(delim)
         
@@ -124,7 +127,7 @@ enum QMakeGrammar = `
         DoubleEnquotedFunctionNextArgument(delim)   <- doublequote EnquotedFunctionNextArgumentChain(delim, doublequote)? doublequote
         SingleEnquotedFunctionNextArgument(delim)   <- quote EnquotedFunctionNextArgumentChain(delim, quote)? quote
         EnquotedFunctionNextArgumentChain(delim, Q) <- FunctionNextArgumentImpl_2(delim, Q) FunctionNextArgumentImpl_2(delim, Q)*
-        FunctionNextArgumentImpl_2(delim, Q)        <- ReplaceFunctionCall / ExpandStatement / TestFunctionCall
+        FunctionNextArgumentImpl_2(delim, Q)        <- RvalueAtom
                                                      / EnquotedFunctionNextArgument(delim)
                                                      / FunctionNextArgumentString(delim)
                                                      / WhitespaceIncludingLeftover(Q)
