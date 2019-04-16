@@ -66,23 +66,18 @@ private enum QMakeProjectRvalue =
     RvalueExpression       <- RvalueList / RvalueChain
     RvalueList             <- RvalueChain (:space+ RvalueChain)+
     RvalueChain            <- Rvalue Rvalue*
-    Rvalue                 <- RvalueAtom / EnquotedRvalue / WhitespaceFreeLeftover
+    Rvalue                 <- RvalueAtom / EnquotedRvalue / Leftover(space / quote / doublequote)
 
     EnquotedRvalue         <- DoubleEnquotedRvalue / SingleEnquotedRvalue
     DoubleEnquotedRvalue   <- doublequote EnquotedRvalueChain(doublequote)? doublequote
     SingleEnquotedRvalue   <- quote EnquotedRvalueChain(quote)? quote
     EnquotedRvalueChain(T) <- Rvalue_2(T) Rvalue_2(T)*
-    Rvalue_2(T)            <- RvalueAtom / EnquotedRvalue / WhitespaceIncludingLeftover(T)
+    Rvalue_2(T)            <- RvalueAtom / EnquotedRvalue / Leftover(T)
 
-    WhitespaceFreeLeftover                 <- ~(WhitespaceFreeLeftoverChar+)
-    WhitespaceFreeLeftoverStopChar         <- eol / ExpandStatement / space / BACKSLASH / quote / doublequote
-    WhitespaceFreeLeftoverChar             <- !WhitespaceFreeLeftoverStopChar SourceCharacter
-                                            / BACKSLASH EscapeSequence
-
-    WhitespaceIncludingLeftover(T)          <- ~(WhitespaceIncludingLeftoverChar(T)+)
-    WhitespaceIncludingLeftoverStopChar(T)  <- eol / ExpandStatement / BACKSLASH / T
-    WhitespaceIncludingLeftoverChar(T)      <- !WhitespaceIncludingLeftoverStopChar(T) SourceCharacter
-                                             / BACKSLASH EscapeSequence
+    Leftover(StopPattern)         <- ~(LeftoverChar(StopPattern)+)
+    LeftoverStopChar(StopPattern) <- eol / ExpandStatement / BACKSLASH / StopPattern
+    LeftoverChar(StopPattern)     <- / !LeftoverStopChar(StopPattern) SourceCharacter
+                                     / BACKSLASH EscapeSequence
 
     RegularExpression <- ~(RegularExpressionChar+)
     RegularExpressionStopChar <- eol
@@ -130,7 +125,7 @@ private enum QMakeProjectFunctionArguments =
     FunctionFirstArgumentImpl_2(Q)        <- / RvalueAtom
                                              / EnquotedFunctionFirstArgument
                                              / FunctionFirstArgumentString
-                                             / WhitespaceIncludingLeftover(Q)
+                                             / Leftover(Q)
 
     FunctionFirstArgumentString     <- ~(FunctionFirstArgumentStringChar+)
     FunctionFirstArgumentStringChar <- !(eol / ExpandStatement / space / COMMA / quote / doublequote / BACKSLASH / EndOfFunction) SourceCharacter
@@ -148,7 +143,7 @@ private enum QMakeProjectFunctionArguments =
     FunctionNextArgumentImpl_2(delim, Q)        <- / RvalueAtom
                                                    / EnquotedFunctionNextArgument(delim)
                                                    / FunctionNextArgumentString(delim)
-                                                   / WhitespaceIncludingLeftover(Q)
+                                                   / Leftover(Q)
 
     FunctionNextArgumentString(delim)     <- ~(FunctionNextArgumentStringChar(delim)+)
     FunctionNextArgumentStringChar(delim) <- !(eol / ExpandStatement / delim / quote / doublequote / BACKSLASH / EndOfFunction) SourceCharacter
