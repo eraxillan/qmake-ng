@@ -63,25 +63,25 @@ private enum QMakeProjectRvalue =
     # Base rvalue statement: function call or variable/property expand
     RvalueAtom <- ReplaceFunctionCall / ExpandStatement / TestFunctionCall
 
-    RvalueExpression       <- RvalueList / RvalueChain
-    RvalueList             <- RvalueChain (:space+ RvalueChain)+
-    RvalueChain            <- Rvalue Rvalue*
-    Rvalue                 <- RvalueAtom / EnquotedRvalue / Leftover(space / quote / doublequote)
+    RvalueStopRule <- space / quote / doublequote
+
+    RvalueExpression       <- RvalueList / RvalueChain(RvalueStopRule)
+    RvalueList             <- RvalueChain(RvalueStopRule) (:space+ RvalueChain(RvalueStopRule))+
+    RvalueChain(T)         <- Rvalue(T) Rvalue(T)*
+    Rvalue(T)              <- RvalueAtom / EnquotedRvalue / Leftover(T)
 
     EnquotedRvalue         <- DoubleEnquotedRvalue / SingleEnquotedRvalue
-    DoubleEnquotedRvalue   <- doublequote EnquotedRvalueChain(doublequote)? doublequote
-    SingleEnquotedRvalue   <- quote EnquotedRvalueChain(quote)? quote
-    EnquotedRvalueChain(T) <- Rvalue_2(T) Rvalue_2(T)*
-    Rvalue_2(T)            <- RvalueAtom / EnquotedRvalue / Leftover(T)
+    DoubleEnquotedRvalue   <- doublequote RvalueChain(doublequote)? doublequote
+    SingleEnquotedRvalue   <- quote RvalueChain(quote)? quote
 
     Leftover(StopPattern)         <- ~(LeftoverChar(StopPattern)+)
     LeftoverStopChar(StopPattern) <- eol / ExpandStatement / BACKSLASH / StopPattern
     LeftoverChar(StopPattern)     <- / !LeftoverStopChar(StopPattern) SourceCharacter
                                      / BACKSLASH EscapeSequence
 
-    RegularExpression <- ~(RegularExpressionChar+)
+    RegularExpression         <- ~(RegularExpressionChar+)
     RegularExpressionStopChar <- eol
-    RegularExpressionChar <- !RegularExpressionStopChar SourceCharacter
+    RegularExpressionChar     <- !RegularExpressionStopChar SourceCharacter
 `;
 
 private enum QMakeProjectFunctionCall =

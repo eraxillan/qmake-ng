@@ -42,35 +42,25 @@ This module was automatically generated from the following grammar:
     # Base rvalue statement: function call or variable/property expand
     RvalueAtom <- ReplaceFunctionCall / ExpandStatement / TestFunctionCall
 
-    RvalueExpression       <- RvalueList / RvalueChain
-    RvalueList             <- RvalueChain (:space+ RvalueChain)+
-    RvalueChain            <- Rvalue Rvalue*
-    Rvalue                 <- RvalueAtom / EnquotedRvalue / Leftover(space / quote / doublequote) ###WhitespaceFreeLeftover
+    RvalueStopRule <- space / quote / doublequote
+
+    RvalueExpression       <- RvalueList / RvalueChain(RvalueStopRule)
+    RvalueList             <- RvalueChain(RvalueStopRule) (:space+ RvalueChain(RvalueStopRule))+
+    RvalueChain(T)         <- Rvalue(T) Rvalue(T)*
+    Rvalue(T)              <- RvalueAtom / EnquotedRvalue / Leftover(T)
 
     EnquotedRvalue         <- DoubleEnquotedRvalue / SingleEnquotedRvalue
-    DoubleEnquotedRvalue   <- doublequote EnquotedRvalueChain(doublequote)? doublequote
-    SingleEnquotedRvalue   <- quote EnquotedRvalueChain(quote)? quote
-    EnquotedRvalueChain(T) <- Rvalue_2(T) Rvalue_2(T)*
-    Rvalue_2(T)            <- RvalueAtom / EnquotedRvalue / Leftover(T) ###WhitespaceIncludingLeftover(T)
+    DoubleEnquotedRvalue   <- doublequote RvalueChain(doublequote)? doublequote
+    SingleEnquotedRvalue   <- quote RvalueChain(quote)? quote
 
     Leftover(StopPattern)         <- ~(LeftoverChar(StopPattern)+)
     LeftoverStopChar(StopPattern) <- eol / ExpandStatement / BACKSLASH / StopPattern
     LeftoverChar(StopPattern)     <- / !LeftoverStopChar(StopPattern) SourceCharacter
                                      / BACKSLASH EscapeSequence
 
-    #WhitespaceFreeLeftover                 <- ~(WhitespaceFreeLeftoverChar+)
-    #WhitespaceFreeLeftoverStopChar         <-  eol / ExpandStatement / BACKSLASH / space / quote / doublequote
-    #WhitespaceFreeLeftoverChar             <- !WhitespaceFreeLeftoverStopChar SourceCharacter
-    #                                        / BACKSLASH EscapeSequence
-    #
-    #WhitespaceIncludingLeftover(T)          <- ~(WhitespaceIncludingLeftoverChar(T)+)
-    #WhitespaceIncludingLeftoverStopChar(T)  <- eol / ExpandStatement / BACKSLASH / T
-    #WhitespaceIncludingLeftoverChar(T)      <- !WhitespaceIncludingLeftoverStopChar(T) SourceCharacter
-    #                                         / BACKSLASH EscapeSequence
-
-    RegularExpression <- ~(RegularExpressionChar+)
+    RegularExpression         <- ~(RegularExpressionChar+)
     RegularExpressionStopChar <- eol
-    RegularExpressionChar <- !RegularExpressionStopChar SourceCharacter
+    RegularExpressionChar     <- !RegularExpressionStopChar SourceCharacter
 
     # Test function call
     # E.g.:
@@ -108,7 +98,7 @@ This module was automatically generated from the following grammar:
     FunctionFirstArgumentImpl_2(Q)        <- / RvalueAtom
                                              / EnquotedFunctionFirstArgument
                                              / FunctionFirstArgumentString
-                                             / Leftover(Q) ###WhitespaceIncludingLeftover(Q)
+                                             / Leftover(Q)
 
     FunctionFirstArgumentString     <- ~(FunctionFirstArgumentStringChar+)
     FunctionFirstArgumentStringChar <- !(eol / ExpandStatement / space / COMMA / quote / doublequote / BACKSLASH / EndOfFunction) SourceCharacter
@@ -126,7 +116,7 @@ This module was automatically generated from the following grammar:
     FunctionNextArgumentImpl_2(delim, Q)        <- / RvalueAtom
                                                    / EnquotedFunctionNextArgument(delim)
                                                    / FunctionNextArgumentString(delim)
-                                                   / Leftover(Q) ###WhitespaceIncludingLeftover(Q)
+                                                   / Leftover(Q)
 
     FunctionNextArgumentString(delim)     <- ~(FunctionNextArgumentStringChar(delim)+)
     FunctionNextArgumentStringChar(delim) <- !(eol / ExpandStatement / delim / quote / doublequote / BACKSLASH / EndOfFunction) SourceCharacter
@@ -339,10 +329,9 @@ struct GenericQMakeProject(TParseTree)
         rules["RemoveAssignment"] = toDelegate(&RemoveAssignment);
         rules["ReplaceAssignment"] = toDelegate(&ReplaceAssignment);
         rules["RvalueAtom"] = toDelegate(&RvalueAtom);
+        rules["RvalueStopRule"] = toDelegate(&RvalueStopRule);
         rules["RvalueExpression"] = toDelegate(&RvalueExpression);
         rules["RvalueList"] = toDelegate(&RvalueList);
-        rules["RvalueChain"] = toDelegate(&RvalueChain);
-        rules["Rvalue"] = toDelegate(&Rvalue);
         rules["EnquotedRvalue"] = toDelegate(&EnquotedRvalue);
         rules["DoubleEnquotedRvalue"] = toDelegate(&DoubleEnquotedRvalue);
         rules["SingleEnquotedRvalue"] = toDelegate(&SingleEnquotedRvalue);
@@ -1130,11 +1119,47 @@ struct GenericQMakeProject(TParseTree)
         return "QMakeProject.RvalueAtom";
     }
 
+    static TParseTree RvalueStopRule(TParseTree p)
+    {
+        if(__ctfe)
+        {
+            return         pegged.peg.defined!(pegged.peg.or!(space, quote, doublequote), "QMakeProject.RvalueStopRule")(p);
+        }
+        else
+        {
+            if (auto m = tuple(`RvalueStopRule`, p.end) in memo)
+                return *m;
+            else
+            {
+                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.or!(space, quote, doublequote), "QMakeProject.RvalueStopRule"), "RvalueStopRule")(p);
+                memo[tuple(`RvalueStopRule`, p.end)] = result;
+                return result;
+            }
+        }
+    }
+
+    static TParseTree RvalueStopRule(string s)
+    {
+        if(__ctfe)
+        {
+            return         pegged.peg.defined!(pegged.peg.or!(space, quote, doublequote), "QMakeProject.RvalueStopRule")(TParseTree("", false,[], s));
+        }
+        else
+        {
+            forgetMemo();
+            return hooked!(pegged.peg.defined!(pegged.peg.or!(space, quote, doublequote), "QMakeProject.RvalueStopRule"), "RvalueStopRule")(TParseTree("", false,[], s));
+        }
+    }
+    static string RvalueStopRule(GetName g)
+    {
+        return "QMakeProject.RvalueStopRule";
+    }
+
     static TParseTree RvalueExpression(TParseTree p)
     {
         if(__ctfe)
         {
-            return         pegged.peg.defined!(pegged.peg.or!(RvalueList, RvalueChain), "QMakeProject.RvalueExpression")(p);
+            return         pegged.peg.defined!(pegged.peg.or!(RvalueList, RvalueChain!(RvalueStopRule)), "QMakeProject.RvalueExpression")(p);
         }
         else
         {
@@ -1142,7 +1167,7 @@ struct GenericQMakeProject(TParseTree)
                 return *m;
             else
             {
-                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.or!(RvalueList, RvalueChain), "QMakeProject.RvalueExpression"), "RvalueExpression")(p);
+                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.or!(RvalueList, RvalueChain!(RvalueStopRule)), "QMakeProject.RvalueExpression"), "RvalueExpression")(p);
                 memo[tuple(`RvalueExpression`, p.end)] = result;
                 return result;
             }
@@ -1153,12 +1178,12 @@ struct GenericQMakeProject(TParseTree)
     {
         if(__ctfe)
         {
-            return         pegged.peg.defined!(pegged.peg.or!(RvalueList, RvalueChain), "QMakeProject.RvalueExpression")(TParseTree("", false,[], s));
+            return         pegged.peg.defined!(pegged.peg.or!(RvalueList, RvalueChain!(RvalueStopRule)), "QMakeProject.RvalueExpression")(TParseTree("", false,[], s));
         }
         else
         {
             forgetMemo();
-            return hooked!(pegged.peg.defined!(pegged.peg.or!(RvalueList, RvalueChain), "QMakeProject.RvalueExpression"), "RvalueExpression")(TParseTree("", false,[], s));
+            return hooked!(pegged.peg.defined!(pegged.peg.or!(RvalueList, RvalueChain!(RvalueStopRule)), "QMakeProject.RvalueExpression"), "RvalueExpression")(TParseTree("", false,[], s));
         }
     }
     static string RvalueExpression(GetName g)
@@ -1170,7 +1195,7 @@ struct GenericQMakeProject(TParseTree)
     {
         if(__ctfe)
         {
-            return         pegged.peg.defined!(pegged.peg.and!(RvalueChain, pegged.peg.oneOrMore!(pegged.peg.and!(pegged.peg.discard!(pegged.peg.oneOrMore!(space)), RvalueChain))), "QMakeProject.RvalueList")(p);
+            return         pegged.peg.defined!(pegged.peg.and!(RvalueChain!(RvalueStopRule), pegged.peg.oneOrMore!(pegged.peg.and!(pegged.peg.discard!(pegged.peg.oneOrMore!(space)), RvalueChain!(RvalueStopRule)))), "QMakeProject.RvalueList")(p);
         }
         else
         {
@@ -1178,7 +1203,7 @@ struct GenericQMakeProject(TParseTree)
                 return *m;
             else
             {
-                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.and!(RvalueChain, pegged.peg.oneOrMore!(pegged.peg.and!(pegged.peg.discard!(pegged.peg.oneOrMore!(space)), RvalueChain))), "QMakeProject.RvalueList"), "RvalueList")(p);
+                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.and!(RvalueChain!(RvalueStopRule), pegged.peg.oneOrMore!(pegged.peg.and!(pegged.peg.discard!(pegged.peg.oneOrMore!(space)), RvalueChain!(RvalueStopRule)))), "QMakeProject.RvalueList"), "RvalueList")(p);
                 memo[tuple(`RvalueList`, p.end)] = result;
                 return result;
             }
@@ -1189,12 +1214,12 @@ struct GenericQMakeProject(TParseTree)
     {
         if(__ctfe)
         {
-            return         pegged.peg.defined!(pegged.peg.and!(RvalueChain, pegged.peg.oneOrMore!(pegged.peg.and!(pegged.peg.discard!(pegged.peg.oneOrMore!(space)), RvalueChain))), "QMakeProject.RvalueList")(TParseTree("", false,[], s));
+            return         pegged.peg.defined!(pegged.peg.and!(RvalueChain!(RvalueStopRule), pegged.peg.oneOrMore!(pegged.peg.and!(pegged.peg.discard!(pegged.peg.oneOrMore!(space)), RvalueChain!(RvalueStopRule)))), "QMakeProject.RvalueList")(TParseTree("", false,[], s));
         }
         else
         {
             forgetMemo();
-            return hooked!(pegged.peg.defined!(pegged.peg.and!(RvalueChain, pegged.peg.oneOrMore!(pegged.peg.and!(pegged.peg.discard!(pegged.peg.oneOrMore!(space)), RvalueChain))), "QMakeProject.RvalueList"), "RvalueList")(TParseTree("", false,[], s));
+            return hooked!(pegged.peg.defined!(pegged.peg.and!(RvalueChain!(RvalueStopRule), pegged.peg.oneOrMore!(pegged.peg.and!(pegged.peg.discard!(pegged.peg.oneOrMore!(space)), RvalueChain!(RvalueStopRule)))), "QMakeProject.RvalueList"), "RvalueList")(TParseTree("", false,[], s));
         }
     }
     static string RvalueList(GetName g)
@@ -1202,20 +1227,22 @@ struct GenericQMakeProject(TParseTree)
         return "QMakeProject.RvalueList";
     }
 
+    template RvalueChain(alias T)
+    {
     static TParseTree RvalueChain(TParseTree p)
     {
         if(__ctfe)
         {
-            return         pegged.peg.defined!(pegged.peg.and!(Rvalue, pegged.peg.zeroOrMore!(Rvalue)), "QMakeProject.RvalueChain")(p);
+            return         pegged.peg.defined!(pegged.peg.and!(Rvalue!(T), pegged.peg.zeroOrMore!(Rvalue!(T))), "QMakeProject.RvalueChain!(" ~ pegged.peg.getName!(T) ~ ")")(p);
         }
         else
         {
-            if (auto m = tuple(`RvalueChain`, p.end) in memo)
+            if (auto m = tuple("RvalueChain!(" ~ pegged.peg.getName!(T) ~ ")", p.end) in memo)
                 return *m;
             else
             {
-                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.and!(Rvalue, pegged.peg.zeroOrMore!(Rvalue)), "QMakeProject.RvalueChain"), "RvalueChain")(p);
-                memo[tuple(`RvalueChain`, p.end)] = result;
+                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.and!(Rvalue!(T), pegged.peg.zeroOrMore!(Rvalue!(T))), "QMakeProject.RvalueChain!(" ~ pegged.peg.getName!(T) ~ ")"), "RvalueChain_1")(p);
+                memo[tuple("RvalueChain!(" ~ pegged.peg.getName!(T) ~ ")", p.end)] = result;
                 return result;
             }
         }
@@ -1225,33 +1252,36 @@ struct GenericQMakeProject(TParseTree)
     {
         if(__ctfe)
         {
-            return         pegged.peg.defined!(pegged.peg.and!(Rvalue, pegged.peg.zeroOrMore!(Rvalue)), "QMakeProject.RvalueChain")(TParseTree("", false,[], s));
+            return         pegged.peg.defined!(pegged.peg.and!(Rvalue!(T), pegged.peg.zeroOrMore!(Rvalue!(T))), "QMakeProject.RvalueChain!(" ~ pegged.peg.getName!(T) ~ ")")(TParseTree("", false,[], s));
         }
         else
         {
             forgetMemo();
-            return hooked!(pegged.peg.defined!(pegged.peg.and!(Rvalue, pegged.peg.zeroOrMore!(Rvalue)), "QMakeProject.RvalueChain"), "RvalueChain")(TParseTree("", false,[], s));
+            return hooked!(pegged.peg.defined!(pegged.peg.and!(Rvalue!(T), pegged.peg.zeroOrMore!(Rvalue!(T))), "QMakeProject.RvalueChain!(" ~ pegged.peg.getName!(T) ~ ")"), "RvalueChain_1")(TParseTree("", false,[], s));
         }
     }
     static string RvalueChain(GetName g)
     {
-        return "QMakeProject.RvalueChain";
+        return "QMakeProject.RvalueChain!(" ~ pegged.peg.getName!(T) ~ ")";
     }
 
+    }
+    template Rvalue(alias T)
+    {
     static TParseTree Rvalue(TParseTree p)
     {
         if(__ctfe)
         {
-            return         pegged.peg.defined!(pegged.peg.or!(RvalueAtom, EnquotedRvalue, Leftover!(pegged.peg.or!(space, quote, doublequote))), "QMakeProject.Rvalue")(p);
+            return         pegged.peg.defined!(pegged.peg.or!(RvalueAtom, EnquotedRvalue, Leftover!(T)), "QMakeProject.Rvalue!(" ~ pegged.peg.getName!(T) ~ ")")(p);
         }
         else
         {
-            if (auto m = tuple(`Rvalue`, p.end) in memo)
+            if (auto m = tuple("Rvalue!(" ~ pegged.peg.getName!(T) ~ ")", p.end) in memo)
                 return *m;
             else
             {
-                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.or!(RvalueAtom, EnquotedRvalue, Leftover!(pegged.peg.or!(space, quote, doublequote))), "QMakeProject.Rvalue"), "Rvalue")(p);
-                memo[tuple(`Rvalue`, p.end)] = result;
+                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.or!(RvalueAtom, EnquotedRvalue, Leftover!(T)), "QMakeProject.Rvalue!(" ~ pegged.peg.getName!(T) ~ ")"), "Rvalue_1")(p);
+                memo[tuple("Rvalue!(" ~ pegged.peg.getName!(T) ~ ")", p.end)] = result;
                 return result;
             }
         }
@@ -1261,19 +1291,20 @@ struct GenericQMakeProject(TParseTree)
     {
         if(__ctfe)
         {
-            return         pegged.peg.defined!(pegged.peg.or!(RvalueAtom, EnquotedRvalue, Leftover!(pegged.peg.or!(space, quote, doublequote))), "QMakeProject.Rvalue")(TParseTree("", false,[], s));
+            return         pegged.peg.defined!(pegged.peg.or!(RvalueAtom, EnquotedRvalue, Leftover!(T)), "QMakeProject.Rvalue!(" ~ pegged.peg.getName!(T) ~ ")")(TParseTree("", false,[], s));
         }
         else
         {
             forgetMemo();
-            return hooked!(pegged.peg.defined!(pegged.peg.or!(RvalueAtom, EnquotedRvalue, Leftover!(pegged.peg.or!(space, quote, doublequote))), "QMakeProject.Rvalue"), "Rvalue")(TParseTree("", false,[], s));
+            return hooked!(pegged.peg.defined!(pegged.peg.or!(RvalueAtom, EnquotedRvalue, Leftover!(T)), "QMakeProject.Rvalue!(" ~ pegged.peg.getName!(T) ~ ")"), "Rvalue_1")(TParseTree("", false,[], s));
         }
     }
     static string Rvalue(GetName g)
     {
-        return "QMakeProject.Rvalue";
+        return "QMakeProject.Rvalue!(" ~ pegged.peg.getName!(T) ~ ")";
     }
 
+    }
     static TParseTree EnquotedRvalue(TParseTree p)
     {
         if(__ctfe)
@@ -1314,7 +1345,7 @@ struct GenericQMakeProject(TParseTree)
     {
         if(__ctfe)
         {
-            return         pegged.peg.defined!(pegged.peg.and!(doublequote, pegged.peg.option!(EnquotedRvalueChain!(doublequote)), doublequote), "QMakeProject.DoubleEnquotedRvalue")(p);
+            return         pegged.peg.defined!(pegged.peg.and!(doublequote, pegged.peg.option!(RvalueChain!(doublequote)), doublequote), "QMakeProject.DoubleEnquotedRvalue")(p);
         }
         else
         {
@@ -1322,7 +1353,7 @@ struct GenericQMakeProject(TParseTree)
                 return *m;
             else
             {
-                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.and!(doublequote, pegged.peg.option!(EnquotedRvalueChain!(doublequote)), doublequote), "QMakeProject.DoubleEnquotedRvalue"), "DoubleEnquotedRvalue")(p);
+                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.and!(doublequote, pegged.peg.option!(RvalueChain!(doublequote)), doublequote), "QMakeProject.DoubleEnquotedRvalue"), "DoubleEnquotedRvalue")(p);
                 memo[tuple(`DoubleEnquotedRvalue`, p.end)] = result;
                 return result;
             }
@@ -1333,12 +1364,12 @@ struct GenericQMakeProject(TParseTree)
     {
         if(__ctfe)
         {
-            return         pegged.peg.defined!(pegged.peg.and!(doublequote, pegged.peg.option!(EnquotedRvalueChain!(doublequote)), doublequote), "QMakeProject.DoubleEnquotedRvalue")(TParseTree("", false,[], s));
+            return         pegged.peg.defined!(pegged.peg.and!(doublequote, pegged.peg.option!(RvalueChain!(doublequote)), doublequote), "QMakeProject.DoubleEnquotedRvalue")(TParseTree("", false,[], s));
         }
         else
         {
             forgetMemo();
-            return hooked!(pegged.peg.defined!(pegged.peg.and!(doublequote, pegged.peg.option!(EnquotedRvalueChain!(doublequote)), doublequote), "QMakeProject.DoubleEnquotedRvalue"), "DoubleEnquotedRvalue")(TParseTree("", false,[], s));
+            return hooked!(pegged.peg.defined!(pegged.peg.and!(doublequote, pegged.peg.option!(RvalueChain!(doublequote)), doublequote), "QMakeProject.DoubleEnquotedRvalue"), "DoubleEnquotedRvalue")(TParseTree("", false,[], s));
         }
     }
     static string DoubleEnquotedRvalue(GetName g)
@@ -1350,7 +1381,7 @@ struct GenericQMakeProject(TParseTree)
     {
         if(__ctfe)
         {
-            return         pegged.peg.defined!(pegged.peg.and!(quote, pegged.peg.option!(EnquotedRvalueChain!(quote)), quote), "QMakeProject.SingleEnquotedRvalue")(p);
+            return         pegged.peg.defined!(pegged.peg.and!(quote, pegged.peg.option!(RvalueChain!(quote)), quote), "QMakeProject.SingleEnquotedRvalue")(p);
         }
         else
         {
@@ -1358,7 +1389,7 @@ struct GenericQMakeProject(TParseTree)
                 return *m;
             else
             {
-                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.and!(quote, pegged.peg.option!(EnquotedRvalueChain!(quote)), quote), "QMakeProject.SingleEnquotedRvalue"), "SingleEnquotedRvalue")(p);
+                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.and!(quote, pegged.peg.option!(RvalueChain!(quote)), quote), "QMakeProject.SingleEnquotedRvalue"), "SingleEnquotedRvalue")(p);
                 memo[tuple(`SingleEnquotedRvalue`, p.end)] = result;
                 return result;
             }
@@ -1369,12 +1400,12 @@ struct GenericQMakeProject(TParseTree)
     {
         if(__ctfe)
         {
-            return         pegged.peg.defined!(pegged.peg.and!(quote, pegged.peg.option!(EnquotedRvalueChain!(quote)), quote), "QMakeProject.SingleEnquotedRvalue")(TParseTree("", false,[], s));
+            return         pegged.peg.defined!(pegged.peg.and!(quote, pegged.peg.option!(RvalueChain!(quote)), quote), "QMakeProject.SingleEnquotedRvalue")(TParseTree("", false,[], s));
         }
         else
         {
             forgetMemo();
-            return hooked!(pegged.peg.defined!(pegged.peg.and!(quote, pegged.peg.option!(EnquotedRvalueChain!(quote)), quote), "QMakeProject.SingleEnquotedRvalue"), "SingleEnquotedRvalue")(TParseTree("", false,[], s));
+            return hooked!(pegged.peg.defined!(pegged.peg.and!(quote, pegged.peg.option!(RvalueChain!(quote)), quote), "QMakeProject.SingleEnquotedRvalue"), "SingleEnquotedRvalue")(TParseTree("", false,[], s));
         }
     }
     static string SingleEnquotedRvalue(GetName g)
@@ -1382,84 +1413,6 @@ struct GenericQMakeProject(TParseTree)
         return "QMakeProject.SingleEnquotedRvalue";
     }
 
-    template EnquotedRvalueChain(alias T)
-    {
-    static TParseTree EnquotedRvalueChain(TParseTree p)
-    {
-        if(__ctfe)
-        {
-            return         pegged.peg.defined!(pegged.peg.and!(Rvalue_2!(T), pegged.peg.zeroOrMore!(Rvalue_2!(T))), "QMakeProject.EnquotedRvalueChain!(" ~ pegged.peg.getName!(T) ~ ")")(p);
-        }
-        else
-        {
-            if (auto m = tuple("EnquotedRvalueChain!(" ~ pegged.peg.getName!(T) ~ ")", p.end) in memo)
-                return *m;
-            else
-            {
-                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.and!(Rvalue_2!(T), pegged.peg.zeroOrMore!(Rvalue_2!(T))), "QMakeProject.EnquotedRvalueChain!(" ~ pegged.peg.getName!(T) ~ ")"), "EnquotedRvalueChain_1")(p);
-                memo[tuple("EnquotedRvalueChain!(" ~ pegged.peg.getName!(T) ~ ")", p.end)] = result;
-                return result;
-            }
-        }
-    }
-
-    static TParseTree EnquotedRvalueChain(string s)
-    {
-        if(__ctfe)
-        {
-            return         pegged.peg.defined!(pegged.peg.and!(Rvalue_2!(T), pegged.peg.zeroOrMore!(Rvalue_2!(T))), "QMakeProject.EnquotedRvalueChain!(" ~ pegged.peg.getName!(T) ~ ")")(TParseTree("", false,[], s));
-        }
-        else
-        {
-            forgetMemo();
-            return hooked!(pegged.peg.defined!(pegged.peg.and!(Rvalue_2!(T), pegged.peg.zeroOrMore!(Rvalue_2!(T))), "QMakeProject.EnquotedRvalueChain!(" ~ pegged.peg.getName!(T) ~ ")"), "EnquotedRvalueChain_1")(TParseTree("", false,[], s));
-        }
-    }
-    static string EnquotedRvalueChain(GetName g)
-    {
-        return "QMakeProject.EnquotedRvalueChain!(" ~ pegged.peg.getName!(T) ~ ")";
-    }
-
-    }
-    template Rvalue_2(alias T)
-    {
-    static TParseTree Rvalue_2(TParseTree p)
-    {
-        if(__ctfe)
-        {
-            return         pegged.peg.defined!(pegged.peg.or!(RvalueAtom, EnquotedRvalue, Leftover!(T)), "QMakeProject.Rvalue_2!(" ~ pegged.peg.getName!(T) ~ ")")(p);
-        }
-        else
-        {
-            if (auto m = tuple("Rvalue_2!(" ~ pegged.peg.getName!(T) ~ ")", p.end) in memo)
-                return *m;
-            else
-            {
-                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.or!(RvalueAtom, EnquotedRvalue, Leftover!(T)), "QMakeProject.Rvalue_2!(" ~ pegged.peg.getName!(T) ~ ")"), "Rvalue_2_1")(p);
-                memo[tuple("Rvalue_2!(" ~ pegged.peg.getName!(T) ~ ")", p.end)] = result;
-                return result;
-            }
-        }
-    }
-
-    static TParseTree Rvalue_2(string s)
-    {
-        if(__ctfe)
-        {
-            return         pegged.peg.defined!(pegged.peg.or!(RvalueAtom, EnquotedRvalue, Leftover!(T)), "QMakeProject.Rvalue_2!(" ~ pegged.peg.getName!(T) ~ ")")(TParseTree("", false,[], s));
-        }
-        else
-        {
-            forgetMemo();
-            return hooked!(pegged.peg.defined!(pegged.peg.or!(RvalueAtom, EnquotedRvalue, Leftover!(T)), "QMakeProject.Rvalue_2!(" ~ pegged.peg.getName!(T) ~ ")"), "Rvalue_2_1")(TParseTree("", false,[], s));
-        }
-    }
-    static string Rvalue_2(GetName g)
-    {
-        return "QMakeProject.Rvalue_2!(" ~ pegged.peg.getName!(T) ~ ")";
-    }
-
-    }
     template Leftover(alias StopPattern)
     {
     static TParseTree Leftover(TParseTree p)
