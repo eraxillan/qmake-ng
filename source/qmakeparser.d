@@ -4,279 +4,295 @@ This module was automatically generated from the following grammar:
 
     QMakeProject:
         Project <- Statement* eoi
-        Statement <- FunctionDeclaration / Assignment / ForStatement / Scope / Block / BooleanExpression / ReplaceFunctionCall / TestFunctionCall / Comment / EmptyStatement
+        Statement <- / FunctionDeclaration
+                     / Assignment
+                     / ForStatement
+                     / Scope
+                     / Block
+                     / BooleanExpression
+                     / ReplaceFunctionCall
+                     / TestFunctionCall
+                     / Comment
+                     / EmptyStatement
 
-        # No input
-        EmptyStatement <- eps :eol*
+    # No input
+    EmptyStatement <- eps :eol*
 
-        # Code block
-        Block           <- SingleLineBlock / MultiLineBlock
-        SingleLineBlock <- :space* "@" :space* Statement
-        MultiLineBlock  <- :space* "{" :space* :eol* :space* Statement+ :space* :eol* "}" :space* :eol*
+    # Comment, single-line and multi-line (extension)
+    Comment                         <~ MultiLineComment / SingleLineComment
+    MultiLineComment                <~ :"#*" (!"*#" SourceCharacter)* :"*#"
+    SingleLineComment               <- :"#" SingleLineCommentChars? :eol
+    SingleLineCommentChars          <- SingleLineCommentChar+
+    SingleLineCommentChar           <- !LineTerminator SourceCharacter
 
-        # Comment, single-line and multi-line (extension)
-        Comment                         <~ MultiLineComment / SingleLineComment
-        MultiLineComment                <~ :"#*" (!"*#" SourceCharacter)* :"*#"
-        SingleLineComment               <- :"#" SingleLineCommentChars? :eol
-        SingleLineCommentChars          <- SingleLineCommentChar+
-        SingleLineCommentChar           <- !LineTerminator SourceCharacter
+    # Code block
+    Block           <- SingleLineBlock / MultiLineBlock
+    SingleLineBlock <- :space* "@" :space* Statement
+    MultiLineBlock  <- :space* "{" :space* :eol* :space* Statement+ :space* :eol* "}" :space* :eol*
 
-        # Base rvalue statement: function call or variable/property expand
-        RvalueAtom <- ReplaceFunctionCall / ExpandStatement / TestFunctionCall
+    # Variable or variable property assignment
+    Assignment <- DirectAssignment / AppendAssignment / AppendUniqueAssignment / RemoveAssignment / ReplaceAssignment
 
-        # Variable or variable property assignment
-        Assignment <- (DirectAssignment / AppendAssignment / AppendUniqueAssignment / RemoveAssignment / ReplaceAssignment)
- 
-        RvalueExpression       <- RvalueList / RvalueChain
-        RvalueList             <- RvalueChain (:space+ RvalueChain)+
-        RvalueChain            <- Rvalue Rvalue*
-        Rvalue                 <- RvalueAtom / EnquotedRvalue / WhitespaceFreeLeftover
+    DirectAssignment        <- QualifiedIdentifier :space* "="  :space* RvalueExpression? :eol*
+    AppendAssignment        <- QualifiedIdentifier :space* "+=" :space* RvalueExpression? :eol*
+    AppendUniqueAssignment  <- QualifiedIdentifier :space* "*=" :space* RvalueExpression? :eol*
+    RemoveAssignment        <- QualifiedIdentifier :space* "-=" :space* RvalueExpression? :eol*
+    ReplaceAssignment       <- QualifiedIdentifier :space* "~=" :space* RegularExpression? :eol*
 
-        EnquotedRvalue         <- DoubleEnquotedRvalue / SingleEnquotedRvalue
-        DoubleEnquotedRvalue   <- doublequote EnquotedRvalueChain(doublequote)? doublequote
-        SingleEnquotedRvalue   <- quote EnquotedRvalueChain(quote)? quote
-        EnquotedRvalueChain(T) <- Rvalue_2(T) Rvalue_2(T)*
-        Rvalue_2(T)            <- RvalueAtom / EnquotedRvalue / WhitespaceIncludingLeftover(T)
+    # Base rvalue statement: function call or variable/property expand
+    RvalueAtom <- ReplaceFunctionCall / ExpandStatement / TestFunctionCall
 
-        WhitespaceFreeLeftover                 <- ~(WhitespaceFreeLeftoverChar+)
-        WhitespaceFreeLeftoverStopChar         <- eol / ExpandStatement / space / BACKSLASH / quote / doublequote
-        WhitespaceFreeLeftoverChar             <- !WhitespaceFreeLeftoverStopChar SourceCharacter
-                                                / BACKSLASH EscapeSequence
+    RvalueExpression       <- RvalueList / RvalueChain
+    RvalueList             <- RvalueChain (:space+ RvalueChain)+
+    RvalueChain            <- Rvalue Rvalue*
+    Rvalue                 <- RvalueAtom / EnquotedRvalue / WhitespaceFreeLeftover
 
-        WhitespaceIncludingLeftover(T)          <- ~(WhitespaceIncludingLeftoverChar(T)+)
-        WhitespaceIncludingLeftoverStopChar(T)  <- eol / ExpandStatement / BACKSLASH / T
-        WhitespaceIncludingLeftoverChar(T)      <- !WhitespaceIncludingLeftoverStopChar(T) SourceCharacter
-                                                 / BACKSLASH EscapeSequence
+    EnquotedRvalue         <- DoubleEnquotedRvalue / SingleEnquotedRvalue
+    DoubleEnquotedRvalue   <- doublequote EnquotedRvalueChain(doublequote)? doublequote
+    SingleEnquotedRvalue   <- quote EnquotedRvalueChain(quote)? quote
+    EnquotedRvalueChain(T) <- Rvalue_2(T) Rvalue_2(T)*
+    Rvalue_2(T)            <- RvalueAtom / EnquotedRvalue / WhitespaceIncludingLeftover(T)
 
-        RegularExpression <- ~(RegularExpressionChar+)
-        RegularExpressionStopChar <- eol
-        RegularExpressionChar <- !RegularExpressionStopChar SourceCharacter
+    WhitespaceFreeLeftover                 <- ~(WhitespaceFreeLeftoverChar+)
+    WhitespaceFreeLeftoverStopChar         <- eol / ExpandStatement / space / BACKSLASH / quote / doublequote
+    WhitespaceFreeLeftoverChar             <- !WhitespaceFreeLeftoverStopChar SourceCharacter
+                                            / BACKSLASH EscapeSequence
 
-        DirectAssignment        <- QualifiedIdentifier :space* "="  :space* RvalueExpression? :eol*
-        AppendAssignment        <- QualifiedIdentifier :space* "+=" :space* RvalueExpression? :eol*
-        AppendUniqueAssignment  <- QualifiedIdentifier :space* "*=" :space* RvalueExpression? :eol*
-        RemoveAssignment        <- QualifiedIdentifier :space* "-=" :space* RvalueExpression? :eol*
-        ReplaceAssignment       <- QualifiedIdentifier :space* "~=" :space* RegularExpression? :eol*
+    WhitespaceIncludingLeftover(T)          <- ~(WhitespaceIncludingLeftoverChar(T)+)
+    WhitespaceIncludingLeftoverStopChar(T)  <- eol / ExpandStatement / BACKSLASH / T
+    WhitespaceIncludingLeftoverChar(T)      <- !WhitespaceIncludingLeftoverStopChar(T) SourceCharacter
+                                             / BACKSLASH EscapeSequence
 
-        # Test function call
-        # E.g.:
-        # message("Starting project build...")
-        TestFunctionCall <- EvalTestFunctionCall / CacheTestFunctionCall / ContainsTestFunctionCall
-                          / ReturnFunctionCall / RequiresFunctionCall
-                          / FunctionCall
+    RegularExpression <- ~(RegularExpressionChar+)
+    RegularExpressionStopChar <- eol
+    RegularExpressionChar <- !RegularExpressionStopChar SourceCharacter
 
-        # Replace function call
-        # E.g.:
-        # $$escape_expand("One\nTwo\nThree")
-        ReplaceFunctionCall <- EXPAND_MARKER TestFunctionCall
+    # Test function call
+    # E.g.:
+    # message("Starting project build...")
+    TestFunctionCall <- / EvalTestFunctionCall
+                        / CacheTestFunctionCall
+                        / ContainsTestFunctionCall
+                        / ReturnFunctionCall
+                        / RequiresFunctionCall
+                        / FunctionCall
 
-        # NOTE: "$${call}($$opt, $$val, $$nextok)" is also a valid function call statement;
-        #       also is \$\$"$$call"()
-        FunctionCall <- FunctionId OPEN_PAR_WS FunctionArgumentList? CLOSE_PAR_WS
-        FunctionId   <- (!("defineReplace" / "defineTest" / "eval" / "cache" / "contains" / "return" / "requires")
-                        ("{" :space* QualifiedIdentifier :space* "}" / QualifiedIdentifier / EnquotedString))
+    # Replace function call
+    # E.g.:
+    # $$escape_expand("One\nTwo\nThree")
+    ReplaceFunctionCall <- EXPAND_MARKER TestFunctionCall
 
-        FunctionArgumentList       <- List(COMMA_WS, COMMA) / List(:space+, :space) / FunctionFirstArgument
-        List(delimRule, delimChar) <- FunctionFirstArgument (delimRule (FunctionNextArgument(delimChar))?)+
+    # NOTE: "$${call}($$opt, $$val, $$nextok)" is also a valid function call statement;
+    #       also is \$\$"$$call"()
+    FunctionCall <- FunctionId OPEN_PAR_WS FunctionArgumentList? CLOSE_PAR_WS
+    FunctionId   <- (!("defineReplace" / "defineTest" / "eval" / "cache" / "contains" / "return" / "requires")
+                    ("{" :space* QualifiedIdentifier :space* "}" / QualifiedIdentifier / EnquotedString))
 
-        FunctionFirstArgument           <- FunctionFirstArgumentImpl FunctionFirstArgumentImpl*
-        FunctionFirstArgumentImpl       <- RvalueAtom
-                                         / EnquotedFunctionFirstArgument
-                                         / FunctionFirstArgumentString
-        
-        EnquotedFunctionFirstArgument         <- DoubleEnquotedFunctionFirstArgument / SingleEnquotedFunctionFirstArgument
-        DoubleEnquotedFunctionFirstArgument   <- doublequote EnquotedFunctionFirstArgumentChain(doublequote)? doublequote
-        SingleEnquotedFunctionFirstArgument   <- quote EnquotedFunctionFirstArgumentChain(quote)? quote
-        EnquotedFunctionFirstArgumentChain(Q) <- FunctionFirstArgumentImpl_2(Q) FunctionFirstArgumentImpl_2(Q)*
-        FunctionFirstArgumentImpl_2(Q)        <- RvalueAtom
-                                               / EnquotedFunctionFirstArgument
-                                               / FunctionFirstArgumentString
-                                               / WhitespaceIncludingLeftover(Q)
-        
-        FunctionFirstArgumentString     <- ~(FunctionFirstArgumentStringChar+)
-        FunctionFirstArgumentStringChar <- !(eol / ExpandStatement / space / COMMA / quote / doublequote / BACKSLASH / EndOfFunction) SourceCharacter
+    FunctionArgumentList       <- List(COMMA_WS, COMMA) / List(:space+, :space) / FunctionFirstArgument
+    List(delimRule, delimChar) <- FunctionFirstArgument (delimRule (FunctionNextArgument(delimChar))?)+
+
+    FunctionFirstArgument           <- FunctionFirstArgumentImpl FunctionFirstArgumentImpl*
+    FunctionFirstArgumentImpl       <- / RvalueAtom
+                                       / EnquotedFunctionFirstArgument
+                                       / FunctionFirstArgumentString
+
+    EnquotedFunctionFirstArgument         <- DoubleEnquotedFunctionFirstArgument / SingleEnquotedFunctionFirstArgument
+    DoubleEnquotedFunctionFirstArgument   <- doublequote EnquotedFunctionFirstArgumentChain(doublequote)? doublequote
+    SingleEnquotedFunctionFirstArgument   <- quote EnquotedFunctionFirstArgumentChain(quote)? quote
+    EnquotedFunctionFirstArgumentChain(Q) <- FunctionFirstArgumentImpl_2(Q) FunctionFirstArgumentImpl_2(Q)*
+    FunctionFirstArgumentImpl_2(Q)        <- / RvalueAtom
+                                             / EnquotedFunctionFirstArgument
+                                             / FunctionFirstArgumentString
+                                             / WhitespaceIncludingLeftover(Q)
+
+    FunctionFirstArgumentString     <- ~(FunctionFirstArgumentStringChar+)
+    FunctionFirstArgumentStringChar <- !(eol / ExpandStatement / space / COMMA / quote / doublequote / BACKSLASH / EndOfFunction) SourceCharacter
+                                     / BACKSLASH EscapeSequence
+
+    FunctionNextArgument(delim)           <- FunctionNextArgumentImpl(delim) (FunctionNextArgumentImpl(delim))*
+    FunctionNextArgumentImpl(delim)       <- / RvalueAtom
+                                             / EnquotedFunctionNextArgument(delim)
+                                             / FunctionNextArgumentString(delim)
+
+    EnquotedFunctionNextArgument(delim)         <- DoubleEnquotedFunctionNextArgument(delim) / SingleEnquotedFunctionNextArgument(delim)
+    DoubleEnquotedFunctionNextArgument(delim)   <- doublequote EnquotedFunctionNextArgumentChain(delim, doublequote)? doublequote
+    SingleEnquotedFunctionNextArgument(delim)   <- quote EnquotedFunctionNextArgumentChain(delim, quote)? quote
+    EnquotedFunctionNextArgumentChain(delim, Q) <- FunctionNextArgumentImpl_2(delim, Q) FunctionNextArgumentImpl_2(delim, Q)*
+    FunctionNextArgumentImpl_2(delim, Q)        <- / RvalueAtom
+                                                   / EnquotedFunctionNextArgument(delim)
+                                                   / FunctionNextArgumentString(delim)
+                                                   / WhitespaceIncludingLeftover(Q)
+
+    FunctionNextArgumentString(delim)     <- ~(FunctionNextArgumentStringChar(delim)+)
+    FunctionNextArgumentStringChar(delim) <- !(eol / ExpandStatement / delim / quote / doublequote / BACKSLASH / EndOfFunction) SourceCharacter
                                            / BACKSLASH EscapeSequence
 
-        FunctionNextArgument(delim)           <- FunctionNextArgumentImpl(delim) (FunctionNextArgumentImpl(delim))*
-        FunctionNextArgumentImpl(delim)       <- RvalueAtom
-                                               / EnquotedFunctionNextArgument(delim)
-                                               / FunctionNextArgumentString(delim)
-        
-        EnquotedFunctionNextArgument(delim)         <- DoubleEnquotedFunctionNextArgument(delim) / SingleEnquotedFunctionNextArgument(delim)
-        DoubleEnquotedFunctionNextArgument(delim)   <- doublequote EnquotedFunctionNextArgumentChain(delim, doublequote)? doublequote
-        SingleEnquotedFunctionNextArgument(delim)   <- quote EnquotedFunctionNextArgumentChain(delim, quote)? quote
-        EnquotedFunctionNextArgumentChain(delim, Q) <- FunctionNextArgumentImpl_2(delim, Q) FunctionNextArgumentImpl_2(delim, Q)*
-        FunctionNextArgumentImpl_2(delim, Q)        <- RvalueAtom
-                                                     / EnquotedFunctionNextArgument(delim)
-                                                     / FunctionNextArgumentString(delim)
-                                                     / WhitespaceIncludingLeftover(Q)
+    # NOTE: function arguments can contain "("/")" themselves, so we need special rule to detect function argument list end
+    EndOfFunction <- ")" :space* (
+        / [a-zA-Z_0-9\-\+\*/]
+        / eoi / eol
+        / "=" / "+=" / "*=" / "-=" / "~="
+        / "," / "." / "_"
+        / "(" / ")"
+        / EXPAND_MARKER
+        / "@" / "{" / "}" / ":" / "|"
+        / "\""
+    )
 
-        FunctionNextArgumentString(delim)     <- ~(FunctionNextArgumentStringChar(delim)+)
-        FunctionNextArgumentStringChar(delim) <- !(eol / ExpandStatement / delim / quote / doublequote / BACKSLASH / EndOfFunction) SourceCharacter
-                                               / BACKSLASH EscapeSequence
+    FunctionDeclaration        <- ReplaceFunctionDeclaration / TestFunctionDeclaration
+    ReplaceFunctionDeclaration <- "defineReplace" OPEN_PAR_WS FunctionArgumentList? CLOSE_PAR_WS Block
+    TestFunctionDeclaration    <- "defineTest"    OPEN_PAR_WS FunctionArgumentList? CLOSE_PAR_WS Block
 
-        # NOTE: function arguments can contain "("/")" themselves, so we need special rule to detect function argument list end
-        EndOfFunction <- ")" :space* (
-            [a-zA-Z_0-9\-\+\*/]
-            / eoi / eol
-            / "=" / "+=" / "*=" / "-=" / "~="
-            / "," / "." / "_"
-            / "(" / ")"
-            / EXPAND_MARKER
-            / "@" / "{" / "}" / ":" / "|"
-            / "\""
-        )
+    # Conditional statement
+    # E.g.:
+    # CONFIG(debug, debug|release)@ buildmode = debug
+    #
+    # NOTE: preprocessor replace terminal ":" after condition with "@" to eliminate ambiguity
+    #
+    Scope             <- BooleanExpression ScopeMainBranch ScopeElseIfBranch* ScopeElseBranch?
+    ScopeMainBranch   <- Block
+    ScopeElseIfBranch <- "else@" :space* BooleanExpression Block
+    ScopeElseBranch   <- / "else@" :space* Statement
+                         / "else"  MultiLineBlock
 
-        FunctionDeclaration        <- ReplaceFunctionDeclaration / TestFunctionDeclaration
-        ReplaceFunctionDeclaration <- "defineReplace" OPEN_PAR_WS FunctionArgumentList? CLOSE_PAR_WS Block
-        TestFunctionDeclaration    <- "defineTest"    OPEN_PAR_WS FunctionArgumentList? CLOSE_PAR_WS Block
-
-        # Conditional statement
-        # E.g.:
-        # CONFIG(debug, debug|release):buildmode = debug
-        Scope            <- BooleanExpression ScopeMainBranch ScopeElseIfBranch* ScopeElseBranch?
-        ScopeMainBranch   <- Block
-        ScopeElseIfBranch <- "else@" :space* BooleanExpression Block
-        ScopeElseBranch   <- "else@" :space* Statement
-                           / "else"  MultiLineBlock
-
-        # E.g.:
-        # var1: message("scope 1.1")
-        # !exists($$QMAKE_QT_CONFIG)|!include($$QMAKE_QT_CONFIG, "", true) {
-        BooleanExpression            <- LogicalORExpression
-        LogicalORExpression          <- LogicalANDExpression (:space* "|" :space* LogicalANDExpression)*
-        LogicalANDExpression         <- LogicalNOTExpression (:space* ":" :space* LogicalNOTExpression)*
-        LogicalNOTExpression         <- (:space* "!" :space*)? PrimaryBooleanExpression
-        PrimaryBooleanExpression     <- ParenthesedBooleanExpression
-                                      / IfTestFunctionCall
-                                      / BooleanAtom
-        ParenthesedBooleanExpression <- '(' BooleanExpression ')'
-# FIXME: support CONFIG test function
-        IfTestFunctionCall           <- "if" OPEN_PAR_WS BooleanExpression CLOSE_PAR_WS
-        BooleanAtom                  <- ReplaceFunctionCall / TestFunctionCall / QualifiedIdentifier / BooleanConst
-        BooleanConst                 <- "true" / "false"
-
-        # FIXME: move built-in test and replace function to separate module
-
-        ForStatement <- ForEachInListStatement / ForEverStatement
-        ForEachInListStatement <- "for" OPEN_PAR_WS ForIteratorVariableName COMMA_WS ForIterableList CLOSE_PAR_WS Block
-        ForIteratorVariableName <- QualifiedIdentifier
-        ForIterableList <- List(:space+, :space) / FunctionFirstArgument #/ Statement
-        ForEverStatement <- "for" OPEN_PAR_WS "ever" CLOSE_PAR_WS Block
-
-        # eval(string)
-        EvalTestFunctionCall <- "eval" OPEN_PAR_WS EvalArg CLOSE_PAR_WS
-        EvalArg <- (QualifiedIdentifier :space* "=" :space* Statement) / Statement
-
-        # cache(variablename, [set|add|sub] [transient] [super|stash], [source variablename])
-        #
-        # E.g.:
-        # cache(CONFIG, add, $$list(config_clang))
-        # cache(QMAKE_MAC_SDK.$${sdk}.$${info}, set stash, QMAKE_MAC_SDK.$${sdk}.$${info})
-        # cache(QT.$${mod}.$$var, transient)
-        #
-        # Special case:
-        # cache(, super)
-        CacheTestFunctionCall       <- "cache" OPEN_PAR_WS CacheTestFunctionCallParams? CLOSE_PAR_WS
-        CacheTestFunctionCallParams <- QualifiedIdentifier? (COMMA_WS CacheTestFunctionParam2)? (COMMA_WS FunctionFirstArgument)?
-        CacheTestFunctionParam2     <- ("set" / "add" / "sub")? :space* ("transient")? :space* ("super" / "stash")?
-        
-        # contains(variablename, value)
-        ContainsTestFunctionCall <- "contains" OPEN_PAR_WS QualifiedIdentifier (COMMA_WS EnquotedString) CLOSE_PAR_WS
-
-        # return(expression)
-        ReturnFunctionCall <- "return" OPEN_PAR_WS (List(:space+, :space) / FunctionFirstArgument / Statement)? CLOSE_PAR_WS
-        
-        # requires(condition)
-        RequiresFunctionCall <- "requires" OPEN_PAR_WS BooleanExpression CLOSE_PAR_WS
-
-        # Regular string: can contain any character except of spacing/EOL/quotes
-        RegularString       <- RegularStringChars?
-        RegularStringChars  <- ~(RegularStringChar+)
-        RegularStringChar   <- !(blank / quote / doublequote) SourceCharacter
-
-        # Enquoted string: can contain any character except of quote
-        EnquotedString            <- DoubleEnquotedString / SingleEnquotedString
-        DoubleEnquotedString      <- doublequote ~(NonDoubleQuoteCharacter*) doublequote
-        NonDoubleQuoteCharacter   <- !(doublequote / BACKSLASH / eol) SourceCharacter / BACKSLASH EscapeSequence
-        SingleEnquotedString      <- quote ~(NonSingleQuoteCharacter*) quote
-        NonSingleQuoteCharacter   <- !(quote / BACKSLASH / eol) SourceCharacter / BACKSLASH EscapeSequence
-
-        # NOTE: "a-b" and "c++11" are valid qmake identifiers too
-        #Identifier <- identifier
-        Identifier      <~ [a-zA-Z_] [a-zA-Z_0-9\-\+\*]*
-        QMakeIdentifier <~ [_a-zA-Z0-9\-+*]+
-
-        ExpandStatement                    <- FunctionArgumentExpandStatement
-                                            / ProjectVariableExpandStatement
-                                            / MakefileVariableExpandStatement
-                                            / EnvironmentVariableExpandStatement
-                                            / PropertyVariableExpandStatement
-        FunctionArgumentExpandStatement    <- "$$" DecNumber
-                                            / "$${" DecNumber "}"
-        MakefileVariableExpandStatement    <- "$" QualifiedIdentifier
-                                            / "${" QualifiedIdentifier "}"
-        ProjectVariableExpandStatement     <- "$$" QualifiedIdentifier
-                                            / "$${" QualifiedIdentifier "}"
-                                            # E.g. result = \$\$"$$call"
-                                            / "$$" doublequote ExpandStatement doublequote
-        EnvironmentVariableExpandStatement <- ("$$" / "$") OPEN_PAR_WS QualifiedIdentifier CLOSE_PAR_WS
-        PropertyVariableExpandStatement    <- "$$[" QualifiedIdentifier ("/get" / "/src")? "]"
-
-        # lvalue
-        # FIXME: need further investigion! e.g. what another number-returning functions exist
-        NumberFunctionCall  <- EXPAND_MARKER "size" OPEN_PAR_WS QualifiedIdentifier CLOSE_PAR_WS
-        LValueImpl          <- NumberFunctionCall / ExpandStatement / QMakeIdentifier
-        LValue              <- LValueImpl LValueImpl*
-        QualifiedIdentifier <~ "."? LValue ("." LValue)*
-
-        EscapeSequence
-           <- quote
-            / doublequote
-            / BACKSLASH
-            / "$"
-            / "."
-            / "?"
-            / "a"
-            / "x" ~(HexDigit HexDigit HexDigit HexDigit)
-            / ~(OctDigit OctDigit OctDigit)
-            / "x" ~(HexDigit HexDigit)
-            / "b"
-            / "f"
-            / "n"
-            / "r"
-            / "t"
-            / "v"
-            / "+"
-            / "-"
-            / "*"
-            / "|"
-            / "("
-            / ")"
-            / "["
-            / "]"
-            / "{"
-            / "}"
-
-        OctDigit <- [0-7]
-        DecDigit <- [0-9]
-        HexDigit <- [0-9a-fA-F]
-        DecNumber <- DecDigit+
-
-        SINGLE_EXPAND_MARKER <- "$"
-        # FIXME: implement second rule as escape sequence
-        EXPAND_MARKER <- "$$" / "\\$\\$"
-
-        COMMA        <- ","
-        COMMA_WS     <- :space* "," :space*
-        OPEN_PAR_WS  <- :space* "(" :space*
-        CLOSE_PAR_WS <- :space* ")"
-        
-        BACKSLASH <- "\\"
-
-        SourceCharacter <- [\u0000-\uFFFC]
-        LineTerminator  <- "\u000A" / "\u000D" / "\u2028" / "\u2029"
+    # Compound boolean expression
+    # E.g.:
+    # (win32:release)|!exists($$QMAKE_QT_CONFIG)|!include($$QMAKE_QT_CONFIG, "", true): message("fail")
+    BooleanExpression            <- LogicalORExpression
+    LogicalORExpression          <- LogicalANDExpression (:space* "|" :space* LogicalANDExpression)*
+    LogicalANDExpression         <- LogicalNOTExpression (:space* ":" :space* LogicalNOTExpression)*
+    LogicalNOTExpression         <- (:space* "!" :space*)? PrimaryBooleanExpression
+    PrimaryBooleanExpression     <- ParenthesedBooleanExpression
+                                  / IfTestFunctionCall
+                                  / BooleanAtom
+    ParenthesedBooleanExpression <- '(' BooleanExpression ')'
     
+    # FIXME: support CONFIG test function
+    
+    IfTestFunctionCall <- "if" OPEN_PAR_WS BooleanExpression CLOSE_PAR_WS
+    BooleanAtom        <- / ReplaceFunctionCall
+                          / TestFunctionCall
+                          / QualifiedIdentifier
+                          / BooleanConst
+    BooleanConst       <- "true" / "false"
+
+    # Loop statement (foreach and while(true) idioms)
+    ForStatement <- ForEachInListStatement / ForEverStatement
+    ForEachInListStatement <- "for" OPEN_PAR_WS ForIteratorVariableName COMMA_WS ForIterableList CLOSE_PAR_WS Block
+    ForIteratorVariableName <- QualifiedIdentifier
+    ForIterableList <- List(:space+, :space) / FunctionFirstArgument #/ Statement
+    ForEverStatement <- "for" OPEN_PAR_WS "ever" CLOSE_PAR_WS Block
+
+    ExpandStatement                    <- / FunctionArgumentExpandStatement
+                                          / ProjectVariableExpandStatement
+                                          / MakefileVariableExpandStatement
+                                          / EnvironmentVariableExpandStatement
+                                          / PropertyVariableExpandStatement
+    FunctionArgumentExpandStatement    <- / "$$" DecNumber
+                                          / "$${" DecNumber "}"
+    MakefileVariableExpandStatement    <- / "$" QualifiedIdentifier
+                                          / "${" QualifiedIdentifier "}"
+    ProjectVariableExpandStatement     <- / "$$" QualifiedIdentifier
+                                          / "$${" QualifiedIdentifier "}"
+                                          # E.g. result = \$\$"$$call"
+                                          / "$$" doublequote ExpandStatement doublequote
+    EnvironmentVariableExpandStatement <- ("$$" / "$") OPEN_PAR_WS QualifiedIdentifier CLOSE_PAR_WS
+    PropertyVariableExpandStatement    <- "$$[" QualifiedIdentifier ("/get" / "/src")? "]"
+
+    # Some built-in replace and test functions that cause difficulties during parsing
+
+    # eval(string)
+    EvalTestFunctionCall <- "eval" OPEN_PAR_WS EvalArg CLOSE_PAR_WS
+    EvalArg <- (QualifiedIdentifier :space* "=" :space* Statement) / Statement
+
+    # cache(variablename, [set|add|sub] [transient] [super|stash], [source variablename])
+    #
+    # E.g.:
+    # cache(CONFIG, add, $$list(config_clang))
+    # cache(QMAKE_MAC_SDK.$${sdk}.$${info}, set stash, QMAKE_MAC_SDK.$${sdk}.$${info})
+    # cache(QT.$${mod}.$$var, transient)
+    #
+    # Special case:
+    # cache(, super)
+    CacheTestFunctionCall       <- "cache" OPEN_PAR_WS CacheTestFunctionCallParams? CLOSE_PAR_WS
+    CacheTestFunctionCallParams <- QualifiedIdentifier? (COMMA_WS CacheTestFunctionParam2)? (COMMA_WS FunctionFirstArgument)?
+    CacheTestFunctionParam2     <- ("set" / "add" / "sub")? :space* ("transient")? :space* ("super" / "stash")?
+    
+    # contains(variablename, value)
+    ContainsTestFunctionCall <- "contains" OPEN_PAR_WS QualifiedIdentifier (COMMA_WS EnquotedString) CLOSE_PAR_WS
+
+    # return(expression)
+    ReturnFunctionCall <- "return" OPEN_PAR_WS (List(:space+, :space) / FunctionFirstArgument / Statement)? CLOSE_PAR_WS
+
+    # requires(condition)
+    RequiresFunctionCall <- "requires" OPEN_PAR_WS BooleanExpression CLOSE_PAR_WS
+
+    # Enquoted string: can contain any character except of quote
+    EnquotedString            <- DoubleEnquotedString / SingleEnquotedString
+    DoubleEnquotedString      <- doublequote ~(NonDoubleQuoteCharacter*) doublequote
+    NonDoubleQuoteCharacter   <- !(doublequote / BACKSLASH / eol) SourceCharacter / BACKSLASH EscapeSequence
+    SingleEnquotedString      <- quote ~(NonSingleQuoteCharacter*) quote
+    NonSingleQuoteCharacter   <- !(quote / BACKSLASH / eol) SourceCharacter / BACKSLASH EscapeSequence
+
+    # NOTE: "a-b" and "c++11" are valid qmake identifiers too
+    #Identifier <- identifier
+    Identifier      <~ [a-zA-Z_] [a-zA-Z_0-9\-\+\*]*
+    QMakeIdentifier <~ [_a-zA-Z0-9\-+*]+
+
+    # lvalue
+    # FIXME: need further investigion! e.g. what another number-returning functions exist
+    NumberFunctionCall  <- EXPAND_MARKER "size" OPEN_PAR_WS QualifiedIdentifier CLOSE_PAR_WS
+
+    LValueImpl          <- NumberFunctionCall / ExpandStatement / QMakeIdentifier
+    LValue              <- LValueImpl LValueImpl*
+    QualifiedIdentifier <~ "."? LValue ("." LValue)*
+
+    EscapeSequence <-
+        / quote
+        / doublequote
+        / BACKSLASH
+        / "$"
+        / "."
+        / "?"
+        / "a"
+        / "x" ~(HexDigit HexDigit HexDigit HexDigit)
+        / ~(OctDigit OctDigit OctDigit)
+        / "x" ~(HexDigit HexDigit)
+        / "b"
+        / "f"
+        / "n"
+        / "r"
+        / "t"
+        / "v"
+        / "+"
+        / "-"
+        / "*"
+        / "|"
+        / "("
+        / ")"
+        / "["
+        / "]"
+        / "{"
+        / "}"
+
+    OctDigit <- [0-7]
+    DecDigit <- [0-9]
+    HexDigit <- [0-9a-fA-F]
+    DecNumber <- DecDigit+
+
+    # FIXME: implement second rule as escape sequence
+    EXPAND_MARKER <- "$$" / "\\$\\$"
+
+    COMMA        <- ","
+    COMMA_WS     <- :space* "," :space*
+    OPEN_PAR_WS  <- :space* "(" :space*
+    CLOSE_PAR_WS <- :space* ")"
+
+    BACKSLASH <- "\\"
+
+    SourceCharacter <- [\u0000-\uFFFC]
+    LineTerminator  <- "\u000A" / "\u000D" / "\u2028" / "\u2029"
+
 
 +/
 module qmakeparser;
@@ -303,16 +319,21 @@ struct GenericQMakeProject(TParseTree)
         rules["Project"] = toDelegate(&Project);
         rules["Statement"] = toDelegate(&Statement);
         rules["EmptyStatement"] = toDelegate(&EmptyStatement);
-        rules["Block"] = toDelegate(&Block);
-        rules["SingleLineBlock"] = toDelegate(&SingleLineBlock);
-        rules["MultiLineBlock"] = toDelegate(&MultiLineBlock);
         rules["Comment"] = toDelegate(&Comment);
         rules["MultiLineComment"] = toDelegate(&MultiLineComment);
         rules["SingleLineComment"] = toDelegate(&SingleLineComment);
         rules["SingleLineCommentChars"] = toDelegate(&SingleLineCommentChars);
         rules["SingleLineCommentChar"] = toDelegate(&SingleLineCommentChar);
-        rules["RvalueAtom"] = toDelegate(&RvalueAtom);
+        rules["Block"] = toDelegate(&Block);
+        rules["SingleLineBlock"] = toDelegate(&SingleLineBlock);
+        rules["MultiLineBlock"] = toDelegate(&MultiLineBlock);
         rules["Assignment"] = toDelegate(&Assignment);
+        rules["DirectAssignment"] = toDelegate(&DirectAssignment);
+        rules["AppendAssignment"] = toDelegate(&AppendAssignment);
+        rules["AppendUniqueAssignment"] = toDelegate(&AppendUniqueAssignment);
+        rules["RemoveAssignment"] = toDelegate(&RemoveAssignment);
+        rules["ReplaceAssignment"] = toDelegate(&ReplaceAssignment);
+        rules["RvalueAtom"] = toDelegate(&RvalueAtom);
         rules["RvalueExpression"] = toDelegate(&RvalueExpression);
         rules["RvalueList"] = toDelegate(&RvalueList);
         rules["RvalueChain"] = toDelegate(&RvalueChain);
@@ -326,11 +347,6 @@ struct GenericQMakeProject(TParseTree)
         rules["RegularExpression"] = toDelegate(&RegularExpression);
         rules["RegularExpressionStopChar"] = toDelegate(&RegularExpressionStopChar);
         rules["RegularExpressionChar"] = toDelegate(&RegularExpressionChar);
-        rules["DirectAssignment"] = toDelegate(&DirectAssignment);
-        rules["AppendAssignment"] = toDelegate(&AppendAssignment);
-        rules["AppendUniqueAssignment"] = toDelegate(&AppendUniqueAssignment);
-        rules["RemoveAssignment"] = toDelegate(&RemoveAssignment);
-        rules["ReplaceAssignment"] = toDelegate(&ReplaceAssignment);
         rules["TestFunctionCall"] = toDelegate(&TestFunctionCall);
         rules["ReplaceFunctionCall"] = toDelegate(&ReplaceFunctionCall);
         rules["FunctionCall"] = toDelegate(&FunctionCall);
@@ -365,6 +381,12 @@ struct GenericQMakeProject(TParseTree)
         rules["ForIteratorVariableName"] = toDelegate(&ForIteratorVariableName);
         rules["ForIterableList"] = toDelegate(&ForIterableList);
         rules["ForEverStatement"] = toDelegate(&ForEverStatement);
+        rules["ExpandStatement"] = toDelegate(&ExpandStatement);
+        rules["FunctionArgumentExpandStatement"] = toDelegate(&FunctionArgumentExpandStatement);
+        rules["MakefileVariableExpandStatement"] = toDelegate(&MakefileVariableExpandStatement);
+        rules["ProjectVariableExpandStatement"] = toDelegate(&ProjectVariableExpandStatement);
+        rules["EnvironmentVariableExpandStatement"] = toDelegate(&EnvironmentVariableExpandStatement);
+        rules["PropertyVariableExpandStatement"] = toDelegate(&PropertyVariableExpandStatement);
         rules["EvalTestFunctionCall"] = toDelegate(&EvalTestFunctionCall);
         rules["EvalArg"] = toDelegate(&EvalArg);
         rules["CacheTestFunctionCall"] = toDelegate(&CacheTestFunctionCall);
@@ -373,9 +395,6 @@ struct GenericQMakeProject(TParseTree)
         rules["ContainsTestFunctionCall"] = toDelegate(&ContainsTestFunctionCall);
         rules["ReturnFunctionCall"] = toDelegate(&ReturnFunctionCall);
         rules["RequiresFunctionCall"] = toDelegate(&RequiresFunctionCall);
-        rules["RegularString"] = toDelegate(&RegularString);
-        rules["RegularStringChars"] = toDelegate(&RegularStringChars);
-        rules["RegularStringChar"] = toDelegate(&RegularStringChar);
         rules["EnquotedString"] = toDelegate(&EnquotedString);
         rules["DoubleEnquotedString"] = toDelegate(&DoubleEnquotedString);
         rules["NonDoubleQuoteCharacter"] = toDelegate(&NonDoubleQuoteCharacter);
@@ -383,12 +402,6 @@ struct GenericQMakeProject(TParseTree)
         rules["NonSingleQuoteCharacter"] = toDelegate(&NonSingleQuoteCharacter);
         rules["Identifier"] = toDelegate(&Identifier);
         rules["QMakeIdentifier"] = toDelegate(&QMakeIdentifier);
-        rules["ExpandStatement"] = toDelegate(&ExpandStatement);
-        rules["FunctionArgumentExpandStatement"] = toDelegate(&FunctionArgumentExpandStatement);
-        rules["MakefileVariableExpandStatement"] = toDelegate(&MakefileVariableExpandStatement);
-        rules["ProjectVariableExpandStatement"] = toDelegate(&ProjectVariableExpandStatement);
-        rules["EnvironmentVariableExpandStatement"] = toDelegate(&EnvironmentVariableExpandStatement);
-        rules["PropertyVariableExpandStatement"] = toDelegate(&PropertyVariableExpandStatement);
         rules["NumberFunctionCall"] = toDelegate(&NumberFunctionCall);
         rules["LValueImpl"] = toDelegate(&LValueImpl);
         rules["LValue"] = toDelegate(&LValue);
@@ -398,7 +411,6 @@ struct GenericQMakeProject(TParseTree)
         rules["DecDigit"] = toDelegate(&DecDigit);
         rules["HexDigit"] = toDelegate(&HexDigit);
         rules["DecNumber"] = toDelegate(&DecNumber);
-        rules["SINGLE_EXPAND_MARKER"] = toDelegate(&SINGLE_EXPAND_MARKER);
         rules["EXPAND_MARKER"] = toDelegate(&EXPAND_MARKER);
         rules["COMMA"] = toDelegate(&COMMA);
         rules["COMMA_WS"] = toDelegate(&COMMA_WS);
@@ -574,114 +586,6 @@ struct GenericQMakeProject(TParseTree)
     static string EmptyStatement(GetName g)
     {
         return "QMakeProject.EmptyStatement";
-    }
-
-    static TParseTree Block(TParseTree p)
-    {
-        if(__ctfe)
-        {
-            return         pegged.peg.defined!(pegged.peg.or!(SingleLineBlock, MultiLineBlock), "QMakeProject.Block")(p);
-        }
-        else
-        {
-            if (auto m = tuple(`Block`, p.end) in memo)
-                return *m;
-            else
-            {
-                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.or!(SingleLineBlock, MultiLineBlock), "QMakeProject.Block"), "Block")(p);
-                memo[tuple(`Block`, p.end)] = result;
-                return result;
-            }
-        }
-    }
-
-    static TParseTree Block(string s)
-    {
-        if(__ctfe)
-        {
-            return         pegged.peg.defined!(pegged.peg.or!(SingleLineBlock, MultiLineBlock), "QMakeProject.Block")(TParseTree("", false,[], s));
-        }
-        else
-        {
-            forgetMemo();
-            return hooked!(pegged.peg.defined!(pegged.peg.or!(SingleLineBlock, MultiLineBlock), "QMakeProject.Block"), "Block")(TParseTree("", false,[], s));
-        }
-    }
-    static string Block(GetName g)
-    {
-        return "QMakeProject.Block";
-    }
-
-    static TParseTree SingleLineBlock(TParseTree p)
-    {
-        if(__ctfe)
-        {
-            return         pegged.peg.defined!(pegged.peg.and!(pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.literal!("@"), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), Statement), "QMakeProject.SingleLineBlock")(p);
-        }
-        else
-        {
-            if (auto m = tuple(`SingleLineBlock`, p.end) in memo)
-                return *m;
-            else
-            {
-                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.and!(pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.literal!("@"), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), Statement), "QMakeProject.SingleLineBlock"), "SingleLineBlock")(p);
-                memo[tuple(`SingleLineBlock`, p.end)] = result;
-                return result;
-            }
-        }
-    }
-
-    static TParseTree SingleLineBlock(string s)
-    {
-        if(__ctfe)
-        {
-            return         pegged.peg.defined!(pegged.peg.and!(pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.literal!("@"), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), Statement), "QMakeProject.SingleLineBlock")(TParseTree("", false,[], s));
-        }
-        else
-        {
-            forgetMemo();
-            return hooked!(pegged.peg.defined!(pegged.peg.and!(pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.literal!("@"), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), Statement), "QMakeProject.SingleLineBlock"), "SingleLineBlock")(TParseTree("", false,[], s));
-        }
-    }
-    static string SingleLineBlock(GetName g)
-    {
-        return "QMakeProject.SingleLineBlock";
-    }
-
-    static TParseTree MultiLineBlock(TParseTree p)
-    {
-        if(__ctfe)
-        {
-            return         pegged.peg.defined!(pegged.peg.and!(pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.literal!("{"), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.discard!(pegged.peg.zeroOrMore!(eol)), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.oneOrMore!(Statement), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.discard!(pegged.peg.zeroOrMore!(eol)), pegged.peg.literal!("}"), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.discard!(pegged.peg.zeroOrMore!(eol))), "QMakeProject.MultiLineBlock")(p);
-        }
-        else
-        {
-            if (auto m = tuple(`MultiLineBlock`, p.end) in memo)
-                return *m;
-            else
-            {
-                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.and!(pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.literal!("{"), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.discard!(pegged.peg.zeroOrMore!(eol)), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.oneOrMore!(Statement), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.discard!(pegged.peg.zeroOrMore!(eol)), pegged.peg.literal!("}"), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.discard!(pegged.peg.zeroOrMore!(eol))), "QMakeProject.MultiLineBlock"), "MultiLineBlock")(p);
-                memo[tuple(`MultiLineBlock`, p.end)] = result;
-                return result;
-            }
-        }
-    }
-
-    static TParseTree MultiLineBlock(string s)
-    {
-        if(__ctfe)
-        {
-            return         pegged.peg.defined!(pegged.peg.and!(pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.literal!("{"), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.discard!(pegged.peg.zeroOrMore!(eol)), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.oneOrMore!(Statement), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.discard!(pegged.peg.zeroOrMore!(eol)), pegged.peg.literal!("}"), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.discard!(pegged.peg.zeroOrMore!(eol))), "QMakeProject.MultiLineBlock")(TParseTree("", false,[], s));
-        }
-        else
-        {
-            forgetMemo();
-            return hooked!(pegged.peg.defined!(pegged.peg.and!(pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.literal!("{"), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.discard!(pegged.peg.zeroOrMore!(eol)), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.oneOrMore!(Statement), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.discard!(pegged.peg.zeroOrMore!(eol)), pegged.peg.literal!("}"), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.discard!(pegged.peg.zeroOrMore!(eol))), "QMakeProject.MultiLineBlock"), "MultiLineBlock")(TParseTree("", false,[], s));
-        }
-    }
-    static string MultiLineBlock(GetName g)
-    {
-        return "QMakeProject.MultiLineBlock";
     }
 
     static TParseTree Comment(TParseTree p)
@@ -864,40 +768,112 @@ struct GenericQMakeProject(TParseTree)
         return "QMakeProject.SingleLineCommentChar";
     }
 
-    static TParseTree RvalueAtom(TParseTree p)
+    static TParseTree Block(TParseTree p)
     {
         if(__ctfe)
         {
-            return         pegged.peg.defined!(pegged.peg.or!(ReplaceFunctionCall, ExpandStatement, TestFunctionCall), "QMakeProject.RvalueAtom")(p);
+            return         pegged.peg.defined!(pegged.peg.or!(SingleLineBlock, MultiLineBlock), "QMakeProject.Block")(p);
         }
         else
         {
-            if (auto m = tuple(`RvalueAtom`, p.end) in memo)
+            if (auto m = tuple(`Block`, p.end) in memo)
                 return *m;
             else
             {
-                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.or!(ReplaceFunctionCall, ExpandStatement, TestFunctionCall), "QMakeProject.RvalueAtom"), "RvalueAtom")(p);
-                memo[tuple(`RvalueAtom`, p.end)] = result;
+                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.or!(SingleLineBlock, MultiLineBlock), "QMakeProject.Block"), "Block")(p);
+                memo[tuple(`Block`, p.end)] = result;
                 return result;
             }
         }
     }
 
-    static TParseTree RvalueAtom(string s)
+    static TParseTree Block(string s)
     {
         if(__ctfe)
         {
-            return         pegged.peg.defined!(pegged.peg.or!(ReplaceFunctionCall, ExpandStatement, TestFunctionCall), "QMakeProject.RvalueAtom")(TParseTree("", false,[], s));
+            return         pegged.peg.defined!(pegged.peg.or!(SingleLineBlock, MultiLineBlock), "QMakeProject.Block")(TParseTree("", false,[], s));
         }
         else
         {
             forgetMemo();
-            return hooked!(pegged.peg.defined!(pegged.peg.or!(ReplaceFunctionCall, ExpandStatement, TestFunctionCall), "QMakeProject.RvalueAtom"), "RvalueAtom")(TParseTree("", false,[], s));
+            return hooked!(pegged.peg.defined!(pegged.peg.or!(SingleLineBlock, MultiLineBlock), "QMakeProject.Block"), "Block")(TParseTree("", false,[], s));
         }
     }
-    static string RvalueAtom(GetName g)
+    static string Block(GetName g)
     {
-        return "QMakeProject.RvalueAtom";
+        return "QMakeProject.Block";
+    }
+
+    static TParseTree SingleLineBlock(TParseTree p)
+    {
+        if(__ctfe)
+        {
+            return         pegged.peg.defined!(pegged.peg.and!(pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.literal!("@"), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), Statement), "QMakeProject.SingleLineBlock")(p);
+        }
+        else
+        {
+            if (auto m = tuple(`SingleLineBlock`, p.end) in memo)
+                return *m;
+            else
+            {
+                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.and!(pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.literal!("@"), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), Statement), "QMakeProject.SingleLineBlock"), "SingleLineBlock")(p);
+                memo[tuple(`SingleLineBlock`, p.end)] = result;
+                return result;
+            }
+        }
+    }
+
+    static TParseTree SingleLineBlock(string s)
+    {
+        if(__ctfe)
+        {
+            return         pegged.peg.defined!(pegged.peg.and!(pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.literal!("@"), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), Statement), "QMakeProject.SingleLineBlock")(TParseTree("", false,[], s));
+        }
+        else
+        {
+            forgetMemo();
+            return hooked!(pegged.peg.defined!(pegged.peg.and!(pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.literal!("@"), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), Statement), "QMakeProject.SingleLineBlock"), "SingleLineBlock")(TParseTree("", false,[], s));
+        }
+    }
+    static string SingleLineBlock(GetName g)
+    {
+        return "QMakeProject.SingleLineBlock";
+    }
+
+    static TParseTree MultiLineBlock(TParseTree p)
+    {
+        if(__ctfe)
+        {
+            return         pegged.peg.defined!(pegged.peg.and!(pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.literal!("{"), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.discard!(pegged.peg.zeroOrMore!(eol)), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.oneOrMore!(Statement), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.discard!(pegged.peg.zeroOrMore!(eol)), pegged.peg.literal!("}"), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.discard!(pegged.peg.zeroOrMore!(eol))), "QMakeProject.MultiLineBlock")(p);
+        }
+        else
+        {
+            if (auto m = tuple(`MultiLineBlock`, p.end) in memo)
+                return *m;
+            else
+            {
+                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.and!(pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.literal!("{"), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.discard!(pegged.peg.zeroOrMore!(eol)), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.oneOrMore!(Statement), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.discard!(pegged.peg.zeroOrMore!(eol)), pegged.peg.literal!("}"), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.discard!(pegged.peg.zeroOrMore!(eol))), "QMakeProject.MultiLineBlock"), "MultiLineBlock")(p);
+                memo[tuple(`MultiLineBlock`, p.end)] = result;
+                return result;
+            }
+        }
+    }
+
+    static TParseTree MultiLineBlock(string s)
+    {
+        if(__ctfe)
+        {
+            return         pegged.peg.defined!(pegged.peg.and!(pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.literal!("{"), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.discard!(pegged.peg.zeroOrMore!(eol)), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.oneOrMore!(Statement), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.discard!(pegged.peg.zeroOrMore!(eol)), pegged.peg.literal!("}"), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.discard!(pegged.peg.zeroOrMore!(eol))), "QMakeProject.MultiLineBlock")(TParseTree("", false,[], s));
+        }
+        else
+        {
+            forgetMemo();
+            return hooked!(pegged.peg.defined!(pegged.peg.and!(pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.literal!("{"), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.discard!(pegged.peg.zeroOrMore!(eol)), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.oneOrMore!(Statement), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.discard!(pegged.peg.zeroOrMore!(eol)), pegged.peg.literal!("}"), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.discard!(pegged.peg.zeroOrMore!(eol))), "QMakeProject.MultiLineBlock"), "MultiLineBlock")(TParseTree("", false,[], s));
+        }
+    }
+    static string MultiLineBlock(GetName g)
+    {
+        return "QMakeProject.MultiLineBlock";
     }
 
     static TParseTree Assignment(TParseTree p)
@@ -934,6 +910,222 @@ struct GenericQMakeProject(TParseTree)
     static string Assignment(GetName g)
     {
         return "QMakeProject.Assignment";
+    }
+
+    static TParseTree DirectAssignment(TParseTree p)
+    {
+        if(__ctfe)
+        {
+            return         pegged.peg.defined!(pegged.peg.and!(QualifiedIdentifier, pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.literal!("="), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.option!(RvalueExpression), pegged.peg.discard!(pegged.peg.zeroOrMore!(eol))), "QMakeProject.DirectAssignment")(p);
+        }
+        else
+        {
+            if (auto m = tuple(`DirectAssignment`, p.end) in memo)
+                return *m;
+            else
+            {
+                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.and!(QualifiedIdentifier, pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.literal!("="), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.option!(RvalueExpression), pegged.peg.discard!(pegged.peg.zeroOrMore!(eol))), "QMakeProject.DirectAssignment"), "DirectAssignment")(p);
+                memo[tuple(`DirectAssignment`, p.end)] = result;
+                return result;
+            }
+        }
+    }
+
+    static TParseTree DirectAssignment(string s)
+    {
+        if(__ctfe)
+        {
+            return         pegged.peg.defined!(pegged.peg.and!(QualifiedIdentifier, pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.literal!("="), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.option!(RvalueExpression), pegged.peg.discard!(pegged.peg.zeroOrMore!(eol))), "QMakeProject.DirectAssignment")(TParseTree("", false,[], s));
+        }
+        else
+        {
+            forgetMemo();
+            return hooked!(pegged.peg.defined!(pegged.peg.and!(QualifiedIdentifier, pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.literal!("="), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.option!(RvalueExpression), pegged.peg.discard!(pegged.peg.zeroOrMore!(eol))), "QMakeProject.DirectAssignment"), "DirectAssignment")(TParseTree("", false,[], s));
+        }
+    }
+    static string DirectAssignment(GetName g)
+    {
+        return "QMakeProject.DirectAssignment";
+    }
+
+    static TParseTree AppendAssignment(TParseTree p)
+    {
+        if(__ctfe)
+        {
+            return         pegged.peg.defined!(pegged.peg.and!(QualifiedIdentifier, pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.literal!("+="), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.option!(RvalueExpression), pegged.peg.discard!(pegged.peg.zeroOrMore!(eol))), "QMakeProject.AppendAssignment")(p);
+        }
+        else
+        {
+            if (auto m = tuple(`AppendAssignment`, p.end) in memo)
+                return *m;
+            else
+            {
+                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.and!(QualifiedIdentifier, pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.literal!("+="), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.option!(RvalueExpression), pegged.peg.discard!(pegged.peg.zeroOrMore!(eol))), "QMakeProject.AppendAssignment"), "AppendAssignment")(p);
+                memo[tuple(`AppendAssignment`, p.end)] = result;
+                return result;
+            }
+        }
+    }
+
+    static TParseTree AppendAssignment(string s)
+    {
+        if(__ctfe)
+        {
+            return         pegged.peg.defined!(pegged.peg.and!(QualifiedIdentifier, pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.literal!("+="), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.option!(RvalueExpression), pegged.peg.discard!(pegged.peg.zeroOrMore!(eol))), "QMakeProject.AppendAssignment")(TParseTree("", false,[], s));
+        }
+        else
+        {
+            forgetMemo();
+            return hooked!(pegged.peg.defined!(pegged.peg.and!(QualifiedIdentifier, pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.literal!("+="), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.option!(RvalueExpression), pegged.peg.discard!(pegged.peg.zeroOrMore!(eol))), "QMakeProject.AppendAssignment"), "AppendAssignment")(TParseTree("", false,[], s));
+        }
+    }
+    static string AppendAssignment(GetName g)
+    {
+        return "QMakeProject.AppendAssignment";
+    }
+
+    static TParseTree AppendUniqueAssignment(TParseTree p)
+    {
+        if(__ctfe)
+        {
+            return         pegged.peg.defined!(pegged.peg.and!(QualifiedIdentifier, pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.literal!("*="), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.option!(RvalueExpression), pegged.peg.discard!(pegged.peg.zeroOrMore!(eol))), "QMakeProject.AppendUniqueAssignment")(p);
+        }
+        else
+        {
+            if (auto m = tuple(`AppendUniqueAssignment`, p.end) in memo)
+                return *m;
+            else
+            {
+                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.and!(QualifiedIdentifier, pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.literal!("*="), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.option!(RvalueExpression), pegged.peg.discard!(pegged.peg.zeroOrMore!(eol))), "QMakeProject.AppendUniqueAssignment"), "AppendUniqueAssignment")(p);
+                memo[tuple(`AppendUniqueAssignment`, p.end)] = result;
+                return result;
+            }
+        }
+    }
+
+    static TParseTree AppendUniqueAssignment(string s)
+    {
+        if(__ctfe)
+        {
+            return         pegged.peg.defined!(pegged.peg.and!(QualifiedIdentifier, pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.literal!("*="), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.option!(RvalueExpression), pegged.peg.discard!(pegged.peg.zeroOrMore!(eol))), "QMakeProject.AppendUniqueAssignment")(TParseTree("", false,[], s));
+        }
+        else
+        {
+            forgetMemo();
+            return hooked!(pegged.peg.defined!(pegged.peg.and!(QualifiedIdentifier, pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.literal!("*="), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.option!(RvalueExpression), pegged.peg.discard!(pegged.peg.zeroOrMore!(eol))), "QMakeProject.AppendUniqueAssignment"), "AppendUniqueAssignment")(TParseTree("", false,[], s));
+        }
+    }
+    static string AppendUniqueAssignment(GetName g)
+    {
+        return "QMakeProject.AppendUniqueAssignment";
+    }
+
+    static TParseTree RemoveAssignment(TParseTree p)
+    {
+        if(__ctfe)
+        {
+            return         pegged.peg.defined!(pegged.peg.and!(QualifiedIdentifier, pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.literal!("-="), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.option!(RvalueExpression), pegged.peg.discard!(pegged.peg.zeroOrMore!(eol))), "QMakeProject.RemoveAssignment")(p);
+        }
+        else
+        {
+            if (auto m = tuple(`RemoveAssignment`, p.end) in memo)
+                return *m;
+            else
+            {
+                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.and!(QualifiedIdentifier, pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.literal!("-="), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.option!(RvalueExpression), pegged.peg.discard!(pegged.peg.zeroOrMore!(eol))), "QMakeProject.RemoveAssignment"), "RemoveAssignment")(p);
+                memo[tuple(`RemoveAssignment`, p.end)] = result;
+                return result;
+            }
+        }
+    }
+
+    static TParseTree RemoveAssignment(string s)
+    {
+        if(__ctfe)
+        {
+            return         pegged.peg.defined!(pegged.peg.and!(QualifiedIdentifier, pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.literal!("-="), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.option!(RvalueExpression), pegged.peg.discard!(pegged.peg.zeroOrMore!(eol))), "QMakeProject.RemoveAssignment")(TParseTree("", false,[], s));
+        }
+        else
+        {
+            forgetMemo();
+            return hooked!(pegged.peg.defined!(pegged.peg.and!(QualifiedIdentifier, pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.literal!("-="), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.option!(RvalueExpression), pegged.peg.discard!(pegged.peg.zeroOrMore!(eol))), "QMakeProject.RemoveAssignment"), "RemoveAssignment")(TParseTree("", false,[], s));
+        }
+    }
+    static string RemoveAssignment(GetName g)
+    {
+        return "QMakeProject.RemoveAssignment";
+    }
+
+    static TParseTree ReplaceAssignment(TParseTree p)
+    {
+        if(__ctfe)
+        {
+            return         pegged.peg.defined!(pegged.peg.and!(QualifiedIdentifier, pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.literal!("~="), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.option!(RegularExpression), pegged.peg.discard!(pegged.peg.zeroOrMore!(eol))), "QMakeProject.ReplaceAssignment")(p);
+        }
+        else
+        {
+            if (auto m = tuple(`ReplaceAssignment`, p.end) in memo)
+                return *m;
+            else
+            {
+                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.and!(QualifiedIdentifier, pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.literal!("~="), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.option!(RegularExpression), pegged.peg.discard!(pegged.peg.zeroOrMore!(eol))), "QMakeProject.ReplaceAssignment"), "ReplaceAssignment")(p);
+                memo[tuple(`ReplaceAssignment`, p.end)] = result;
+                return result;
+            }
+        }
+    }
+
+    static TParseTree ReplaceAssignment(string s)
+    {
+        if(__ctfe)
+        {
+            return         pegged.peg.defined!(pegged.peg.and!(QualifiedIdentifier, pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.literal!("~="), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.option!(RegularExpression), pegged.peg.discard!(pegged.peg.zeroOrMore!(eol))), "QMakeProject.ReplaceAssignment")(TParseTree("", false,[], s));
+        }
+        else
+        {
+            forgetMemo();
+            return hooked!(pegged.peg.defined!(pegged.peg.and!(QualifiedIdentifier, pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.literal!("~="), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.option!(RegularExpression), pegged.peg.discard!(pegged.peg.zeroOrMore!(eol))), "QMakeProject.ReplaceAssignment"), "ReplaceAssignment")(TParseTree("", false,[], s));
+        }
+    }
+    static string ReplaceAssignment(GetName g)
+    {
+        return "QMakeProject.ReplaceAssignment";
+    }
+
+    static TParseTree RvalueAtom(TParseTree p)
+    {
+        if(__ctfe)
+        {
+            return         pegged.peg.defined!(pegged.peg.or!(ReplaceFunctionCall, ExpandStatement, TestFunctionCall), "QMakeProject.RvalueAtom")(p);
+        }
+        else
+        {
+            if (auto m = tuple(`RvalueAtom`, p.end) in memo)
+                return *m;
+            else
+            {
+                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.or!(ReplaceFunctionCall, ExpandStatement, TestFunctionCall), "QMakeProject.RvalueAtom"), "RvalueAtom")(p);
+                memo[tuple(`RvalueAtom`, p.end)] = result;
+                return result;
+            }
+        }
+    }
+
+    static TParseTree RvalueAtom(string s)
+    {
+        if(__ctfe)
+        {
+            return         pegged.peg.defined!(pegged.peg.or!(ReplaceFunctionCall, ExpandStatement, TestFunctionCall), "QMakeProject.RvalueAtom")(TParseTree("", false,[], s));
+        }
+        else
+        {
+            forgetMemo();
+            return hooked!(pegged.peg.defined!(pegged.peg.or!(ReplaceFunctionCall, ExpandStatement, TestFunctionCall), "QMakeProject.RvalueAtom"), "RvalueAtom")(TParseTree("", false,[], s));
+        }
+    }
+    static string RvalueAtom(GetName g)
+    {
+        return "QMakeProject.RvalueAtom";
     }
 
     static TParseTree RvalueExpression(TParseTree p)
@@ -1597,186 +1789,6 @@ struct GenericQMakeProject(TParseTree)
     static string RegularExpressionChar(GetName g)
     {
         return "QMakeProject.RegularExpressionChar";
-    }
-
-    static TParseTree DirectAssignment(TParseTree p)
-    {
-        if(__ctfe)
-        {
-            return         pegged.peg.defined!(pegged.peg.and!(QualifiedIdentifier, pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.literal!("="), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.option!(RvalueExpression), pegged.peg.discard!(pegged.peg.zeroOrMore!(eol))), "QMakeProject.DirectAssignment")(p);
-        }
-        else
-        {
-            if (auto m = tuple(`DirectAssignment`, p.end) in memo)
-                return *m;
-            else
-            {
-                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.and!(QualifiedIdentifier, pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.literal!("="), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.option!(RvalueExpression), pegged.peg.discard!(pegged.peg.zeroOrMore!(eol))), "QMakeProject.DirectAssignment"), "DirectAssignment")(p);
-                memo[tuple(`DirectAssignment`, p.end)] = result;
-                return result;
-            }
-        }
-    }
-
-    static TParseTree DirectAssignment(string s)
-    {
-        if(__ctfe)
-        {
-            return         pegged.peg.defined!(pegged.peg.and!(QualifiedIdentifier, pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.literal!("="), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.option!(RvalueExpression), pegged.peg.discard!(pegged.peg.zeroOrMore!(eol))), "QMakeProject.DirectAssignment")(TParseTree("", false,[], s));
-        }
-        else
-        {
-            forgetMemo();
-            return hooked!(pegged.peg.defined!(pegged.peg.and!(QualifiedIdentifier, pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.literal!("="), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.option!(RvalueExpression), pegged.peg.discard!(pegged.peg.zeroOrMore!(eol))), "QMakeProject.DirectAssignment"), "DirectAssignment")(TParseTree("", false,[], s));
-        }
-    }
-    static string DirectAssignment(GetName g)
-    {
-        return "QMakeProject.DirectAssignment";
-    }
-
-    static TParseTree AppendAssignment(TParseTree p)
-    {
-        if(__ctfe)
-        {
-            return         pegged.peg.defined!(pegged.peg.and!(QualifiedIdentifier, pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.literal!("+="), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.option!(RvalueExpression), pegged.peg.discard!(pegged.peg.zeroOrMore!(eol))), "QMakeProject.AppendAssignment")(p);
-        }
-        else
-        {
-            if (auto m = tuple(`AppendAssignment`, p.end) in memo)
-                return *m;
-            else
-            {
-                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.and!(QualifiedIdentifier, pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.literal!("+="), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.option!(RvalueExpression), pegged.peg.discard!(pegged.peg.zeroOrMore!(eol))), "QMakeProject.AppendAssignment"), "AppendAssignment")(p);
-                memo[tuple(`AppendAssignment`, p.end)] = result;
-                return result;
-            }
-        }
-    }
-
-    static TParseTree AppendAssignment(string s)
-    {
-        if(__ctfe)
-        {
-            return         pegged.peg.defined!(pegged.peg.and!(QualifiedIdentifier, pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.literal!("+="), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.option!(RvalueExpression), pegged.peg.discard!(pegged.peg.zeroOrMore!(eol))), "QMakeProject.AppendAssignment")(TParseTree("", false,[], s));
-        }
-        else
-        {
-            forgetMemo();
-            return hooked!(pegged.peg.defined!(pegged.peg.and!(QualifiedIdentifier, pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.literal!("+="), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.option!(RvalueExpression), pegged.peg.discard!(pegged.peg.zeroOrMore!(eol))), "QMakeProject.AppendAssignment"), "AppendAssignment")(TParseTree("", false,[], s));
-        }
-    }
-    static string AppendAssignment(GetName g)
-    {
-        return "QMakeProject.AppendAssignment";
-    }
-
-    static TParseTree AppendUniqueAssignment(TParseTree p)
-    {
-        if(__ctfe)
-        {
-            return         pegged.peg.defined!(pegged.peg.and!(QualifiedIdentifier, pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.literal!("*="), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.option!(RvalueExpression), pegged.peg.discard!(pegged.peg.zeroOrMore!(eol))), "QMakeProject.AppendUniqueAssignment")(p);
-        }
-        else
-        {
-            if (auto m = tuple(`AppendUniqueAssignment`, p.end) in memo)
-                return *m;
-            else
-            {
-                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.and!(QualifiedIdentifier, pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.literal!("*="), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.option!(RvalueExpression), pegged.peg.discard!(pegged.peg.zeroOrMore!(eol))), "QMakeProject.AppendUniqueAssignment"), "AppendUniqueAssignment")(p);
-                memo[tuple(`AppendUniqueAssignment`, p.end)] = result;
-                return result;
-            }
-        }
-    }
-
-    static TParseTree AppendUniqueAssignment(string s)
-    {
-        if(__ctfe)
-        {
-            return         pegged.peg.defined!(pegged.peg.and!(QualifiedIdentifier, pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.literal!("*="), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.option!(RvalueExpression), pegged.peg.discard!(pegged.peg.zeroOrMore!(eol))), "QMakeProject.AppendUniqueAssignment")(TParseTree("", false,[], s));
-        }
-        else
-        {
-            forgetMemo();
-            return hooked!(pegged.peg.defined!(pegged.peg.and!(QualifiedIdentifier, pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.literal!("*="), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.option!(RvalueExpression), pegged.peg.discard!(pegged.peg.zeroOrMore!(eol))), "QMakeProject.AppendUniqueAssignment"), "AppendUniqueAssignment")(TParseTree("", false,[], s));
-        }
-    }
-    static string AppendUniqueAssignment(GetName g)
-    {
-        return "QMakeProject.AppendUniqueAssignment";
-    }
-
-    static TParseTree RemoveAssignment(TParseTree p)
-    {
-        if(__ctfe)
-        {
-            return         pegged.peg.defined!(pegged.peg.and!(QualifiedIdentifier, pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.literal!("-="), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.option!(RvalueExpression), pegged.peg.discard!(pegged.peg.zeroOrMore!(eol))), "QMakeProject.RemoveAssignment")(p);
-        }
-        else
-        {
-            if (auto m = tuple(`RemoveAssignment`, p.end) in memo)
-                return *m;
-            else
-            {
-                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.and!(QualifiedIdentifier, pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.literal!("-="), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.option!(RvalueExpression), pegged.peg.discard!(pegged.peg.zeroOrMore!(eol))), "QMakeProject.RemoveAssignment"), "RemoveAssignment")(p);
-                memo[tuple(`RemoveAssignment`, p.end)] = result;
-                return result;
-            }
-        }
-    }
-
-    static TParseTree RemoveAssignment(string s)
-    {
-        if(__ctfe)
-        {
-            return         pegged.peg.defined!(pegged.peg.and!(QualifiedIdentifier, pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.literal!("-="), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.option!(RvalueExpression), pegged.peg.discard!(pegged.peg.zeroOrMore!(eol))), "QMakeProject.RemoveAssignment")(TParseTree("", false,[], s));
-        }
-        else
-        {
-            forgetMemo();
-            return hooked!(pegged.peg.defined!(pegged.peg.and!(QualifiedIdentifier, pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.literal!("-="), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.option!(RvalueExpression), pegged.peg.discard!(pegged.peg.zeroOrMore!(eol))), "QMakeProject.RemoveAssignment"), "RemoveAssignment")(TParseTree("", false,[], s));
-        }
-    }
-    static string RemoveAssignment(GetName g)
-    {
-        return "QMakeProject.RemoveAssignment";
-    }
-
-    static TParseTree ReplaceAssignment(TParseTree p)
-    {
-        if(__ctfe)
-        {
-            return         pegged.peg.defined!(pegged.peg.and!(QualifiedIdentifier, pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.literal!("~="), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.option!(RegularExpression), pegged.peg.discard!(pegged.peg.zeroOrMore!(eol))), "QMakeProject.ReplaceAssignment")(p);
-        }
-        else
-        {
-            if (auto m = tuple(`ReplaceAssignment`, p.end) in memo)
-                return *m;
-            else
-            {
-                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.and!(QualifiedIdentifier, pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.literal!("~="), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.option!(RegularExpression), pegged.peg.discard!(pegged.peg.zeroOrMore!(eol))), "QMakeProject.ReplaceAssignment"), "ReplaceAssignment")(p);
-                memo[tuple(`ReplaceAssignment`, p.end)] = result;
-                return result;
-            }
-        }
-    }
-
-    static TParseTree ReplaceAssignment(string s)
-    {
-        if(__ctfe)
-        {
-            return         pegged.peg.defined!(pegged.peg.and!(QualifiedIdentifier, pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.literal!("~="), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.option!(RegularExpression), pegged.peg.discard!(pegged.peg.zeroOrMore!(eol))), "QMakeProject.ReplaceAssignment")(TParseTree("", false,[], s));
-        }
-        else
-        {
-            forgetMemo();
-            return hooked!(pegged.peg.defined!(pegged.peg.and!(QualifiedIdentifier, pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.literal!("~="), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.option!(RegularExpression), pegged.peg.discard!(pegged.peg.zeroOrMore!(eol))), "QMakeProject.ReplaceAssignment"), "ReplaceAssignment")(TParseTree("", false,[], s));
-        }
-    }
-    static string ReplaceAssignment(GetName g)
-    {
-        return "QMakeProject.ReplaceAssignment";
     }
 
     static TParseTree TestFunctionCall(TParseTree p)
@@ -3471,6 +3483,222 @@ struct GenericQMakeProject(TParseTree)
         return "QMakeProject.ForEverStatement";
     }
 
+    static TParseTree ExpandStatement(TParseTree p)
+    {
+        if(__ctfe)
+        {
+            return         pegged.peg.defined!(pegged.peg.or!(FunctionArgumentExpandStatement, ProjectVariableExpandStatement, MakefileVariableExpandStatement, EnvironmentVariableExpandStatement, PropertyVariableExpandStatement), "QMakeProject.ExpandStatement")(p);
+        }
+        else
+        {
+            if (auto m = tuple(`ExpandStatement`, p.end) in memo)
+                return *m;
+            else
+            {
+                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.or!(FunctionArgumentExpandStatement, ProjectVariableExpandStatement, MakefileVariableExpandStatement, EnvironmentVariableExpandStatement, PropertyVariableExpandStatement), "QMakeProject.ExpandStatement"), "ExpandStatement")(p);
+                memo[tuple(`ExpandStatement`, p.end)] = result;
+                return result;
+            }
+        }
+    }
+
+    static TParseTree ExpandStatement(string s)
+    {
+        if(__ctfe)
+        {
+            return         pegged.peg.defined!(pegged.peg.or!(FunctionArgumentExpandStatement, ProjectVariableExpandStatement, MakefileVariableExpandStatement, EnvironmentVariableExpandStatement, PropertyVariableExpandStatement), "QMakeProject.ExpandStatement")(TParseTree("", false,[], s));
+        }
+        else
+        {
+            forgetMemo();
+            return hooked!(pegged.peg.defined!(pegged.peg.or!(FunctionArgumentExpandStatement, ProjectVariableExpandStatement, MakefileVariableExpandStatement, EnvironmentVariableExpandStatement, PropertyVariableExpandStatement), "QMakeProject.ExpandStatement"), "ExpandStatement")(TParseTree("", false,[], s));
+        }
+    }
+    static string ExpandStatement(GetName g)
+    {
+        return "QMakeProject.ExpandStatement";
+    }
+
+    static TParseTree FunctionArgumentExpandStatement(TParseTree p)
+    {
+        if(__ctfe)
+        {
+            return         pegged.peg.defined!(pegged.peg.or!(pegged.peg.and!(pegged.peg.literal!("$$"), DecNumber), pegged.peg.and!(pegged.peg.literal!("$${"), DecNumber, pegged.peg.literal!("}"))), "QMakeProject.FunctionArgumentExpandStatement")(p);
+        }
+        else
+        {
+            if (auto m = tuple(`FunctionArgumentExpandStatement`, p.end) in memo)
+                return *m;
+            else
+            {
+                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.or!(pegged.peg.and!(pegged.peg.literal!("$$"), DecNumber), pegged.peg.and!(pegged.peg.literal!("$${"), DecNumber, pegged.peg.literal!("}"))), "QMakeProject.FunctionArgumentExpandStatement"), "FunctionArgumentExpandStatement")(p);
+                memo[tuple(`FunctionArgumentExpandStatement`, p.end)] = result;
+                return result;
+            }
+        }
+    }
+
+    static TParseTree FunctionArgumentExpandStatement(string s)
+    {
+        if(__ctfe)
+        {
+            return         pegged.peg.defined!(pegged.peg.or!(pegged.peg.and!(pegged.peg.literal!("$$"), DecNumber), pegged.peg.and!(pegged.peg.literal!("$${"), DecNumber, pegged.peg.literal!("}"))), "QMakeProject.FunctionArgumentExpandStatement")(TParseTree("", false,[], s));
+        }
+        else
+        {
+            forgetMemo();
+            return hooked!(pegged.peg.defined!(pegged.peg.or!(pegged.peg.and!(pegged.peg.literal!("$$"), DecNumber), pegged.peg.and!(pegged.peg.literal!("$${"), DecNumber, pegged.peg.literal!("}"))), "QMakeProject.FunctionArgumentExpandStatement"), "FunctionArgumentExpandStatement")(TParseTree("", false,[], s));
+        }
+    }
+    static string FunctionArgumentExpandStatement(GetName g)
+    {
+        return "QMakeProject.FunctionArgumentExpandStatement";
+    }
+
+    static TParseTree MakefileVariableExpandStatement(TParseTree p)
+    {
+        if(__ctfe)
+        {
+            return         pegged.peg.defined!(pegged.peg.or!(pegged.peg.and!(pegged.peg.literal!("$"), QualifiedIdentifier), pegged.peg.and!(pegged.peg.literal!("${"), QualifiedIdentifier, pegged.peg.literal!("}"))), "QMakeProject.MakefileVariableExpandStatement")(p);
+        }
+        else
+        {
+            if (auto m = tuple(`MakefileVariableExpandStatement`, p.end) in memo)
+                return *m;
+            else
+            {
+                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.or!(pegged.peg.and!(pegged.peg.literal!("$"), QualifiedIdentifier), pegged.peg.and!(pegged.peg.literal!("${"), QualifiedIdentifier, pegged.peg.literal!("}"))), "QMakeProject.MakefileVariableExpandStatement"), "MakefileVariableExpandStatement")(p);
+                memo[tuple(`MakefileVariableExpandStatement`, p.end)] = result;
+                return result;
+            }
+        }
+    }
+
+    static TParseTree MakefileVariableExpandStatement(string s)
+    {
+        if(__ctfe)
+        {
+            return         pegged.peg.defined!(pegged.peg.or!(pegged.peg.and!(pegged.peg.literal!("$"), QualifiedIdentifier), pegged.peg.and!(pegged.peg.literal!("${"), QualifiedIdentifier, pegged.peg.literal!("}"))), "QMakeProject.MakefileVariableExpandStatement")(TParseTree("", false,[], s));
+        }
+        else
+        {
+            forgetMemo();
+            return hooked!(pegged.peg.defined!(pegged.peg.or!(pegged.peg.and!(pegged.peg.literal!("$"), QualifiedIdentifier), pegged.peg.and!(pegged.peg.literal!("${"), QualifiedIdentifier, pegged.peg.literal!("}"))), "QMakeProject.MakefileVariableExpandStatement"), "MakefileVariableExpandStatement")(TParseTree("", false,[], s));
+        }
+    }
+    static string MakefileVariableExpandStatement(GetName g)
+    {
+        return "QMakeProject.MakefileVariableExpandStatement";
+    }
+
+    static TParseTree ProjectVariableExpandStatement(TParseTree p)
+    {
+        if(__ctfe)
+        {
+            return         pegged.peg.defined!(pegged.peg.or!(pegged.peg.and!(pegged.peg.literal!("$$"), QualifiedIdentifier), pegged.peg.and!(pegged.peg.literal!("$${"), QualifiedIdentifier, pegged.peg.literal!("}")), pegged.peg.and!(pegged.peg.literal!("$$"), doublequote, ExpandStatement, doublequote)), "QMakeProject.ProjectVariableExpandStatement")(p);
+        }
+        else
+        {
+            if (auto m = tuple(`ProjectVariableExpandStatement`, p.end) in memo)
+                return *m;
+            else
+            {
+                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.or!(pegged.peg.and!(pegged.peg.literal!("$$"), QualifiedIdentifier), pegged.peg.and!(pegged.peg.literal!("$${"), QualifiedIdentifier, pegged.peg.literal!("}")), pegged.peg.and!(pegged.peg.literal!("$$"), doublequote, ExpandStatement, doublequote)), "QMakeProject.ProjectVariableExpandStatement"), "ProjectVariableExpandStatement")(p);
+                memo[tuple(`ProjectVariableExpandStatement`, p.end)] = result;
+                return result;
+            }
+        }
+    }
+
+    static TParseTree ProjectVariableExpandStatement(string s)
+    {
+        if(__ctfe)
+        {
+            return         pegged.peg.defined!(pegged.peg.or!(pegged.peg.and!(pegged.peg.literal!("$$"), QualifiedIdentifier), pegged.peg.and!(pegged.peg.literal!("$${"), QualifiedIdentifier, pegged.peg.literal!("}")), pegged.peg.and!(pegged.peg.literal!("$$"), doublequote, ExpandStatement, doublequote)), "QMakeProject.ProjectVariableExpandStatement")(TParseTree("", false,[], s));
+        }
+        else
+        {
+            forgetMemo();
+            return hooked!(pegged.peg.defined!(pegged.peg.or!(pegged.peg.and!(pegged.peg.literal!("$$"), QualifiedIdentifier), pegged.peg.and!(pegged.peg.literal!("$${"), QualifiedIdentifier, pegged.peg.literal!("}")), pegged.peg.and!(pegged.peg.literal!("$$"), doublequote, ExpandStatement, doublequote)), "QMakeProject.ProjectVariableExpandStatement"), "ProjectVariableExpandStatement")(TParseTree("", false,[], s));
+        }
+    }
+    static string ProjectVariableExpandStatement(GetName g)
+    {
+        return "QMakeProject.ProjectVariableExpandStatement";
+    }
+
+    static TParseTree EnvironmentVariableExpandStatement(TParseTree p)
+    {
+        if(__ctfe)
+        {
+            return         pegged.peg.defined!(pegged.peg.and!(pegged.peg.keywords!("$$", "$"), OPEN_PAR_WS, QualifiedIdentifier, CLOSE_PAR_WS), "QMakeProject.EnvironmentVariableExpandStatement")(p);
+        }
+        else
+        {
+            if (auto m = tuple(`EnvironmentVariableExpandStatement`, p.end) in memo)
+                return *m;
+            else
+            {
+                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.and!(pegged.peg.keywords!("$$", "$"), OPEN_PAR_WS, QualifiedIdentifier, CLOSE_PAR_WS), "QMakeProject.EnvironmentVariableExpandStatement"), "EnvironmentVariableExpandStatement")(p);
+                memo[tuple(`EnvironmentVariableExpandStatement`, p.end)] = result;
+                return result;
+            }
+        }
+    }
+
+    static TParseTree EnvironmentVariableExpandStatement(string s)
+    {
+        if(__ctfe)
+        {
+            return         pegged.peg.defined!(pegged.peg.and!(pegged.peg.keywords!("$$", "$"), OPEN_PAR_WS, QualifiedIdentifier, CLOSE_PAR_WS), "QMakeProject.EnvironmentVariableExpandStatement")(TParseTree("", false,[], s));
+        }
+        else
+        {
+            forgetMemo();
+            return hooked!(pegged.peg.defined!(pegged.peg.and!(pegged.peg.keywords!("$$", "$"), OPEN_PAR_WS, QualifiedIdentifier, CLOSE_PAR_WS), "QMakeProject.EnvironmentVariableExpandStatement"), "EnvironmentVariableExpandStatement")(TParseTree("", false,[], s));
+        }
+    }
+    static string EnvironmentVariableExpandStatement(GetName g)
+    {
+        return "QMakeProject.EnvironmentVariableExpandStatement";
+    }
+
+    static TParseTree PropertyVariableExpandStatement(TParseTree p)
+    {
+        if(__ctfe)
+        {
+            return         pegged.peg.defined!(pegged.peg.and!(pegged.peg.literal!("$$["), QualifiedIdentifier, pegged.peg.option!(pegged.peg.keywords!("/get", "/src")), pegged.peg.literal!("]")), "QMakeProject.PropertyVariableExpandStatement")(p);
+        }
+        else
+        {
+            if (auto m = tuple(`PropertyVariableExpandStatement`, p.end) in memo)
+                return *m;
+            else
+            {
+                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.and!(pegged.peg.literal!("$$["), QualifiedIdentifier, pegged.peg.option!(pegged.peg.keywords!("/get", "/src")), pegged.peg.literal!("]")), "QMakeProject.PropertyVariableExpandStatement"), "PropertyVariableExpandStatement")(p);
+                memo[tuple(`PropertyVariableExpandStatement`, p.end)] = result;
+                return result;
+            }
+        }
+    }
+
+    static TParseTree PropertyVariableExpandStatement(string s)
+    {
+        if(__ctfe)
+        {
+            return         pegged.peg.defined!(pegged.peg.and!(pegged.peg.literal!("$$["), QualifiedIdentifier, pegged.peg.option!(pegged.peg.keywords!("/get", "/src")), pegged.peg.literal!("]")), "QMakeProject.PropertyVariableExpandStatement")(TParseTree("", false,[], s));
+        }
+        else
+        {
+            forgetMemo();
+            return hooked!(pegged.peg.defined!(pegged.peg.and!(pegged.peg.literal!("$$["), QualifiedIdentifier, pegged.peg.option!(pegged.peg.keywords!("/get", "/src")), pegged.peg.literal!("]")), "QMakeProject.PropertyVariableExpandStatement"), "PropertyVariableExpandStatement")(TParseTree("", false,[], s));
+        }
+    }
+    static string PropertyVariableExpandStatement(GetName g)
+    {
+        return "QMakeProject.PropertyVariableExpandStatement";
+    }
+
     static TParseTree EvalTestFunctionCall(TParseTree p)
     {
         if(__ctfe)
@@ -3759,114 +3987,6 @@ struct GenericQMakeProject(TParseTree)
         return "QMakeProject.RequiresFunctionCall";
     }
 
-    static TParseTree RegularString(TParseTree p)
-    {
-        if(__ctfe)
-        {
-            return         pegged.peg.defined!(pegged.peg.option!(RegularStringChars), "QMakeProject.RegularString")(p);
-        }
-        else
-        {
-            if (auto m = tuple(`RegularString`, p.end) in memo)
-                return *m;
-            else
-            {
-                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.option!(RegularStringChars), "QMakeProject.RegularString"), "RegularString")(p);
-                memo[tuple(`RegularString`, p.end)] = result;
-                return result;
-            }
-        }
-    }
-
-    static TParseTree RegularString(string s)
-    {
-        if(__ctfe)
-        {
-            return         pegged.peg.defined!(pegged.peg.option!(RegularStringChars), "QMakeProject.RegularString")(TParseTree("", false,[], s));
-        }
-        else
-        {
-            forgetMemo();
-            return hooked!(pegged.peg.defined!(pegged.peg.option!(RegularStringChars), "QMakeProject.RegularString"), "RegularString")(TParseTree("", false,[], s));
-        }
-    }
-    static string RegularString(GetName g)
-    {
-        return "QMakeProject.RegularString";
-    }
-
-    static TParseTree RegularStringChars(TParseTree p)
-    {
-        if(__ctfe)
-        {
-            return         pegged.peg.defined!(pegged.peg.fuse!(pegged.peg.oneOrMore!(RegularStringChar)), "QMakeProject.RegularStringChars")(p);
-        }
-        else
-        {
-            if (auto m = tuple(`RegularStringChars`, p.end) in memo)
-                return *m;
-            else
-            {
-                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.fuse!(pegged.peg.oneOrMore!(RegularStringChar)), "QMakeProject.RegularStringChars"), "RegularStringChars")(p);
-                memo[tuple(`RegularStringChars`, p.end)] = result;
-                return result;
-            }
-        }
-    }
-
-    static TParseTree RegularStringChars(string s)
-    {
-        if(__ctfe)
-        {
-            return         pegged.peg.defined!(pegged.peg.fuse!(pegged.peg.oneOrMore!(RegularStringChar)), "QMakeProject.RegularStringChars")(TParseTree("", false,[], s));
-        }
-        else
-        {
-            forgetMemo();
-            return hooked!(pegged.peg.defined!(pegged.peg.fuse!(pegged.peg.oneOrMore!(RegularStringChar)), "QMakeProject.RegularStringChars"), "RegularStringChars")(TParseTree("", false,[], s));
-        }
-    }
-    static string RegularStringChars(GetName g)
-    {
-        return "QMakeProject.RegularStringChars";
-    }
-
-    static TParseTree RegularStringChar(TParseTree p)
-    {
-        if(__ctfe)
-        {
-            return         pegged.peg.defined!(pegged.peg.and!(pegged.peg.negLookahead!(pegged.peg.or!(blank, quote, doublequote)), SourceCharacter), "QMakeProject.RegularStringChar")(p);
-        }
-        else
-        {
-            if (auto m = tuple(`RegularStringChar`, p.end) in memo)
-                return *m;
-            else
-            {
-                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.and!(pegged.peg.negLookahead!(pegged.peg.or!(blank, quote, doublequote)), SourceCharacter), "QMakeProject.RegularStringChar"), "RegularStringChar")(p);
-                memo[tuple(`RegularStringChar`, p.end)] = result;
-                return result;
-            }
-        }
-    }
-
-    static TParseTree RegularStringChar(string s)
-    {
-        if(__ctfe)
-        {
-            return         pegged.peg.defined!(pegged.peg.and!(pegged.peg.negLookahead!(pegged.peg.or!(blank, quote, doublequote)), SourceCharacter), "QMakeProject.RegularStringChar")(TParseTree("", false,[], s));
-        }
-        else
-        {
-            forgetMemo();
-            return hooked!(pegged.peg.defined!(pegged.peg.and!(pegged.peg.negLookahead!(pegged.peg.or!(blank, quote, doublequote)), SourceCharacter), "QMakeProject.RegularStringChar"), "RegularStringChar")(TParseTree("", false,[], s));
-        }
-    }
-    static string RegularStringChar(GetName g)
-    {
-        return "QMakeProject.RegularStringChar";
-    }
-
     static TParseTree EnquotedString(TParseTree p)
     {
         if(__ctfe)
@@ -4117,222 +4237,6 @@ struct GenericQMakeProject(TParseTree)
     static string QMakeIdentifier(GetName g)
     {
         return "QMakeProject.QMakeIdentifier";
-    }
-
-    static TParseTree ExpandStatement(TParseTree p)
-    {
-        if(__ctfe)
-        {
-            return         pegged.peg.defined!(pegged.peg.or!(FunctionArgumentExpandStatement, ProjectVariableExpandStatement, MakefileVariableExpandStatement, EnvironmentVariableExpandStatement, PropertyVariableExpandStatement), "QMakeProject.ExpandStatement")(p);
-        }
-        else
-        {
-            if (auto m = tuple(`ExpandStatement`, p.end) in memo)
-                return *m;
-            else
-            {
-                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.or!(FunctionArgumentExpandStatement, ProjectVariableExpandStatement, MakefileVariableExpandStatement, EnvironmentVariableExpandStatement, PropertyVariableExpandStatement), "QMakeProject.ExpandStatement"), "ExpandStatement")(p);
-                memo[tuple(`ExpandStatement`, p.end)] = result;
-                return result;
-            }
-        }
-    }
-
-    static TParseTree ExpandStatement(string s)
-    {
-        if(__ctfe)
-        {
-            return         pegged.peg.defined!(pegged.peg.or!(FunctionArgumentExpandStatement, ProjectVariableExpandStatement, MakefileVariableExpandStatement, EnvironmentVariableExpandStatement, PropertyVariableExpandStatement), "QMakeProject.ExpandStatement")(TParseTree("", false,[], s));
-        }
-        else
-        {
-            forgetMemo();
-            return hooked!(pegged.peg.defined!(pegged.peg.or!(FunctionArgumentExpandStatement, ProjectVariableExpandStatement, MakefileVariableExpandStatement, EnvironmentVariableExpandStatement, PropertyVariableExpandStatement), "QMakeProject.ExpandStatement"), "ExpandStatement")(TParseTree("", false,[], s));
-        }
-    }
-    static string ExpandStatement(GetName g)
-    {
-        return "QMakeProject.ExpandStatement";
-    }
-
-    static TParseTree FunctionArgumentExpandStatement(TParseTree p)
-    {
-        if(__ctfe)
-        {
-            return         pegged.peg.defined!(pegged.peg.or!(pegged.peg.and!(pegged.peg.literal!("$$"), DecNumber), pegged.peg.and!(pegged.peg.literal!("$${"), DecNumber, pegged.peg.literal!("}"))), "QMakeProject.FunctionArgumentExpandStatement")(p);
-        }
-        else
-        {
-            if (auto m = tuple(`FunctionArgumentExpandStatement`, p.end) in memo)
-                return *m;
-            else
-            {
-                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.or!(pegged.peg.and!(pegged.peg.literal!("$$"), DecNumber), pegged.peg.and!(pegged.peg.literal!("$${"), DecNumber, pegged.peg.literal!("}"))), "QMakeProject.FunctionArgumentExpandStatement"), "FunctionArgumentExpandStatement")(p);
-                memo[tuple(`FunctionArgumentExpandStatement`, p.end)] = result;
-                return result;
-            }
-        }
-    }
-
-    static TParseTree FunctionArgumentExpandStatement(string s)
-    {
-        if(__ctfe)
-        {
-            return         pegged.peg.defined!(pegged.peg.or!(pegged.peg.and!(pegged.peg.literal!("$$"), DecNumber), pegged.peg.and!(pegged.peg.literal!("$${"), DecNumber, pegged.peg.literal!("}"))), "QMakeProject.FunctionArgumentExpandStatement")(TParseTree("", false,[], s));
-        }
-        else
-        {
-            forgetMemo();
-            return hooked!(pegged.peg.defined!(pegged.peg.or!(pegged.peg.and!(pegged.peg.literal!("$$"), DecNumber), pegged.peg.and!(pegged.peg.literal!("$${"), DecNumber, pegged.peg.literal!("}"))), "QMakeProject.FunctionArgumentExpandStatement"), "FunctionArgumentExpandStatement")(TParseTree("", false,[], s));
-        }
-    }
-    static string FunctionArgumentExpandStatement(GetName g)
-    {
-        return "QMakeProject.FunctionArgumentExpandStatement";
-    }
-
-    static TParseTree MakefileVariableExpandStatement(TParseTree p)
-    {
-        if(__ctfe)
-        {
-            return         pegged.peg.defined!(pegged.peg.or!(pegged.peg.and!(pegged.peg.literal!("$"), QualifiedIdentifier), pegged.peg.and!(pegged.peg.literal!("${"), QualifiedIdentifier, pegged.peg.literal!("}"))), "QMakeProject.MakefileVariableExpandStatement")(p);
-        }
-        else
-        {
-            if (auto m = tuple(`MakefileVariableExpandStatement`, p.end) in memo)
-                return *m;
-            else
-            {
-                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.or!(pegged.peg.and!(pegged.peg.literal!("$"), QualifiedIdentifier), pegged.peg.and!(pegged.peg.literal!("${"), QualifiedIdentifier, pegged.peg.literal!("}"))), "QMakeProject.MakefileVariableExpandStatement"), "MakefileVariableExpandStatement")(p);
-                memo[tuple(`MakefileVariableExpandStatement`, p.end)] = result;
-                return result;
-            }
-        }
-    }
-
-    static TParseTree MakefileVariableExpandStatement(string s)
-    {
-        if(__ctfe)
-        {
-            return         pegged.peg.defined!(pegged.peg.or!(pegged.peg.and!(pegged.peg.literal!("$"), QualifiedIdentifier), pegged.peg.and!(pegged.peg.literal!("${"), QualifiedIdentifier, pegged.peg.literal!("}"))), "QMakeProject.MakefileVariableExpandStatement")(TParseTree("", false,[], s));
-        }
-        else
-        {
-            forgetMemo();
-            return hooked!(pegged.peg.defined!(pegged.peg.or!(pegged.peg.and!(pegged.peg.literal!("$"), QualifiedIdentifier), pegged.peg.and!(pegged.peg.literal!("${"), QualifiedIdentifier, pegged.peg.literal!("}"))), "QMakeProject.MakefileVariableExpandStatement"), "MakefileVariableExpandStatement")(TParseTree("", false,[], s));
-        }
-    }
-    static string MakefileVariableExpandStatement(GetName g)
-    {
-        return "QMakeProject.MakefileVariableExpandStatement";
-    }
-
-    static TParseTree ProjectVariableExpandStatement(TParseTree p)
-    {
-        if(__ctfe)
-        {
-            return         pegged.peg.defined!(pegged.peg.or!(pegged.peg.and!(pegged.peg.literal!("$$"), QualifiedIdentifier), pegged.peg.and!(pegged.peg.literal!("$${"), QualifiedIdentifier, pegged.peg.literal!("}")), pegged.peg.and!(pegged.peg.literal!("$$"), doublequote, ExpandStatement, doublequote)), "QMakeProject.ProjectVariableExpandStatement")(p);
-        }
-        else
-        {
-            if (auto m = tuple(`ProjectVariableExpandStatement`, p.end) in memo)
-                return *m;
-            else
-            {
-                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.or!(pegged.peg.and!(pegged.peg.literal!("$$"), QualifiedIdentifier), pegged.peg.and!(pegged.peg.literal!("$${"), QualifiedIdentifier, pegged.peg.literal!("}")), pegged.peg.and!(pegged.peg.literal!("$$"), doublequote, ExpandStatement, doublequote)), "QMakeProject.ProjectVariableExpandStatement"), "ProjectVariableExpandStatement")(p);
-                memo[tuple(`ProjectVariableExpandStatement`, p.end)] = result;
-                return result;
-            }
-        }
-    }
-
-    static TParseTree ProjectVariableExpandStatement(string s)
-    {
-        if(__ctfe)
-        {
-            return         pegged.peg.defined!(pegged.peg.or!(pegged.peg.and!(pegged.peg.literal!("$$"), QualifiedIdentifier), pegged.peg.and!(pegged.peg.literal!("$${"), QualifiedIdentifier, pegged.peg.literal!("}")), pegged.peg.and!(pegged.peg.literal!("$$"), doublequote, ExpandStatement, doublequote)), "QMakeProject.ProjectVariableExpandStatement")(TParseTree("", false,[], s));
-        }
-        else
-        {
-            forgetMemo();
-            return hooked!(pegged.peg.defined!(pegged.peg.or!(pegged.peg.and!(pegged.peg.literal!("$$"), QualifiedIdentifier), pegged.peg.and!(pegged.peg.literal!("$${"), QualifiedIdentifier, pegged.peg.literal!("}")), pegged.peg.and!(pegged.peg.literal!("$$"), doublequote, ExpandStatement, doublequote)), "QMakeProject.ProjectVariableExpandStatement"), "ProjectVariableExpandStatement")(TParseTree("", false,[], s));
-        }
-    }
-    static string ProjectVariableExpandStatement(GetName g)
-    {
-        return "QMakeProject.ProjectVariableExpandStatement";
-    }
-
-    static TParseTree EnvironmentVariableExpandStatement(TParseTree p)
-    {
-        if(__ctfe)
-        {
-            return         pegged.peg.defined!(pegged.peg.and!(pegged.peg.keywords!("$$", "$"), OPEN_PAR_WS, QualifiedIdentifier, CLOSE_PAR_WS), "QMakeProject.EnvironmentVariableExpandStatement")(p);
-        }
-        else
-        {
-            if (auto m = tuple(`EnvironmentVariableExpandStatement`, p.end) in memo)
-                return *m;
-            else
-            {
-                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.and!(pegged.peg.keywords!("$$", "$"), OPEN_PAR_WS, QualifiedIdentifier, CLOSE_PAR_WS), "QMakeProject.EnvironmentVariableExpandStatement"), "EnvironmentVariableExpandStatement")(p);
-                memo[tuple(`EnvironmentVariableExpandStatement`, p.end)] = result;
-                return result;
-            }
-        }
-    }
-
-    static TParseTree EnvironmentVariableExpandStatement(string s)
-    {
-        if(__ctfe)
-        {
-            return         pegged.peg.defined!(pegged.peg.and!(pegged.peg.keywords!("$$", "$"), OPEN_PAR_WS, QualifiedIdentifier, CLOSE_PAR_WS), "QMakeProject.EnvironmentVariableExpandStatement")(TParseTree("", false,[], s));
-        }
-        else
-        {
-            forgetMemo();
-            return hooked!(pegged.peg.defined!(pegged.peg.and!(pegged.peg.keywords!("$$", "$"), OPEN_PAR_WS, QualifiedIdentifier, CLOSE_PAR_WS), "QMakeProject.EnvironmentVariableExpandStatement"), "EnvironmentVariableExpandStatement")(TParseTree("", false,[], s));
-        }
-    }
-    static string EnvironmentVariableExpandStatement(GetName g)
-    {
-        return "QMakeProject.EnvironmentVariableExpandStatement";
-    }
-
-    static TParseTree PropertyVariableExpandStatement(TParseTree p)
-    {
-        if(__ctfe)
-        {
-            return         pegged.peg.defined!(pegged.peg.and!(pegged.peg.literal!("$$["), QualifiedIdentifier, pegged.peg.option!(pegged.peg.keywords!("/get", "/src")), pegged.peg.literal!("]")), "QMakeProject.PropertyVariableExpandStatement")(p);
-        }
-        else
-        {
-            if (auto m = tuple(`PropertyVariableExpandStatement`, p.end) in memo)
-                return *m;
-            else
-            {
-                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.and!(pegged.peg.literal!("$$["), QualifiedIdentifier, pegged.peg.option!(pegged.peg.keywords!("/get", "/src")), pegged.peg.literal!("]")), "QMakeProject.PropertyVariableExpandStatement"), "PropertyVariableExpandStatement")(p);
-                memo[tuple(`PropertyVariableExpandStatement`, p.end)] = result;
-                return result;
-            }
-        }
-    }
-
-    static TParseTree PropertyVariableExpandStatement(string s)
-    {
-        if(__ctfe)
-        {
-            return         pegged.peg.defined!(pegged.peg.and!(pegged.peg.literal!("$$["), QualifiedIdentifier, pegged.peg.option!(pegged.peg.keywords!("/get", "/src")), pegged.peg.literal!("]")), "QMakeProject.PropertyVariableExpandStatement")(TParseTree("", false,[], s));
-        }
-        else
-        {
-            forgetMemo();
-            return hooked!(pegged.peg.defined!(pegged.peg.and!(pegged.peg.literal!("$$["), QualifiedIdentifier, pegged.peg.option!(pegged.peg.keywords!("/get", "/src")), pegged.peg.literal!("]")), "QMakeProject.PropertyVariableExpandStatement"), "PropertyVariableExpandStatement")(TParseTree("", false,[], s));
-        }
-    }
-    static string PropertyVariableExpandStatement(GetName g)
-    {
-        return "QMakeProject.PropertyVariableExpandStatement";
     }
 
     static TParseTree NumberFunctionCall(TParseTree p)
@@ -4657,42 +4561,6 @@ struct GenericQMakeProject(TParseTree)
     static string DecNumber(GetName g)
     {
         return "QMakeProject.DecNumber";
-    }
-
-    static TParseTree SINGLE_EXPAND_MARKER(TParseTree p)
-    {
-        if(__ctfe)
-        {
-            return         pegged.peg.defined!(pegged.peg.literal!("$"), "QMakeProject.SINGLE_EXPAND_MARKER")(p);
-        }
-        else
-        {
-            if (auto m = tuple(`SINGLE_EXPAND_MARKER`, p.end) in memo)
-                return *m;
-            else
-            {
-                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.literal!("$"), "QMakeProject.SINGLE_EXPAND_MARKER"), "SINGLE_EXPAND_MARKER")(p);
-                memo[tuple(`SINGLE_EXPAND_MARKER`, p.end)] = result;
-                return result;
-            }
-        }
-    }
-
-    static TParseTree SINGLE_EXPAND_MARKER(string s)
-    {
-        if(__ctfe)
-        {
-            return         pegged.peg.defined!(pegged.peg.literal!("$"), "QMakeProject.SINGLE_EXPAND_MARKER")(TParseTree("", false,[], s));
-        }
-        else
-        {
-            forgetMemo();
-            return hooked!(pegged.peg.defined!(pegged.peg.literal!("$"), "QMakeProject.SINGLE_EXPAND_MARKER"), "SINGLE_EXPAND_MARKER")(TParseTree("", false,[], s));
-        }
-    }
-    static string SINGLE_EXPAND_MARKER(GetName g)
-    {
-        return "QMakeProject.SINGLE_EXPAND_MARKER";
     }
 
     static TParseTree EXPAND_MARKER(TParseTree p)
