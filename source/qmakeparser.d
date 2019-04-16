@@ -83,43 +83,26 @@ This module was automatically generated from the following grammar:
     FunctionId   <- (!("defineReplace" / "defineTest" / "eval" / "cache" / "contains" / "return" / "requires")
                     ("{" :space* QualifiedIdentifier :space* "}" / QualifiedIdentifier / EnquotedString))
 
-    FunctionArgumentList       <- List(COMMA_WS, COMMA) / List(:space+, :space) / FunctionFirstArgument
-    List(delimRule, delimChar) <- FunctionFirstArgument (delimRule (FunctionNextArgument(delimChar))?)+
+    FunctionArgumentList       <- List(COMMA_WS, COMMA) / List(:space+, :space) / FunctionArgument(space / COMMA)
+    List(delimRule, delimChar) <- FunctionArgument(space / COMMA) (delimRule (FunctionArgument(delimChar))?)+
 
-    FunctionFirstArgument           <- FunctionFirstArgumentImpl FunctionFirstArgumentImpl*
-    FunctionFirstArgumentImpl       <- / RvalueAtom
-                                       / EnquotedFunctionFirstArgument
-                                       / FunctionFirstArgumentString
+    FunctionArgument(delim)           <- FunctionArgumentImpl(delim) (FunctionArgumentImpl(delim))*
+    FunctionArgumentImpl(delim)       <- / RvalueAtom
+                                         / EnquotedFunctionArgument(delim)
+                                         / FunctionArgumentString(delim)
 
-    EnquotedFunctionFirstArgument         <- DoubleEnquotedFunctionFirstArgument / SingleEnquotedFunctionFirstArgument
-    DoubleEnquotedFunctionFirstArgument   <- doublequote EnquotedFunctionFirstArgumentChain(doublequote)? doublequote
-    SingleEnquotedFunctionFirstArgument   <- quote EnquotedFunctionFirstArgumentChain(quote)? quote
-    EnquotedFunctionFirstArgumentChain(Q) <- FunctionFirstArgumentImpl_2(Q) FunctionFirstArgumentImpl_2(Q)*
-    FunctionFirstArgumentImpl_2(Q)        <- / RvalueAtom
-                                             / EnquotedFunctionFirstArgument
-                                             / FunctionFirstArgumentString
-                                             / Leftover(Q)
+    EnquotedFunctionArgument(delim)         <- DoubleEnquotedFunctionArgument(delim) / SingleEnquotedFunctionArgument(delim)
+    DoubleEnquotedFunctionArgument(delim)   <- doublequote EnquotedFunctionArgumentChain(delim, doublequote)? doublequote
+    SingleEnquotedFunctionArgument(delim)   <- quote EnquotedFunctionArgumentChain(delim, quote)? quote
+    EnquotedFunctionArgumentChain(delim, Q) <- FunctionArgumentImpl_2(delim, Q) FunctionArgumentImpl_2(delim, Q)*
+    FunctionArgumentImpl_2(delim, Q)        <- / RvalueAtom
+                                               / EnquotedFunctionArgument(delim)
+                                               / FunctionArgumentString(delim)
+                                               / Leftover(Q)
 
-    FunctionFirstArgumentString     <- ~(FunctionFirstArgumentStringChar+)
-    FunctionFirstArgumentStringChar <- !(eol / ExpandStatement / space / COMMA / quote / doublequote / BACKSLASH / EndOfFunction) SourceCharacter
-                                     / BACKSLASH EscapeSequence
-
-    FunctionNextArgument(delim)           <- FunctionNextArgumentImpl(delim) (FunctionNextArgumentImpl(delim))*
-    FunctionNextArgumentImpl(delim)       <- / RvalueAtom
-                                             / EnquotedFunctionNextArgument(delim)
-                                             / FunctionNextArgumentString(delim)
-
-    EnquotedFunctionNextArgument(delim)         <- DoubleEnquotedFunctionNextArgument(delim) / SingleEnquotedFunctionNextArgument(delim)
-    DoubleEnquotedFunctionNextArgument(delim)   <- doublequote EnquotedFunctionNextArgumentChain(delim, doublequote)? doublequote
-    SingleEnquotedFunctionNextArgument(delim)   <- quote EnquotedFunctionNextArgumentChain(delim, quote)? quote
-    EnquotedFunctionNextArgumentChain(delim, Q) <- FunctionNextArgumentImpl_2(delim, Q) FunctionNextArgumentImpl_2(delim, Q)*
-    FunctionNextArgumentImpl_2(delim, Q)        <- / RvalueAtom
-                                                   / EnquotedFunctionNextArgument(delim)
-                                                   / FunctionNextArgumentString(delim)
-                                                   / Leftover(Q)
-
-    FunctionNextArgumentString(delim)     <- ~(FunctionNextArgumentStringChar(delim)+)
-    FunctionNextArgumentStringChar(delim) <- !(eol / ExpandStatement / delim / quote / doublequote / BACKSLASH / EndOfFunction) SourceCharacter
+    FunctionArgumentString(delim)         <- ~(FunctionArgumentStringChar(delim)+)
+    FunctionArgumentStringStopChar(delim) <- delim / eol / ExpandStatement / quote / doublequote / BACKSLASH / EndOfFunction
+    FunctionArgumentStringChar(delim)     <- !FunctionArgumentStringStopChar(delim) SourceCharacter
                                            / BACKSLASH EscapeSequence
 
     # NOTE: function arguments can contain "("/")" themselves, so we need special rule to detect function argument list end
@@ -175,7 +158,7 @@ This module was automatically generated from the following grammar:
     ForStatement <- ForEachInListStatement / ForEverStatement
     ForEachInListStatement <- "for" OPEN_PAR_WS ForIteratorVariableName COMMA_WS ForIterableList CLOSE_PAR_WS Block
     ForIteratorVariableName <- QualifiedIdentifier
-    ForIterableList <- List(:space+, :space) / FunctionFirstArgument #/ Statement
+    ForIterableList <- List(:space+, :space) / FunctionArgument(space / COMMA)
     ForEverStatement <- "for" OPEN_PAR_WS "ever" CLOSE_PAR_WS Block
 
     ExpandStatement                    <- / FunctionArgumentExpandStatement
@@ -210,14 +193,14 @@ This module was automatically generated from the following grammar:
     # Special case:
     # cache(, super)
     CacheTestFunctionCall       <- "cache" OPEN_PAR_WS CacheTestFunctionCallParams? CLOSE_PAR_WS
-    CacheTestFunctionCallParams <- QualifiedIdentifier? (COMMA_WS CacheTestFunctionParam2)? (COMMA_WS FunctionFirstArgument)?
+    CacheTestFunctionCallParams <- QualifiedIdentifier? (COMMA_WS CacheTestFunctionParam2)? (COMMA_WS FunctionArgument(space / COMMA))?
     CacheTestFunctionParam2     <- ("set" / "add" / "sub")? :space* ("transient")? :space* ("super" / "stash")?
     
     # contains(variablename, value)
     ContainsTestFunctionCall <- "contains" OPEN_PAR_WS QualifiedIdentifier (COMMA_WS EnquotedString) CLOSE_PAR_WS
 
     # return(expression)
-    ReturnFunctionCall <- "return" OPEN_PAR_WS (List(:space+, :space) / FunctionFirstArgument / Statement)? CLOSE_PAR_WS
+    ReturnFunctionCall <- "return" OPEN_PAR_WS (List(:space+, :space) / FunctionArgument(space / COMMA) / Statement)? CLOSE_PAR_WS
 
     # requires(condition)
     RequiresFunctionCall <- "requires" OPEN_PAR_WS BooleanExpression CLOSE_PAR_WS
@@ -343,13 +326,6 @@ struct GenericQMakeProject(TParseTree)
         rules["FunctionCall"] = toDelegate(&FunctionCall);
         rules["FunctionId"] = toDelegate(&FunctionId);
         rules["FunctionArgumentList"] = toDelegate(&FunctionArgumentList);
-        rules["FunctionFirstArgument"] = toDelegate(&FunctionFirstArgument);
-        rules["FunctionFirstArgumentImpl"] = toDelegate(&FunctionFirstArgumentImpl);
-        rules["EnquotedFunctionFirstArgument"] = toDelegate(&EnquotedFunctionFirstArgument);
-        rules["DoubleEnquotedFunctionFirstArgument"] = toDelegate(&DoubleEnquotedFunctionFirstArgument);
-        rules["SingleEnquotedFunctionFirstArgument"] = toDelegate(&SingleEnquotedFunctionFirstArgument);
-        rules["FunctionFirstArgumentString"] = toDelegate(&FunctionFirstArgumentString);
-        rules["FunctionFirstArgumentStringChar"] = toDelegate(&FunctionFirstArgumentStringChar);
         rules["EndOfFunction"] = toDelegate(&EndOfFunction);
         rules["FunctionDeclaration"] = toDelegate(&FunctionDeclaration);
         rules["ReplaceFunctionDeclaration"] = toDelegate(&ReplaceFunctionDeclaration);
@@ -1786,7 +1762,7 @@ struct GenericQMakeProject(TParseTree)
     {
         if(__ctfe)
         {
-            return         pegged.peg.defined!(pegged.peg.or!(List!(COMMA_WS, COMMA), List!(pegged.peg.discard!(pegged.peg.oneOrMore!(space)), pegged.peg.discard!(space)), FunctionFirstArgument), "QMakeProject.FunctionArgumentList")(p);
+            return         pegged.peg.defined!(pegged.peg.or!(List!(COMMA_WS, COMMA), List!(pegged.peg.discard!(pegged.peg.oneOrMore!(space)), pegged.peg.discard!(space)), FunctionArgument!(pegged.peg.or!(space, COMMA))), "QMakeProject.FunctionArgumentList")(p);
         }
         else
         {
@@ -1794,7 +1770,7 @@ struct GenericQMakeProject(TParseTree)
                 return *m;
             else
             {
-                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.or!(List!(COMMA_WS, COMMA), List!(pegged.peg.discard!(pegged.peg.oneOrMore!(space)), pegged.peg.discard!(space)), FunctionFirstArgument), "QMakeProject.FunctionArgumentList"), "FunctionArgumentList")(p);
+                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.or!(List!(COMMA_WS, COMMA), List!(pegged.peg.discard!(pegged.peg.oneOrMore!(space)), pegged.peg.discard!(space)), FunctionArgument!(pegged.peg.or!(space, COMMA))), "QMakeProject.FunctionArgumentList"), "FunctionArgumentList")(p);
                 memo[tuple(`FunctionArgumentList`, p.end)] = result;
                 return result;
             }
@@ -1805,12 +1781,12 @@ struct GenericQMakeProject(TParseTree)
     {
         if(__ctfe)
         {
-            return         pegged.peg.defined!(pegged.peg.or!(List!(COMMA_WS, COMMA), List!(pegged.peg.discard!(pegged.peg.oneOrMore!(space)), pegged.peg.discard!(space)), FunctionFirstArgument), "QMakeProject.FunctionArgumentList")(TParseTree("", false,[], s));
+            return         pegged.peg.defined!(pegged.peg.or!(List!(COMMA_WS, COMMA), List!(pegged.peg.discard!(pegged.peg.oneOrMore!(space)), pegged.peg.discard!(space)), FunctionArgument!(pegged.peg.or!(space, COMMA))), "QMakeProject.FunctionArgumentList")(TParseTree("", false,[], s));
         }
         else
         {
             forgetMemo();
-            return hooked!(pegged.peg.defined!(pegged.peg.or!(List!(COMMA_WS, COMMA), List!(pegged.peg.discard!(pegged.peg.oneOrMore!(space)), pegged.peg.discard!(space)), FunctionFirstArgument), "QMakeProject.FunctionArgumentList"), "FunctionArgumentList")(TParseTree("", false,[], s));
+            return hooked!(pegged.peg.defined!(pegged.peg.or!(List!(COMMA_WS, COMMA), List!(pegged.peg.discard!(pegged.peg.oneOrMore!(space)), pegged.peg.discard!(space)), FunctionArgument!(pegged.peg.or!(space, COMMA))), "QMakeProject.FunctionArgumentList"), "FunctionArgumentList")(TParseTree("", false,[], s));
         }
     }
     static string FunctionArgumentList(GetName g)
@@ -1824,7 +1800,7 @@ struct GenericQMakeProject(TParseTree)
     {
         if(__ctfe)
         {
-            return         pegged.peg.defined!(pegged.peg.and!(FunctionFirstArgument, pegged.peg.oneOrMore!(pegged.peg.and!(delimRule, pegged.peg.option!(FunctionNextArgument!(delimChar))))), "QMakeProject.List!(" ~ pegged.peg.getName!(delimRule)() ~ ", " ~ pegged.peg.getName!(delimChar) ~ ")")(p);
+            return         pegged.peg.defined!(pegged.peg.and!(FunctionArgument!(pegged.peg.or!(space, COMMA)), pegged.peg.oneOrMore!(pegged.peg.and!(delimRule, pegged.peg.option!(FunctionArgument!(delimChar))))), "QMakeProject.List!(" ~ pegged.peg.getName!(delimRule)() ~ ", " ~ pegged.peg.getName!(delimChar) ~ ")")(p);
         }
         else
         {
@@ -1832,7 +1808,7 @@ struct GenericQMakeProject(TParseTree)
                 return *m;
             else
             {
-                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.and!(FunctionFirstArgument, pegged.peg.oneOrMore!(pegged.peg.and!(delimRule, pegged.peg.option!(FunctionNextArgument!(delimChar))))), "QMakeProject.List!(" ~ pegged.peg.getName!(delimRule)() ~ ", " ~ pegged.peg.getName!(delimChar) ~ ")"), "List_2")(p);
+                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.and!(FunctionArgument!(pegged.peg.or!(space, COMMA)), pegged.peg.oneOrMore!(pegged.peg.and!(delimRule, pegged.peg.option!(FunctionArgument!(delimChar))))), "QMakeProject.List!(" ~ pegged.peg.getName!(delimRule)() ~ ", " ~ pegged.peg.getName!(delimChar) ~ ")"), "List_2")(p);
                 memo[tuple("List!(" ~ pegged.peg.getName!(delimRule)() ~ ", " ~ pegged.peg.getName!(delimChar) ~ ")", p.end)] = result;
                 return result;
             }
@@ -1843,12 +1819,12 @@ struct GenericQMakeProject(TParseTree)
     {
         if(__ctfe)
         {
-            return         pegged.peg.defined!(pegged.peg.and!(FunctionFirstArgument, pegged.peg.oneOrMore!(pegged.peg.and!(delimRule, pegged.peg.option!(FunctionNextArgument!(delimChar))))), "QMakeProject.List!(" ~ pegged.peg.getName!(delimRule)() ~ ", " ~ pegged.peg.getName!(delimChar) ~ ")")(TParseTree("", false,[], s));
+            return         pegged.peg.defined!(pegged.peg.and!(FunctionArgument!(pegged.peg.or!(space, COMMA)), pegged.peg.oneOrMore!(pegged.peg.and!(delimRule, pegged.peg.option!(FunctionArgument!(delimChar))))), "QMakeProject.List!(" ~ pegged.peg.getName!(delimRule)() ~ ", " ~ pegged.peg.getName!(delimChar) ~ ")")(TParseTree("", false,[], s));
         }
         else
         {
             forgetMemo();
-            return hooked!(pegged.peg.defined!(pegged.peg.and!(FunctionFirstArgument, pegged.peg.oneOrMore!(pegged.peg.and!(delimRule, pegged.peg.option!(FunctionNextArgument!(delimChar))))), "QMakeProject.List!(" ~ pegged.peg.getName!(delimRule)() ~ ", " ~ pegged.peg.getName!(delimChar) ~ ")"), "List_2")(TParseTree("", false,[], s));
+            return hooked!(pegged.peg.defined!(pegged.peg.and!(FunctionArgument!(pegged.peg.or!(space, COMMA)), pegged.peg.oneOrMore!(pegged.peg.and!(delimRule, pegged.peg.option!(FunctionArgument!(delimChar))))), "QMakeProject.List!(" ~ pegged.peg.getName!(delimRule)() ~ ", " ~ pegged.peg.getName!(delimChar) ~ ")"), "List_2")(TParseTree("", false,[], s));
         }
     }
     static string List(GetName g)
@@ -1857,684 +1833,393 @@ struct GenericQMakeProject(TParseTree)
     }
 
     }
-    static TParseTree FunctionFirstArgument(TParseTree p)
+    template FunctionArgument(alias delim)
+    {
+    static TParseTree FunctionArgument(TParseTree p)
     {
         if(__ctfe)
         {
-            return         pegged.peg.defined!(pegged.peg.and!(FunctionFirstArgumentImpl, pegged.peg.zeroOrMore!(FunctionFirstArgumentImpl)), "QMakeProject.FunctionFirstArgument")(p);
+            return         pegged.peg.defined!(pegged.peg.and!(FunctionArgumentImpl!(delim), pegged.peg.zeroOrMore!(FunctionArgumentImpl!(delim))), "QMakeProject.FunctionArgument!(" ~ pegged.peg.getName!(delim) ~ ")")(p);
         }
         else
         {
-            if (auto m = tuple(`FunctionFirstArgument`, p.end) in memo)
+            if (auto m = tuple("FunctionArgument!(" ~ pegged.peg.getName!(delim) ~ ")", p.end) in memo)
                 return *m;
             else
             {
-                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.and!(FunctionFirstArgumentImpl, pegged.peg.zeroOrMore!(FunctionFirstArgumentImpl)), "QMakeProject.FunctionFirstArgument"), "FunctionFirstArgument")(p);
-                memo[tuple(`FunctionFirstArgument`, p.end)] = result;
+                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.and!(FunctionArgumentImpl!(delim), pegged.peg.zeroOrMore!(FunctionArgumentImpl!(delim))), "QMakeProject.FunctionArgument!(" ~ pegged.peg.getName!(delim) ~ ")"), "FunctionArgument_1")(p);
+                memo[tuple("FunctionArgument!(" ~ pegged.peg.getName!(delim) ~ ")", p.end)] = result;
                 return result;
             }
         }
     }
 
-    static TParseTree FunctionFirstArgument(string s)
+    static TParseTree FunctionArgument(string s)
     {
         if(__ctfe)
         {
-            return         pegged.peg.defined!(pegged.peg.and!(FunctionFirstArgumentImpl, pegged.peg.zeroOrMore!(FunctionFirstArgumentImpl)), "QMakeProject.FunctionFirstArgument")(TParseTree("", false,[], s));
+            return         pegged.peg.defined!(pegged.peg.and!(FunctionArgumentImpl!(delim), pegged.peg.zeroOrMore!(FunctionArgumentImpl!(delim))), "QMakeProject.FunctionArgument!(" ~ pegged.peg.getName!(delim) ~ ")")(TParseTree("", false,[], s));
         }
         else
         {
             forgetMemo();
-            return hooked!(pegged.peg.defined!(pegged.peg.and!(FunctionFirstArgumentImpl, pegged.peg.zeroOrMore!(FunctionFirstArgumentImpl)), "QMakeProject.FunctionFirstArgument"), "FunctionFirstArgument")(TParseTree("", false,[], s));
+            return hooked!(pegged.peg.defined!(pegged.peg.and!(FunctionArgumentImpl!(delim), pegged.peg.zeroOrMore!(FunctionArgumentImpl!(delim))), "QMakeProject.FunctionArgument!(" ~ pegged.peg.getName!(delim) ~ ")"), "FunctionArgument_1")(TParseTree("", false,[], s));
         }
     }
-    static string FunctionFirstArgument(GetName g)
+    static string FunctionArgument(GetName g)
     {
-        return "QMakeProject.FunctionFirstArgument";
+        return "QMakeProject.FunctionArgument!(" ~ pegged.peg.getName!(delim) ~ ")";
     }
 
-    static TParseTree FunctionFirstArgumentImpl(TParseTree p)
+    }
+    template FunctionArgumentImpl(alias delim)
+    {
+    static TParseTree FunctionArgumentImpl(TParseTree p)
     {
         if(__ctfe)
         {
-            return         pegged.peg.defined!(pegged.peg.or!(RvalueAtom, EnquotedFunctionFirstArgument, FunctionFirstArgumentString), "QMakeProject.FunctionFirstArgumentImpl")(p);
+            return         pegged.peg.defined!(pegged.peg.or!(RvalueAtom, EnquotedFunctionArgument!(delim), FunctionArgumentString!(delim)), "QMakeProject.FunctionArgumentImpl!(" ~ pegged.peg.getName!(delim) ~ ")")(p);
         }
         else
         {
-            if (auto m = tuple(`FunctionFirstArgumentImpl`, p.end) in memo)
+            if (auto m = tuple("FunctionArgumentImpl!(" ~ pegged.peg.getName!(delim) ~ ")", p.end) in memo)
                 return *m;
             else
             {
-                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.or!(RvalueAtom, EnquotedFunctionFirstArgument, FunctionFirstArgumentString), "QMakeProject.FunctionFirstArgumentImpl"), "FunctionFirstArgumentImpl")(p);
-                memo[tuple(`FunctionFirstArgumentImpl`, p.end)] = result;
+                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.or!(RvalueAtom, EnquotedFunctionArgument!(delim), FunctionArgumentString!(delim)), "QMakeProject.FunctionArgumentImpl!(" ~ pegged.peg.getName!(delim) ~ ")"), "FunctionArgumentImpl_1")(p);
+                memo[tuple("FunctionArgumentImpl!(" ~ pegged.peg.getName!(delim) ~ ")", p.end)] = result;
                 return result;
             }
         }
     }
 
-    static TParseTree FunctionFirstArgumentImpl(string s)
+    static TParseTree FunctionArgumentImpl(string s)
     {
         if(__ctfe)
         {
-            return         pegged.peg.defined!(pegged.peg.or!(RvalueAtom, EnquotedFunctionFirstArgument, FunctionFirstArgumentString), "QMakeProject.FunctionFirstArgumentImpl")(TParseTree("", false,[], s));
+            return         pegged.peg.defined!(pegged.peg.or!(RvalueAtom, EnquotedFunctionArgument!(delim), FunctionArgumentString!(delim)), "QMakeProject.FunctionArgumentImpl!(" ~ pegged.peg.getName!(delim) ~ ")")(TParseTree("", false,[], s));
         }
         else
         {
             forgetMemo();
-            return hooked!(pegged.peg.defined!(pegged.peg.or!(RvalueAtom, EnquotedFunctionFirstArgument, FunctionFirstArgumentString), "QMakeProject.FunctionFirstArgumentImpl"), "FunctionFirstArgumentImpl")(TParseTree("", false,[], s));
+            return hooked!(pegged.peg.defined!(pegged.peg.or!(RvalueAtom, EnquotedFunctionArgument!(delim), FunctionArgumentString!(delim)), "QMakeProject.FunctionArgumentImpl!(" ~ pegged.peg.getName!(delim) ~ ")"), "FunctionArgumentImpl_1")(TParseTree("", false,[], s));
         }
     }
-    static string FunctionFirstArgumentImpl(GetName g)
+    static string FunctionArgumentImpl(GetName g)
     {
-        return "QMakeProject.FunctionFirstArgumentImpl";
+        return "QMakeProject.FunctionArgumentImpl!(" ~ pegged.peg.getName!(delim) ~ ")";
     }
 
-    static TParseTree EnquotedFunctionFirstArgument(TParseTree p)
+    }
+    template EnquotedFunctionArgument(alias delim)
+    {
+    static TParseTree EnquotedFunctionArgument(TParseTree p)
     {
         if(__ctfe)
         {
-            return         pegged.peg.defined!(pegged.peg.or!(DoubleEnquotedFunctionFirstArgument, SingleEnquotedFunctionFirstArgument), "QMakeProject.EnquotedFunctionFirstArgument")(p);
+            return         pegged.peg.defined!(pegged.peg.or!(DoubleEnquotedFunctionArgument!(delim), SingleEnquotedFunctionArgument!(delim)), "QMakeProject.EnquotedFunctionArgument!(" ~ pegged.peg.getName!(delim) ~ ")")(p);
         }
         else
         {
-            if (auto m = tuple(`EnquotedFunctionFirstArgument`, p.end) in memo)
+            if (auto m = tuple("EnquotedFunctionArgument!(" ~ pegged.peg.getName!(delim) ~ ")", p.end) in memo)
                 return *m;
             else
             {
-                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.or!(DoubleEnquotedFunctionFirstArgument, SingleEnquotedFunctionFirstArgument), "QMakeProject.EnquotedFunctionFirstArgument"), "EnquotedFunctionFirstArgument")(p);
-                memo[tuple(`EnquotedFunctionFirstArgument`, p.end)] = result;
+                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.or!(DoubleEnquotedFunctionArgument!(delim), SingleEnquotedFunctionArgument!(delim)), "QMakeProject.EnquotedFunctionArgument!(" ~ pegged.peg.getName!(delim) ~ ")"), "EnquotedFunctionArgument_1")(p);
+                memo[tuple("EnquotedFunctionArgument!(" ~ pegged.peg.getName!(delim) ~ ")", p.end)] = result;
                 return result;
             }
         }
     }
 
-    static TParseTree EnquotedFunctionFirstArgument(string s)
+    static TParseTree EnquotedFunctionArgument(string s)
     {
         if(__ctfe)
         {
-            return         pegged.peg.defined!(pegged.peg.or!(DoubleEnquotedFunctionFirstArgument, SingleEnquotedFunctionFirstArgument), "QMakeProject.EnquotedFunctionFirstArgument")(TParseTree("", false,[], s));
+            return         pegged.peg.defined!(pegged.peg.or!(DoubleEnquotedFunctionArgument!(delim), SingleEnquotedFunctionArgument!(delim)), "QMakeProject.EnquotedFunctionArgument!(" ~ pegged.peg.getName!(delim) ~ ")")(TParseTree("", false,[], s));
         }
         else
         {
             forgetMemo();
-            return hooked!(pegged.peg.defined!(pegged.peg.or!(DoubleEnquotedFunctionFirstArgument, SingleEnquotedFunctionFirstArgument), "QMakeProject.EnquotedFunctionFirstArgument"), "EnquotedFunctionFirstArgument")(TParseTree("", false,[], s));
+            return hooked!(pegged.peg.defined!(pegged.peg.or!(DoubleEnquotedFunctionArgument!(delim), SingleEnquotedFunctionArgument!(delim)), "QMakeProject.EnquotedFunctionArgument!(" ~ pegged.peg.getName!(delim) ~ ")"), "EnquotedFunctionArgument_1")(TParseTree("", false,[], s));
         }
     }
-    static string EnquotedFunctionFirstArgument(GetName g)
+    static string EnquotedFunctionArgument(GetName g)
     {
-        return "QMakeProject.EnquotedFunctionFirstArgument";
+        return "QMakeProject.EnquotedFunctionArgument!(" ~ pegged.peg.getName!(delim) ~ ")";
     }
 
-    static TParseTree DoubleEnquotedFunctionFirstArgument(TParseTree p)
+    }
+    template DoubleEnquotedFunctionArgument(alias delim)
+    {
+    static TParseTree DoubleEnquotedFunctionArgument(TParseTree p)
     {
         if(__ctfe)
         {
-            return         pegged.peg.defined!(pegged.peg.and!(doublequote, pegged.peg.option!(EnquotedFunctionFirstArgumentChain!(doublequote)), doublequote), "QMakeProject.DoubleEnquotedFunctionFirstArgument")(p);
+            return         pegged.peg.defined!(pegged.peg.and!(doublequote, pegged.peg.option!(EnquotedFunctionArgumentChain!(delim, doublequote)), doublequote), "QMakeProject.DoubleEnquotedFunctionArgument!(" ~ pegged.peg.getName!(delim) ~ ")")(p);
         }
         else
         {
-            if (auto m = tuple(`DoubleEnquotedFunctionFirstArgument`, p.end) in memo)
+            if (auto m = tuple("DoubleEnquotedFunctionArgument!(" ~ pegged.peg.getName!(delim) ~ ")", p.end) in memo)
                 return *m;
             else
             {
-                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.and!(doublequote, pegged.peg.option!(EnquotedFunctionFirstArgumentChain!(doublequote)), doublequote), "QMakeProject.DoubleEnquotedFunctionFirstArgument"), "DoubleEnquotedFunctionFirstArgument")(p);
-                memo[tuple(`DoubleEnquotedFunctionFirstArgument`, p.end)] = result;
+                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.and!(doublequote, pegged.peg.option!(EnquotedFunctionArgumentChain!(delim, doublequote)), doublequote), "QMakeProject.DoubleEnquotedFunctionArgument!(" ~ pegged.peg.getName!(delim) ~ ")"), "DoubleEnquotedFunctionArgument_1")(p);
+                memo[tuple("DoubleEnquotedFunctionArgument!(" ~ pegged.peg.getName!(delim) ~ ")", p.end)] = result;
                 return result;
             }
         }
     }
 
-    static TParseTree DoubleEnquotedFunctionFirstArgument(string s)
+    static TParseTree DoubleEnquotedFunctionArgument(string s)
     {
         if(__ctfe)
         {
-            return         pegged.peg.defined!(pegged.peg.and!(doublequote, pegged.peg.option!(EnquotedFunctionFirstArgumentChain!(doublequote)), doublequote), "QMakeProject.DoubleEnquotedFunctionFirstArgument")(TParseTree("", false,[], s));
+            return         pegged.peg.defined!(pegged.peg.and!(doublequote, pegged.peg.option!(EnquotedFunctionArgumentChain!(delim, doublequote)), doublequote), "QMakeProject.DoubleEnquotedFunctionArgument!(" ~ pegged.peg.getName!(delim) ~ ")")(TParseTree("", false,[], s));
         }
         else
         {
             forgetMemo();
-            return hooked!(pegged.peg.defined!(pegged.peg.and!(doublequote, pegged.peg.option!(EnquotedFunctionFirstArgumentChain!(doublequote)), doublequote), "QMakeProject.DoubleEnquotedFunctionFirstArgument"), "DoubleEnquotedFunctionFirstArgument")(TParseTree("", false,[], s));
+            return hooked!(pegged.peg.defined!(pegged.peg.and!(doublequote, pegged.peg.option!(EnquotedFunctionArgumentChain!(delim, doublequote)), doublequote), "QMakeProject.DoubleEnquotedFunctionArgument!(" ~ pegged.peg.getName!(delim) ~ ")"), "DoubleEnquotedFunctionArgument_1")(TParseTree("", false,[], s));
         }
     }
-    static string DoubleEnquotedFunctionFirstArgument(GetName g)
+    static string DoubleEnquotedFunctionArgument(GetName g)
     {
-        return "QMakeProject.DoubleEnquotedFunctionFirstArgument";
+        return "QMakeProject.DoubleEnquotedFunctionArgument!(" ~ pegged.peg.getName!(delim) ~ ")";
     }
 
-    static TParseTree SingleEnquotedFunctionFirstArgument(TParseTree p)
+    }
+    template SingleEnquotedFunctionArgument(alias delim)
+    {
+    static TParseTree SingleEnquotedFunctionArgument(TParseTree p)
     {
         if(__ctfe)
         {
-            return         pegged.peg.defined!(pegged.peg.and!(quote, pegged.peg.option!(EnquotedFunctionFirstArgumentChain!(quote)), quote), "QMakeProject.SingleEnquotedFunctionFirstArgument")(p);
+            return         pegged.peg.defined!(pegged.peg.and!(quote, pegged.peg.option!(EnquotedFunctionArgumentChain!(delim, quote)), quote), "QMakeProject.SingleEnquotedFunctionArgument!(" ~ pegged.peg.getName!(delim) ~ ")")(p);
         }
         else
         {
-            if (auto m = tuple(`SingleEnquotedFunctionFirstArgument`, p.end) in memo)
+            if (auto m = tuple("SingleEnquotedFunctionArgument!(" ~ pegged.peg.getName!(delim) ~ ")", p.end) in memo)
                 return *m;
             else
             {
-                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.and!(quote, pegged.peg.option!(EnquotedFunctionFirstArgumentChain!(quote)), quote), "QMakeProject.SingleEnquotedFunctionFirstArgument"), "SingleEnquotedFunctionFirstArgument")(p);
-                memo[tuple(`SingleEnquotedFunctionFirstArgument`, p.end)] = result;
+                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.and!(quote, pegged.peg.option!(EnquotedFunctionArgumentChain!(delim, quote)), quote), "QMakeProject.SingleEnquotedFunctionArgument!(" ~ pegged.peg.getName!(delim) ~ ")"), "SingleEnquotedFunctionArgument_1")(p);
+                memo[tuple("SingleEnquotedFunctionArgument!(" ~ pegged.peg.getName!(delim) ~ ")", p.end)] = result;
                 return result;
             }
         }
     }
 
-    static TParseTree SingleEnquotedFunctionFirstArgument(string s)
+    static TParseTree SingleEnquotedFunctionArgument(string s)
     {
         if(__ctfe)
         {
-            return         pegged.peg.defined!(pegged.peg.and!(quote, pegged.peg.option!(EnquotedFunctionFirstArgumentChain!(quote)), quote), "QMakeProject.SingleEnquotedFunctionFirstArgument")(TParseTree("", false,[], s));
+            return         pegged.peg.defined!(pegged.peg.and!(quote, pegged.peg.option!(EnquotedFunctionArgumentChain!(delim, quote)), quote), "QMakeProject.SingleEnquotedFunctionArgument!(" ~ pegged.peg.getName!(delim) ~ ")")(TParseTree("", false,[], s));
         }
         else
         {
             forgetMemo();
-            return hooked!(pegged.peg.defined!(pegged.peg.and!(quote, pegged.peg.option!(EnquotedFunctionFirstArgumentChain!(quote)), quote), "QMakeProject.SingleEnquotedFunctionFirstArgument"), "SingleEnquotedFunctionFirstArgument")(TParseTree("", false,[], s));
+            return hooked!(pegged.peg.defined!(pegged.peg.and!(quote, pegged.peg.option!(EnquotedFunctionArgumentChain!(delim, quote)), quote), "QMakeProject.SingleEnquotedFunctionArgument!(" ~ pegged.peg.getName!(delim) ~ ")"), "SingleEnquotedFunctionArgument_1")(TParseTree("", false,[], s));
         }
     }
-    static string SingleEnquotedFunctionFirstArgument(GetName g)
+    static string SingleEnquotedFunctionArgument(GetName g)
     {
-        return "QMakeProject.SingleEnquotedFunctionFirstArgument";
+        return "QMakeProject.SingleEnquotedFunctionArgument!(" ~ pegged.peg.getName!(delim) ~ ")";
     }
 
-    template EnquotedFunctionFirstArgumentChain(alias Q)
+    }
+    template EnquotedFunctionArgumentChain(alias delim, alias Q)
     {
-    static TParseTree EnquotedFunctionFirstArgumentChain(TParseTree p)
+    static TParseTree EnquotedFunctionArgumentChain(TParseTree p)
     {
         if(__ctfe)
         {
-            return         pegged.peg.defined!(pegged.peg.and!(FunctionFirstArgumentImpl_2!(Q), pegged.peg.zeroOrMore!(FunctionFirstArgumentImpl_2!(Q))), "QMakeProject.EnquotedFunctionFirstArgumentChain!(" ~ pegged.peg.getName!(Q) ~ ")")(p);
+            return         pegged.peg.defined!(pegged.peg.and!(FunctionArgumentImpl_2!(delim, Q), pegged.peg.zeroOrMore!(FunctionArgumentImpl_2!(delim, Q))), "QMakeProject.EnquotedFunctionArgumentChain!(" ~ pegged.peg.getName!(delim)() ~ ", " ~ pegged.peg.getName!(Q) ~ ")")(p);
         }
         else
         {
-            if (auto m = tuple("EnquotedFunctionFirstArgumentChain!(" ~ pegged.peg.getName!(Q) ~ ")", p.end) in memo)
+            if (auto m = tuple("EnquotedFunctionArgumentChain!(" ~ pegged.peg.getName!(delim)() ~ ", " ~ pegged.peg.getName!(Q) ~ ")", p.end) in memo)
                 return *m;
             else
             {
-                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.and!(FunctionFirstArgumentImpl_2!(Q), pegged.peg.zeroOrMore!(FunctionFirstArgumentImpl_2!(Q))), "QMakeProject.EnquotedFunctionFirstArgumentChain!(" ~ pegged.peg.getName!(Q) ~ ")"), "EnquotedFunctionFirstArgumentChain_1")(p);
-                memo[tuple("EnquotedFunctionFirstArgumentChain!(" ~ pegged.peg.getName!(Q) ~ ")", p.end)] = result;
+                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.and!(FunctionArgumentImpl_2!(delim, Q), pegged.peg.zeroOrMore!(FunctionArgumentImpl_2!(delim, Q))), "QMakeProject.EnquotedFunctionArgumentChain!(" ~ pegged.peg.getName!(delim)() ~ ", " ~ pegged.peg.getName!(Q) ~ ")"), "EnquotedFunctionArgumentChain_2")(p);
+                memo[tuple("EnquotedFunctionArgumentChain!(" ~ pegged.peg.getName!(delim)() ~ ", " ~ pegged.peg.getName!(Q) ~ ")", p.end)] = result;
                 return result;
             }
         }
     }
 
-    static TParseTree EnquotedFunctionFirstArgumentChain(string s)
+    static TParseTree EnquotedFunctionArgumentChain(string s)
     {
         if(__ctfe)
         {
-            return         pegged.peg.defined!(pegged.peg.and!(FunctionFirstArgumentImpl_2!(Q), pegged.peg.zeroOrMore!(FunctionFirstArgumentImpl_2!(Q))), "QMakeProject.EnquotedFunctionFirstArgumentChain!(" ~ pegged.peg.getName!(Q) ~ ")")(TParseTree("", false,[], s));
+            return         pegged.peg.defined!(pegged.peg.and!(FunctionArgumentImpl_2!(delim, Q), pegged.peg.zeroOrMore!(FunctionArgumentImpl_2!(delim, Q))), "QMakeProject.EnquotedFunctionArgumentChain!(" ~ pegged.peg.getName!(delim)() ~ ", " ~ pegged.peg.getName!(Q) ~ ")")(TParseTree("", false,[], s));
         }
         else
         {
             forgetMemo();
-            return hooked!(pegged.peg.defined!(pegged.peg.and!(FunctionFirstArgumentImpl_2!(Q), pegged.peg.zeroOrMore!(FunctionFirstArgumentImpl_2!(Q))), "QMakeProject.EnquotedFunctionFirstArgumentChain!(" ~ pegged.peg.getName!(Q) ~ ")"), "EnquotedFunctionFirstArgumentChain_1")(TParseTree("", false,[], s));
+            return hooked!(pegged.peg.defined!(pegged.peg.and!(FunctionArgumentImpl_2!(delim, Q), pegged.peg.zeroOrMore!(FunctionArgumentImpl_2!(delim, Q))), "QMakeProject.EnquotedFunctionArgumentChain!(" ~ pegged.peg.getName!(delim)() ~ ", " ~ pegged.peg.getName!(Q) ~ ")"), "EnquotedFunctionArgumentChain_2")(TParseTree("", false,[], s));
         }
     }
-    static string EnquotedFunctionFirstArgumentChain(GetName g)
+    static string EnquotedFunctionArgumentChain(GetName g)
     {
-        return "QMakeProject.EnquotedFunctionFirstArgumentChain!(" ~ pegged.peg.getName!(Q) ~ ")";
+        return "QMakeProject.EnquotedFunctionArgumentChain!(" ~ pegged.peg.getName!(delim)() ~ ", " ~ pegged.peg.getName!(Q) ~ ")";
     }
 
     }
-    template FunctionFirstArgumentImpl_2(alias Q)
+    template FunctionArgumentImpl_2(alias delim, alias Q)
     {
-    static TParseTree FunctionFirstArgumentImpl_2(TParseTree p)
+    static TParseTree FunctionArgumentImpl_2(TParseTree p)
     {
         if(__ctfe)
         {
-            return         pegged.peg.defined!(pegged.peg.or!(RvalueAtom, EnquotedFunctionFirstArgument, FunctionFirstArgumentString, Leftover!(Q)), "QMakeProject.FunctionFirstArgumentImpl_2!(" ~ pegged.peg.getName!(Q) ~ ")")(p);
+            return         pegged.peg.defined!(pegged.peg.or!(RvalueAtom, EnquotedFunctionArgument!(delim), FunctionArgumentString!(delim), Leftover!(Q)), "QMakeProject.FunctionArgumentImpl_2!(" ~ pegged.peg.getName!(delim)() ~ ", " ~ pegged.peg.getName!(Q) ~ ")")(p);
         }
         else
         {
-            if (auto m = tuple("FunctionFirstArgumentImpl_2!(" ~ pegged.peg.getName!(Q) ~ ")", p.end) in memo)
+            if (auto m = tuple("FunctionArgumentImpl_2!(" ~ pegged.peg.getName!(delim)() ~ ", " ~ pegged.peg.getName!(Q) ~ ")", p.end) in memo)
                 return *m;
             else
             {
-                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.or!(RvalueAtom, EnquotedFunctionFirstArgument, FunctionFirstArgumentString, Leftover!(Q)), "QMakeProject.FunctionFirstArgumentImpl_2!(" ~ pegged.peg.getName!(Q) ~ ")"), "FunctionFirstArgumentImpl_2_1")(p);
-                memo[tuple("FunctionFirstArgumentImpl_2!(" ~ pegged.peg.getName!(Q) ~ ")", p.end)] = result;
+                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.or!(RvalueAtom, EnquotedFunctionArgument!(delim), FunctionArgumentString!(delim), Leftover!(Q)), "QMakeProject.FunctionArgumentImpl_2!(" ~ pegged.peg.getName!(delim)() ~ ", " ~ pegged.peg.getName!(Q) ~ ")"), "FunctionArgumentImpl_2_2")(p);
+                memo[tuple("FunctionArgumentImpl_2!(" ~ pegged.peg.getName!(delim)() ~ ", " ~ pegged.peg.getName!(Q) ~ ")", p.end)] = result;
                 return result;
             }
         }
     }
 
-    static TParseTree FunctionFirstArgumentImpl_2(string s)
+    static TParseTree FunctionArgumentImpl_2(string s)
     {
         if(__ctfe)
         {
-            return         pegged.peg.defined!(pegged.peg.or!(RvalueAtom, EnquotedFunctionFirstArgument, FunctionFirstArgumentString, Leftover!(Q)), "QMakeProject.FunctionFirstArgumentImpl_2!(" ~ pegged.peg.getName!(Q) ~ ")")(TParseTree("", false,[], s));
+            return         pegged.peg.defined!(pegged.peg.or!(RvalueAtom, EnquotedFunctionArgument!(delim), FunctionArgumentString!(delim), Leftover!(Q)), "QMakeProject.FunctionArgumentImpl_2!(" ~ pegged.peg.getName!(delim)() ~ ", " ~ pegged.peg.getName!(Q) ~ ")")(TParseTree("", false,[], s));
         }
         else
         {
             forgetMemo();
-            return hooked!(pegged.peg.defined!(pegged.peg.or!(RvalueAtom, EnquotedFunctionFirstArgument, FunctionFirstArgumentString, Leftover!(Q)), "QMakeProject.FunctionFirstArgumentImpl_2!(" ~ pegged.peg.getName!(Q) ~ ")"), "FunctionFirstArgumentImpl_2_1")(TParseTree("", false,[], s));
+            return hooked!(pegged.peg.defined!(pegged.peg.or!(RvalueAtom, EnquotedFunctionArgument!(delim), FunctionArgumentString!(delim), Leftover!(Q)), "QMakeProject.FunctionArgumentImpl_2!(" ~ pegged.peg.getName!(delim)() ~ ", " ~ pegged.peg.getName!(Q) ~ ")"), "FunctionArgumentImpl_2_2")(TParseTree("", false,[], s));
         }
     }
-    static string FunctionFirstArgumentImpl_2(GetName g)
+    static string FunctionArgumentImpl_2(GetName g)
     {
-        return "QMakeProject.FunctionFirstArgumentImpl_2!(" ~ pegged.peg.getName!(Q) ~ ")";
+        return "QMakeProject.FunctionArgumentImpl_2!(" ~ pegged.peg.getName!(delim)() ~ ", " ~ pegged.peg.getName!(Q) ~ ")";
     }
 
     }
-    static TParseTree FunctionFirstArgumentString(TParseTree p)
+    template FunctionArgumentString(alias delim)
+    {
+    static TParseTree FunctionArgumentString(TParseTree p)
     {
         if(__ctfe)
         {
-            return         pegged.peg.defined!(pegged.peg.fuse!(pegged.peg.oneOrMore!(FunctionFirstArgumentStringChar)), "QMakeProject.FunctionFirstArgumentString")(p);
+            return         pegged.peg.defined!(pegged.peg.fuse!(pegged.peg.oneOrMore!(FunctionArgumentStringChar!(delim))), "QMakeProject.FunctionArgumentString!(" ~ pegged.peg.getName!(delim) ~ ")")(p);
         }
         else
         {
-            if (auto m = tuple(`FunctionFirstArgumentString`, p.end) in memo)
+            if (auto m = tuple("FunctionArgumentString!(" ~ pegged.peg.getName!(delim) ~ ")", p.end) in memo)
                 return *m;
             else
             {
-                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.fuse!(pegged.peg.oneOrMore!(FunctionFirstArgumentStringChar)), "QMakeProject.FunctionFirstArgumentString"), "FunctionFirstArgumentString")(p);
-                memo[tuple(`FunctionFirstArgumentString`, p.end)] = result;
+                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.fuse!(pegged.peg.oneOrMore!(FunctionArgumentStringChar!(delim))), "QMakeProject.FunctionArgumentString!(" ~ pegged.peg.getName!(delim) ~ ")"), "FunctionArgumentString_1")(p);
+                memo[tuple("FunctionArgumentString!(" ~ pegged.peg.getName!(delim) ~ ")", p.end)] = result;
                 return result;
             }
         }
     }
 
-    static TParseTree FunctionFirstArgumentString(string s)
+    static TParseTree FunctionArgumentString(string s)
     {
         if(__ctfe)
         {
-            return         pegged.peg.defined!(pegged.peg.fuse!(pegged.peg.oneOrMore!(FunctionFirstArgumentStringChar)), "QMakeProject.FunctionFirstArgumentString")(TParseTree("", false,[], s));
+            return         pegged.peg.defined!(pegged.peg.fuse!(pegged.peg.oneOrMore!(FunctionArgumentStringChar!(delim))), "QMakeProject.FunctionArgumentString!(" ~ pegged.peg.getName!(delim) ~ ")")(TParseTree("", false,[], s));
         }
         else
         {
             forgetMemo();
-            return hooked!(pegged.peg.defined!(pegged.peg.fuse!(pegged.peg.oneOrMore!(FunctionFirstArgumentStringChar)), "QMakeProject.FunctionFirstArgumentString"), "FunctionFirstArgumentString")(TParseTree("", false,[], s));
+            return hooked!(pegged.peg.defined!(pegged.peg.fuse!(pegged.peg.oneOrMore!(FunctionArgumentStringChar!(delim))), "QMakeProject.FunctionArgumentString!(" ~ pegged.peg.getName!(delim) ~ ")"), "FunctionArgumentString_1")(TParseTree("", false,[], s));
         }
     }
-    static string FunctionFirstArgumentString(GetName g)
+    static string FunctionArgumentString(GetName g)
     {
-        return "QMakeProject.FunctionFirstArgumentString";
+        return "QMakeProject.FunctionArgumentString!(" ~ pegged.peg.getName!(delim) ~ ")";
     }
 
-    static TParseTree FunctionFirstArgumentStringChar(TParseTree p)
+    }
+    template FunctionArgumentStringStopChar(alias delim)
+    {
+    static TParseTree FunctionArgumentStringStopChar(TParseTree p)
     {
         if(__ctfe)
         {
-            return         pegged.peg.defined!(pegged.peg.or!(pegged.peg.and!(pegged.peg.negLookahead!(pegged.peg.or!(eol, ExpandStatement, space, COMMA, quote, doublequote, BACKSLASH, EndOfFunction)), SourceCharacter), pegged.peg.and!(BACKSLASH, EscapeSequence)), "QMakeProject.FunctionFirstArgumentStringChar")(p);
+            return         pegged.peg.defined!(pegged.peg.or!(delim, eol, ExpandStatement, quote, doublequote, BACKSLASH, EndOfFunction), "QMakeProject.FunctionArgumentStringStopChar!(" ~ pegged.peg.getName!(delim) ~ ")")(p);
         }
         else
         {
-            if (auto m = tuple(`FunctionFirstArgumentStringChar`, p.end) in memo)
+            if (auto m = tuple("FunctionArgumentStringStopChar!(" ~ pegged.peg.getName!(delim) ~ ")", p.end) in memo)
                 return *m;
             else
             {
-                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.or!(pegged.peg.and!(pegged.peg.negLookahead!(pegged.peg.or!(eol, ExpandStatement, space, COMMA, quote, doublequote, BACKSLASH, EndOfFunction)), SourceCharacter), pegged.peg.and!(BACKSLASH, EscapeSequence)), "QMakeProject.FunctionFirstArgumentStringChar"), "FunctionFirstArgumentStringChar")(p);
-                memo[tuple(`FunctionFirstArgumentStringChar`, p.end)] = result;
+                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.or!(delim, eol, ExpandStatement, quote, doublequote, BACKSLASH, EndOfFunction), "QMakeProject.FunctionArgumentStringStopChar!(" ~ pegged.peg.getName!(delim) ~ ")"), "FunctionArgumentStringStopChar_1")(p);
+                memo[tuple("FunctionArgumentStringStopChar!(" ~ pegged.peg.getName!(delim) ~ ")", p.end)] = result;
                 return result;
             }
         }
     }
 
-    static TParseTree FunctionFirstArgumentStringChar(string s)
+    static TParseTree FunctionArgumentStringStopChar(string s)
     {
         if(__ctfe)
         {
-            return         pegged.peg.defined!(pegged.peg.or!(pegged.peg.and!(pegged.peg.negLookahead!(pegged.peg.or!(eol, ExpandStatement, space, COMMA, quote, doublequote, BACKSLASH, EndOfFunction)), SourceCharacter), pegged.peg.and!(BACKSLASH, EscapeSequence)), "QMakeProject.FunctionFirstArgumentStringChar")(TParseTree("", false,[], s));
+            return         pegged.peg.defined!(pegged.peg.or!(delim, eol, ExpandStatement, quote, doublequote, BACKSLASH, EndOfFunction), "QMakeProject.FunctionArgumentStringStopChar!(" ~ pegged.peg.getName!(delim) ~ ")")(TParseTree("", false,[], s));
         }
         else
         {
             forgetMemo();
-            return hooked!(pegged.peg.defined!(pegged.peg.or!(pegged.peg.and!(pegged.peg.negLookahead!(pegged.peg.or!(eol, ExpandStatement, space, COMMA, quote, doublequote, BACKSLASH, EndOfFunction)), SourceCharacter), pegged.peg.and!(BACKSLASH, EscapeSequence)), "QMakeProject.FunctionFirstArgumentStringChar"), "FunctionFirstArgumentStringChar")(TParseTree("", false,[], s));
+            return hooked!(pegged.peg.defined!(pegged.peg.or!(delim, eol, ExpandStatement, quote, doublequote, BACKSLASH, EndOfFunction), "QMakeProject.FunctionArgumentStringStopChar!(" ~ pegged.peg.getName!(delim) ~ ")"), "FunctionArgumentStringStopChar_1")(TParseTree("", false,[], s));
         }
     }
-    static string FunctionFirstArgumentStringChar(GetName g)
+    static string FunctionArgumentStringStopChar(GetName g)
     {
-        return "QMakeProject.FunctionFirstArgumentStringChar";
+        return "QMakeProject.FunctionArgumentStringStopChar!(" ~ pegged.peg.getName!(delim) ~ ")";
     }
 
-    template FunctionNextArgument(alias delim)
+    }
+    template FunctionArgumentStringChar(alias delim)
     {
-    static TParseTree FunctionNextArgument(TParseTree p)
+    static TParseTree FunctionArgumentStringChar(TParseTree p)
     {
         if(__ctfe)
         {
-            return         pegged.peg.defined!(pegged.peg.and!(FunctionNextArgumentImpl!(delim), pegged.peg.zeroOrMore!(FunctionNextArgumentImpl!(delim))), "QMakeProject.FunctionNextArgument!(" ~ pegged.peg.getName!(delim) ~ ")")(p);
+            return         pegged.peg.defined!(pegged.peg.or!(pegged.peg.and!(pegged.peg.negLookahead!(FunctionArgumentStringStopChar!(delim)), SourceCharacter), pegged.peg.and!(BACKSLASH, EscapeSequence)), "QMakeProject.FunctionArgumentStringChar!(" ~ pegged.peg.getName!(delim) ~ ")")(p);
         }
         else
         {
-            if (auto m = tuple("FunctionNextArgument!(" ~ pegged.peg.getName!(delim) ~ ")", p.end) in memo)
+            if (auto m = tuple("FunctionArgumentStringChar!(" ~ pegged.peg.getName!(delim) ~ ")", p.end) in memo)
                 return *m;
             else
             {
-                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.and!(FunctionNextArgumentImpl!(delim), pegged.peg.zeroOrMore!(FunctionNextArgumentImpl!(delim))), "QMakeProject.FunctionNextArgument!(" ~ pegged.peg.getName!(delim) ~ ")"), "FunctionNextArgument_1")(p);
-                memo[tuple("FunctionNextArgument!(" ~ pegged.peg.getName!(delim) ~ ")", p.end)] = result;
+                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.or!(pegged.peg.and!(pegged.peg.negLookahead!(FunctionArgumentStringStopChar!(delim)), SourceCharacter), pegged.peg.and!(BACKSLASH, EscapeSequence)), "QMakeProject.FunctionArgumentStringChar!(" ~ pegged.peg.getName!(delim) ~ ")"), "FunctionArgumentStringChar_1")(p);
+                memo[tuple("FunctionArgumentStringChar!(" ~ pegged.peg.getName!(delim) ~ ")", p.end)] = result;
                 return result;
             }
         }
     }
 
-    static TParseTree FunctionNextArgument(string s)
+    static TParseTree FunctionArgumentStringChar(string s)
     {
         if(__ctfe)
         {
-            return         pegged.peg.defined!(pegged.peg.and!(FunctionNextArgumentImpl!(delim), pegged.peg.zeroOrMore!(FunctionNextArgumentImpl!(delim))), "QMakeProject.FunctionNextArgument!(" ~ pegged.peg.getName!(delim) ~ ")")(TParseTree("", false,[], s));
+            return         pegged.peg.defined!(pegged.peg.or!(pegged.peg.and!(pegged.peg.negLookahead!(FunctionArgumentStringStopChar!(delim)), SourceCharacter), pegged.peg.and!(BACKSLASH, EscapeSequence)), "QMakeProject.FunctionArgumentStringChar!(" ~ pegged.peg.getName!(delim) ~ ")")(TParseTree("", false,[], s));
         }
         else
         {
             forgetMemo();
-            return hooked!(pegged.peg.defined!(pegged.peg.and!(FunctionNextArgumentImpl!(delim), pegged.peg.zeroOrMore!(FunctionNextArgumentImpl!(delim))), "QMakeProject.FunctionNextArgument!(" ~ pegged.peg.getName!(delim) ~ ")"), "FunctionNextArgument_1")(TParseTree("", false,[], s));
+            return hooked!(pegged.peg.defined!(pegged.peg.or!(pegged.peg.and!(pegged.peg.negLookahead!(FunctionArgumentStringStopChar!(delim)), SourceCharacter), pegged.peg.and!(BACKSLASH, EscapeSequence)), "QMakeProject.FunctionArgumentStringChar!(" ~ pegged.peg.getName!(delim) ~ ")"), "FunctionArgumentStringChar_1")(TParseTree("", false,[], s));
         }
     }
-    static string FunctionNextArgument(GetName g)
+    static string FunctionArgumentStringChar(GetName g)
     {
-        return "QMakeProject.FunctionNextArgument!(" ~ pegged.peg.getName!(delim) ~ ")";
-    }
-
-    }
-    template FunctionNextArgumentImpl(alias delim)
-    {
-    static TParseTree FunctionNextArgumentImpl(TParseTree p)
-    {
-        if(__ctfe)
-        {
-            return         pegged.peg.defined!(pegged.peg.or!(RvalueAtom, EnquotedFunctionNextArgument!(delim), FunctionNextArgumentString!(delim)), "QMakeProject.FunctionNextArgumentImpl!(" ~ pegged.peg.getName!(delim) ~ ")")(p);
-        }
-        else
-        {
-            if (auto m = tuple("FunctionNextArgumentImpl!(" ~ pegged.peg.getName!(delim) ~ ")", p.end) in memo)
-                return *m;
-            else
-            {
-                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.or!(RvalueAtom, EnquotedFunctionNextArgument!(delim), FunctionNextArgumentString!(delim)), "QMakeProject.FunctionNextArgumentImpl!(" ~ pegged.peg.getName!(delim) ~ ")"), "FunctionNextArgumentImpl_1")(p);
-                memo[tuple("FunctionNextArgumentImpl!(" ~ pegged.peg.getName!(delim) ~ ")", p.end)] = result;
-                return result;
-            }
-        }
-    }
-
-    static TParseTree FunctionNextArgumentImpl(string s)
-    {
-        if(__ctfe)
-        {
-            return         pegged.peg.defined!(pegged.peg.or!(RvalueAtom, EnquotedFunctionNextArgument!(delim), FunctionNextArgumentString!(delim)), "QMakeProject.FunctionNextArgumentImpl!(" ~ pegged.peg.getName!(delim) ~ ")")(TParseTree("", false,[], s));
-        }
-        else
-        {
-            forgetMemo();
-            return hooked!(pegged.peg.defined!(pegged.peg.or!(RvalueAtom, EnquotedFunctionNextArgument!(delim), FunctionNextArgumentString!(delim)), "QMakeProject.FunctionNextArgumentImpl!(" ~ pegged.peg.getName!(delim) ~ ")"), "FunctionNextArgumentImpl_1")(TParseTree("", false,[], s));
-        }
-    }
-    static string FunctionNextArgumentImpl(GetName g)
-    {
-        return "QMakeProject.FunctionNextArgumentImpl!(" ~ pegged.peg.getName!(delim) ~ ")";
-    }
-
-    }
-    template EnquotedFunctionNextArgument(alias delim)
-    {
-    static TParseTree EnquotedFunctionNextArgument(TParseTree p)
-    {
-        if(__ctfe)
-        {
-            return         pegged.peg.defined!(pegged.peg.or!(DoubleEnquotedFunctionNextArgument!(delim), SingleEnquotedFunctionNextArgument!(delim)), "QMakeProject.EnquotedFunctionNextArgument!(" ~ pegged.peg.getName!(delim) ~ ")")(p);
-        }
-        else
-        {
-            if (auto m = tuple("EnquotedFunctionNextArgument!(" ~ pegged.peg.getName!(delim) ~ ")", p.end) in memo)
-                return *m;
-            else
-            {
-                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.or!(DoubleEnquotedFunctionNextArgument!(delim), SingleEnquotedFunctionNextArgument!(delim)), "QMakeProject.EnquotedFunctionNextArgument!(" ~ pegged.peg.getName!(delim) ~ ")"), "EnquotedFunctionNextArgument_1")(p);
-                memo[tuple("EnquotedFunctionNextArgument!(" ~ pegged.peg.getName!(delim) ~ ")", p.end)] = result;
-                return result;
-            }
-        }
-    }
-
-    static TParseTree EnquotedFunctionNextArgument(string s)
-    {
-        if(__ctfe)
-        {
-            return         pegged.peg.defined!(pegged.peg.or!(DoubleEnquotedFunctionNextArgument!(delim), SingleEnquotedFunctionNextArgument!(delim)), "QMakeProject.EnquotedFunctionNextArgument!(" ~ pegged.peg.getName!(delim) ~ ")")(TParseTree("", false,[], s));
-        }
-        else
-        {
-            forgetMemo();
-            return hooked!(pegged.peg.defined!(pegged.peg.or!(DoubleEnquotedFunctionNextArgument!(delim), SingleEnquotedFunctionNextArgument!(delim)), "QMakeProject.EnquotedFunctionNextArgument!(" ~ pegged.peg.getName!(delim) ~ ")"), "EnquotedFunctionNextArgument_1")(TParseTree("", false,[], s));
-        }
-    }
-    static string EnquotedFunctionNextArgument(GetName g)
-    {
-        return "QMakeProject.EnquotedFunctionNextArgument!(" ~ pegged.peg.getName!(delim) ~ ")";
-    }
-
-    }
-    template DoubleEnquotedFunctionNextArgument(alias delim)
-    {
-    static TParseTree DoubleEnquotedFunctionNextArgument(TParseTree p)
-    {
-        if(__ctfe)
-        {
-            return         pegged.peg.defined!(pegged.peg.and!(doublequote, pegged.peg.option!(EnquotedFunctionNextArgumentChain!(delim, doublequote)), doublequote), "QMakeProject.DoubleEnquotedFunctionNextArgument!(" ~ pegged.peg.getName!(delim) ~ ")")(p);
-        }
-        else
-        {
-            if (auto m = tuple("DoubleEnquotedFunctionNextArgument!(" ~ pegged.peg.getName!(delim) ~ ")", p.end) in memo)
-                return *m;
-            else
-            {
-                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.and!(doublequote, pegged.peg.option!(EnquotedFunctionNextArgumentChain!(delim, doublequote)), doublequote), "QMakeProject.DoubleEnquotedFunctionNextArgument!(" ~ pegged.peg.getName!(delim) ~ ")"), "DoubleEnquotedFunctionNextArgument_1")(p);
-                memo[tuple("DoubleEnquotedFunctionNextArgument!(" ~ pegged.peg.getName!(delim) ~ ")", p.end)] = result;
-                return result;
-            }
-        }
-    }
-
-    static TParseTree DoubleEnquotedFunctionNextArgument(string s)
-    {
-        if(__ctfe)
-        {
-            return         pegged.peg.defined!(pegged.peg.and!(doublequote, pegged.peg.option!(EnquotedFunctionNextArgumentChain!(delim, doublequote)), doublequote), "QMakeProject.DoubleEnquotedFunctionNextArgument!(" ~ pegged.peg.getName!(delim) ~ ")")(TParseTree("", false,[], s));
-        }
-        else
-        {
-            forgetMemo();
-            return hooked!(pegged.peg.defined!(pegged.peg.and!(doublequote, pegged.peg.option!(EnquotedFunctionNextArgumentChain!(delim, doublequote)), doublequote), "QMakeProject.DoubleEnquotedFunctionNextArgument!(" ~ pegged.peg.getName!(delim) ~ ")"), "DoubleEnquotedFunctionNextArgument_1")(TParseTree("", false,[], s));
-        }
-    }
-    static string DoubleEnquotedFunctionNextArgument(GetName g)
-    {
-        return "QMakeProject.DoubleEnquotedFunctionNextArgument!(" ~ pegged.peg.getName!(delim) ~ ")";
-    }
-
-    }
-    template SingleEnquotedFunctionNextArgument(alias delim)
-    {
-    static TParseTree SingleEnquotedFunctionNextArgument(TParseTree p)
-    {
-        if(__ctfe)
-        {
-            return         pegged.peg.defined!(pegged.peg.and!(quote, pegged.peg.option!(EnquotedFunctionNextArgumentChain!(delim, quote)), quote), "QMakeProject.SingleEnquotedFunctionNextArgument!(" ~ pegged.peg.getName!(delim) ~ ")")(p);
-        }
-        else
-        {
-            if (auto m = tuple("SingleEnquotedFunctionNextArgument!(" ~ pegged.peg.getName!(delim) ~ ")", p.end) in memo)
-                return *m;
-            else
-            {
-                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.and!(quote, pegged.peg.option!(EnquotedFunctionNextArgumentChain!(delim, quote)), quote), "QMakeProject.SingleEnquotedFunctionNextArgument!(" ~ pegged.peg.getName!(delim) ~ ")"), "SingleEnquotedFunctionNextArgument_1")(p);
-                memo[tuple("SingleEnquotedFunctionNextArgument!(" ~ pegged.peg.getName!(delim) ~ ")", p.end)] = result;
-                return result;
-            }
-        }
-    }
-
-    static TParseTree SingleEnquotedFunctionNextArgument(string s)
-    {
-        if(__ctfe)
-        {
-            return         pegged.peg.defined!(pegged.peg.and!(quote, pegged.peg.option!(EnquotedFunctionNextArgumentChain!(delim, quote)), quote), "QMakeProject.SingleEnquotedFunctionNextArgument!(" ~ pegged.peg.getName!(delim) ~ ")")(TParseTree("", false,[], s));
-        }
-        else
-        {
-            forgetMemo();
-            return hooked!(pegged.peg.defined!(pegged.peg.and!(quote, pegged.peg.option!(EnquotedFunctionNextArgumentChain!(delim, quote)), quote), "QMakeProject.SingleEnquotedFunctionNextArgument!(" ~ pegged.peg.getName!(delim) ~ ")"), "SingleEnquotedFunctionNextArgument_1")(TParseTree("", false,[], s));
-        }
-    }
-    static string SingleEnquotedFunctionNextArgument(GetName g)
-    {
-        return "QMakeProject.SingleEnquotedFunctionNextArgument!(" ~ pegged.peg.getName!(delim) ~ ")";
-    }
-
-    }
-    template EnquotedFunctionNextArgumentChain(alias delim, alias Q)
-    {
-    static TParseTree EnquotedFunctionNextArgumentChain(TParseTree p)
-    {
-        if(__ctfe)
-        {
-            return         pegged.peg.defined!(pegged.peg.and!(FunctionNextArgumentImpl_2!(delim, Q), pegged.peg.zeroOrMore!(FunctionNextArgumentImpl_2!(delim, Q))), "QMakeProject.EnquotedFunctionNextArgumentChain!(" ~ pegged.peg.getName!(delim)() ~ ", " ~ pegged.peg.getName!(Q) ~ ")")(p);
-        }
-        else
-        {
-            if (auto m = tuple("EnquotedFunctionNextArgumentChain!(" ~ pegged.peg.getName!(delim)() ~ ", " ~ pegged.peg.getName!(Q) ~ ")", p.end) in memo)
-                return *m;
-            else
-            {
-                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.and!(FunctionNextArgumentImpl_2!(delim, Q), pegged.peg.zeroOrMore!(FunctionNextArgumentImpl_2!(delim, Q))), "QMakeProject.EnquotedFunctionNextArgumentChain!(" ~ pegged.peg.getName!(delim)() ~ ", " ~ pegged.peg.getName!(Q) ~ ")"), "EnquotedFunctionNextArgumentChain_2")(p);
-                memo[tuple("EnquotedFunctionNextArgumentChain!(" ~ pegged.peg.getName!(delim)() ~ ", " ~ pegged.peg.getName!(Q) ~ ")", p.end)] = result;
-                return result;
-            }
-        }
-    }
-
-    static TParseTree EnquotedFunctionNextArgumentChain(string s)
-    {
-        if(__ctfe)
-        {
-            return         pegged.peg.defined!(pegged.peg.and!(FunctionNextArgumentImpl_2!(delim, Q), pegged.peg.zeroOrMore!(FunctionNextArgumentImpl_2!(delim, Q))), "QMakeProject.EnquotedFunctionNextArgumentChain!(" ~ pegged.peg.getName!(delim)() ~ ", " ~ pegged.peg.getName!(Q) ~ ")")(TParseTree("", false,[], s));
-        }
-        else
-        {
-            forgetMemo();
-            return hooked!(pegged.peg.defined!(pegged.peg.and!(FunctionNextArgumentImpl_2!(delim, Q), pegged.peg.zeroOrMore!(FunctionNextArgumentImpl_2!(delim, Q))), "QMakeProject.EnquotedFunctionNextArgumentChain!(" ~ pegged.peg.getName!(delim)() ~ ", " ~ pegged.peg.getName!(Q) ~ ")"), "EnquotedFunctionNextArgumentChain_2")(TParseTree("", false,[], s));
-        }
-    }
-    static string EnquotedFunctionNextArgumentChain(GetName g)
-    {
-        return "QMakeProject.EnquotedFunctionNextArgumentChain!(" ~ pegged.peg.getName!(delim)() ~ ", " ~ pegged.peg.getName!(Q) ~ ")";
-    }
-
-    }
-    template FunctionNextArgumentImpl_2(alias delim, alias Q)
-    {
-    static TParseTree FunctionNextArgumentImpl_2(TParseTree p)
-    {
-        if(__ctfe)
-        {
-            return         pegged.peg.defined!(pegged.peg.or!(RvalueAtom, EnquotedFunctionNextArgument!(delim), FunctionNextArgumentString!(delim), Leftover!(Q)), "QMakeProject.FunctionNextArgumentImpl_2!(" ~ pegged.peg.getName!(delim)() ~ ", " ~ pegged.peg.getName!(Q) ~ ")")(p);
-        }
-        else
-        {
-            if (auto m = tuple("FunctionNextArgumentImpl_2!(" ~ pegged.peg.getName!(delim)() ~ ", " ~ pegged.peg.getName!(Q) ~ ")", p.end) in memo)
-                return *m;
-            else
-            {
-                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.or!(RvalueAtom, EnquotedFunctionNextArgument!(delim), FunctionNextArgumentString!(delim), Leftover!(Q)), "QMakeProject.FunctionNextArgumentImpl_2!(" ~ pegged.peg.getName!(delim)() ~ ", " ~ pegged.peg.getName!(Q) ~ ")"), "FunctionNextArgumentImpl_2_2")(p);
-                memo[tuple("FunctionNextArgumentImpl_2!(" ~ pegged.peg.getName!(delim)() ~ ", " ~ pegged.peg.getName!(Q) ~ ")", p.end)] = result;
-                return result;
-            }
-        }
-    }
-
-    static TParseTree FunctionNextArgumentImpl_2(string s)
-    {
-        if(__ctfe)
-        {
-            return         pegged.peg.defined!(pegged.peg.or!(RvalueAtom, EnquotedFunctionNextArgument!(delim), FunctionNextArgumentString!(delim), Leftover!(Q)), "QMakeProject.FunctionNextArgumentImpl_2!(" ~ pegged.peg.getName!(delim)() ~ ", " ~ pegged.peg.getName!(Q) ~ ")")(TParseTree("", false,[], s));
-        }
-        else
-        {
-            forgetMemo();
-            return hooked!(pegged.peg.defined!(pegged.peg.or!(RvalueAtom, EnquotedFunctionNextArgument!(delim), FunctionNextArgumentString!(delim), Leftover!(Q)), "QMakeProject.FunctionNextArgumentImpl_2!(" ~ pegged.peg.getName!(delim)() ~ ", " ~ pegged.peg.getName!(Q) ~ ")"), "FunctionNextArgumentImpl_2_2")(TParseTree("", false,[], s));
-        }
-    }
-    static string FunctionNextArgumentImpl_2(GetName g)
-    {
-        return "QMakeProject.FunctionNextArgumentImpl_2!(" ~ pegged.peg.getName!(delim)() ~ ", " ~ pegged.peg.getName!(Q) ~ ")";
-    }
-
-    }
-    template FunctionNextArgumentString(alias delim)
-    {
-    static TParseTree FunctionNextArgumentString(TParseTree p)
-    {
-        if(__ctfe)
-        {
-            return         pegged.peg.defined!(pegged.peg.fuse!(pegged.peg.oneOrMore!(FunctionNextArgumentStringChar!(delim))), "QMakeProject.FunctionNextArgumentString!(" ~ pegged.peg.getName!(delim) ~ ")")(p);
-        }
-        else
-        {
-            if (auto m = tuple("FunctionNextArgumentString!(" ~ pegged.peg.getName!(delim) ~ ")", p.end) in memo)
-                return *m;
-            else
-            {
-                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.fuse!(pegged.peg.oneOrMore!(FunctionNextArgumentStringChar!(delim))), "QMakeProject.FunctionNextArgumentString!(" ~ pegged.peg.getName!(delim) ~ ")"), "FunctionNextArgumentString_1")(p);
-                memo[tuple("FunctionNextArgumentString!(" ~ pegged.peg.getName!(delim) ~ ")", p.end)] = result;
-                return result;
-            }
-        }
-    }
-
-    static TParseTree FunctionNextArgumentString(string s)
-    {
-        if(__ctfe)
-        {
-            return         pegged.peg.defined!(pegged.peg.fuse!(pegged.peg.oneOrMore!(FunctionNextArgumentStringChar!(delim))), "QMakeProject.FunctionNextArgumentString!(" ~ pegged.peg.getName!(delim) ~ ")")(TParseTree("", false,[], s));
-        }
-        else
-        {
-            forgetMemo();
-            return hooked!(pegged.peg.defined!(pegged.peg.fuse!(pegged.peg.oneOrMore!(FunctionNextArgumentStringChar!(delim))), "QMakeProject.FunctionNextArgumentString!(" ~ pegged.peg.getName!(delim) ~ ")"), "FunctionNextArgumentString_1")(TParseTree("", false,[], s));
-        }
-    }
-    static string FunctionNextArgumentString(GetName g)
-    {
-        return "QMakeProject.FunctionNextArgumentString!(" ~ pegged.peg.getName!(delim) ~ ")";
-    }
-
-    }
-    template FunctionNextArgumentStringChar(alias delim)
-    {
-    static TParseTree FunctionNextArgumentStringChar(TParseTree p)
-    {
-        if(__ctfe)
-        {
-            return         pegged.peg.defined!(pegged.peg.or!(pegged.peg.and!(pegged.peg.negLookahead!(pegged.peg.or!(eol, ExpandStatement, delim, quote, doublequote, BACKSLASH, EndOfFunction)), SourceCharacter), pegged.peg.and!(BACKSLASH, EscapeSequence)), "QMakeProject.FunctionNextArgumentStringChar!(" ~ pegged.peg.getName!(delim) ~ ")")(p);
-        }
-        else
-        {
-            if (auto m = tuple("FunctionNextArgumentStringChar!(" ~ pegged.peg.getName!(delim) ~ ")", p.end) in memo)
-                return *m;
-            else
-            {
-                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.or!(pegged.peg.and!(pegged.peg.negLookahead!(pegged.peg.or!(eol, ExpandStatement, delim, quote, doublequote, BACKSLASH, EndOfFunction)), SourceCharacter), pegged.peg.and!(BACKSLASH, EscapeSequence)), "QMakeProject.FunctionNextArgumentStringChar!(" ~ pegged.peg.getName!(delim) ~ ")"), "FunctionNextArgumentStringChar_1")(p);
-                memo[tuple("FunctionNextArgumentStringChar!(" ~ pegged.peg.getName!(delim) ~ ")", p.end)] = result;
-                return result;
-            }
-        }
-    }
-
-    static TParseTree FunctionNextArgumentStringChar(string s)
-    {
-        if(__ctfe)
-        {
-            return         pegged.peg.defined!(pegged.peg.or!(pegged.peg.and!(pegged.peg.negLookahead!(pegged.peg.or!(eol, ExpandStatement, delim, quote, doublequote, BACKSLASH, EndOfFunction)), SourceCharacter), pegged.peg.and!(BACKSLASH, EscapeSequence)), "QMakeProject.FunctionNextArgumentStringChar!(" ~ pegged.peg.getName!(delim) ~ ")")(TParseTree("", false,[], s));
-        }
-        else
-        {
-            forgetMemo();
-            return hooked!(pegged.peg.defined!(pegged.peg.or!(pegged.peg.and!(pegged.peg.negLookahead!(pegged.peg.or!(eol, ExpandStatement, delim, quote, doublequote, BACKSLASH, EndOfFunction)), SourceCharacter), pegged.peg.and!(BACKSLASH, EscapeSequence)), "QMakeProject.FunctionNextArgumentStringChar!(" ~ pegged.peg.getName!(delim) ~ ")"), "FunctionNextArgumentStringChar_1")(TParseTree("", false,[], s));
-        }
-    }
-    static string FunctionNextArgumentStringChar(GetName g)
-    {
-        return "QMakeProject.FunctionNextArgumentStringChar!(" ~ pegged.peg.getName!(delim) ~ ")";
+        return "QMakeProject.FunctionArgumentStringChar!(" ~ pegged.peg.getName!(delim) ~ ")";
     }
 
     }
@@ -3262,7 +2947,7 @@ struct GenericQMakeProject(TParseTree)
     {
         if(__ctfe)
         {
-            return         pegged.peg.defined!(pegged.peg.or!(List!(pegged.peg.discard!(pegged.peg.oneOrMore!(space)), pegged.peg.discard!(space)), FunctionFirstArgument), "QMakeProject.ForIterableList")(p);
+            return         pegged.peg.defined!(pegged.peg.or!(List!(pegged.peg.discard!(pegged.peg.oneOrMore!(space)), pegged.peg.discard!(space)), FunctionArgument!(pegged.peg.or!(space, COMMA))), "QMakeProject.ForIterableList")(p);
         }
         else
         {
@@ -3270,7 +2955,7 @@ struct GenericQMakeProject(TParseTree)
                 return *m;
             else
             {
-                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.or!(List!(pegged.peg.discard!(pegged.peg.oneOrMore!(space)), pegged.peg.discard!(space)), FunctionFirstArgument), "QMakeProject.ForIterableList"), "ForIterableList")(p);
+                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.or!(List!(pegged.peg.discard!(pegged.peg.oneOrMore!(space)), pegged.peg.discard!(space)), FunctionArgument!(pegged.peg.or!(space, COMMA))), "QMakeProject.ForIterableList"), "ForIterableList")(p);
                 memo[tuple(`ForIterableList`, p.end)] = result;
                 return result;
             }
@@ -3281,12 +2966,12 @@ struct GenericQMakeProject(TParseTree)
     {
         if(__ctfe)
         {
-            return         pegged.peg.defined!(pegged.peg.or!(List!(pegged.peg.discard!(pegged.peg.oneOrMore!(space)), pegged.peg.discard!(space)), FunctionFirstArgument), "QMakeProject.ForIterableList")(TParseTree("", false,[], s));
+            return         pegged.peg.defined!(pegged.peg.or!(List!(pegged.peg.discard!(pegged.peg.oneOrMore!(space)), pegged.peg.discard!(space)), FunctionArgument!(pegged.peg.or!(space, COMMA))), "QMakeProject.ForIterableList")(TParseTree("", false,[], s));
         }
         else
         {
             forgetMemo();
-            return hooked!(pegged.peg.defined!(pegged.peg.or!(List!(pegged.peg.discard!(pegged.peg.oneOrMore!(space)), pegged.peg.discard!(space)), FunctionFirstArgument), "QMakeProject.ForIterableList"), "ForIterableList")(TParseTree("", false,[], s));
+            return hooked!(pegged.peg.defined!(pegged.peg.or!(List!(pegged.peg.discard!(pegged.peg.oneOrMore!(space)), pegged.peg.discard!(space)), FunctionArgument!(pegged.peg.or!(space, COMMA))), "QMakeProject.ForIterableList"), "ForIterableList")(TParseTree("", false,[], s));
         }
     }
     static string ForIterableList(GetName g)
@@ -3658,7 +3343,7 @@ struct GenericQMakeProject(TParseTree)
     {
         if(__ctfe)
         {
-            return         pegged.peg.defined!(pegged.peg.and!(pegged.peg.option!(QualifiedIdentifier), pegged.peg.option!(pegged.peg.and!(COMMA_WS, CacheTestFunctionParam2)), pegged.peg.option!(pegged.peg.and!(COMMA_WS, FunctionFirstArgument))), "QMakeProject.CacheTestFunctionCallParams")(p);
+            return         pegged.peg.defined!(pegged.peg.and!(pegged.peg.option!(QualifiedIdentifier), pegged.peg.option!(pegged.peg.and!(COMMA_WS, CacheTestFunctionParam2)), pegged.peg.option!(pegged.peg.and!(COMMA_WS, FunctionArgument!(pegged.peg.or!(space, COMMA))))), "QMakeProject.CacheTestFunctionCallParams")(p);
         }
         else
         {
@@ -3666,7 +3351,7 @@ struct GenericQMakeProject(TParseTree)
                 return *m;
             else
             {
-                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.and!(pegged.peg.option!(QualifiedIdentifier), pegged.peg.option!(pegged.peg.and!(COMMA_WS, CacheTestFunctionParam2)), pegged.peg.option!(pegged.peg.and!(COMMA_WS, FunctionFirstArgument))), "QMakeProject.CacheTestFunctionCallParams"), "CacheTestFunctionCallParams")(p);
+                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.and!(pegged.peg.option!(QualifiedIdentifier), pegged.peg.option!(pegged.peg.and!(COMMA_WS, CacheTestFunctionParam2)), pegged.peg.option!(pegged.peg.and!(COMMA_WS, FunctionArgument!(pegged.peg.or!(space, COMMA))))), "QMakeProject.CacheTestFunctionCallParams"), "CacheTestFunctionCallParams")(p);
                 memo[tuple(`CacheTestFunctionCallParams`, p.end)] = result;
                 return result;
             }
@@ -3677,12 +3362,12 @@ struct GenericQMakeProject(TParseTree)
     {
         if(__ctfe)
         {
-            return         pegged.peg.defined!(pegged.peg.and!(pegged.peg.option!(QualifiedIdentifier), pegged.peg.option!(pegged.peg.and!(COMMA_WS, CacheTestFunctionParam2)), pegged.peg.option!(pegged.peg.and!(COMMA_WS, FunctionFirstArgument))), "QMakeProject.CacheTestFunctionCallParams")(TParseTree("", false,[], s));
+            return         pegged.peg.defined!(pegged.peg.and!(pegged.peg.option!(QualifiedIdentifier), pegged.peg.option!(pegged.peg.and!(COMMA_WS, CacheTestFunctionParam2)), pegged.peg.option!(pegged.peg.and!(COMMA_WS, FunctionArgument!(pegged.peg.or!(space, COMMA))))), "QMakeProject.CacheTestFunctionCallParams")(TParseTree("", false,[], s));
         }
         else
         {
             forgetMemo();
-            return hooked!(pegged.peg.defined!(pegged.peg.and!(pegged.peg.option!(QualifiedIdentifier), pegged.peg.option!(pegged.peg.and!(COMMA_WS, CacheTestFunctionParam2)), pegged.peg.option!(pegged.peg.and!(COMMA_WS, FunctionFirstArgument))), "QMakeProject.CacheTestFunctionCallParams"), "CacheTestFunctionCallParams")(TParseTree("", false,[], s));
+            return hooked!(pegged.peg.defined!(pegged.peg.and!(pegged.peg.option!(QualifiedIdentifier), pegged.peg.option!(pegged.peg.and!(COMMA_WS, CacheTestFunctionParam2)), pegged.peg.option!(pegged.peg.and!(COMMA_WS, FunctionArgument!(pegged.peg.or!(space, COMMA))))), "QMakeProject.CacheTestFunctionCallParams"), "CacheTestFunctionCallParams")(TParseTree("", false,[], s));
         }
     }
     static string CacheTestFunctionCallParams(GetName g)
@@ -3766,7 +3451,7 @@ struct GenericQMakeProject(TParseTree)
     {
         if(__ctfe)
         {
-            return         pegged.peg.defined!(pegged.peg.and!(pegged.peg.literal!("return"), OPEN_PAR_WS, pegged.peg.option!(pegged.peg.or!(List!(pegged.peg.discard!(pegged.peg.oneOrMore!(space)), pegged.peg.discard!(space)), FunctionFirstArgument, Statement)), CLOSE_PAR_WS), "QMakeProject.ReturnFunctionCall")(p);
+            return         pegged.peg.defined!(pegged.peg.and!(pegged.peg.literal!("return"), OPEN_PAR_WS, pegged.peg.option!(pegged.peg.or!(List!(pegged.peg.discard!(pegged.peg.oneOrMore!(space)), pegged.peg.discard!(space)), FunctionArgument!(pegged.peg.or!(space, COMMA)), Statement)), CLOSE_PAR_WS), "QMakeProject.ReturnFunctionCall")(p);
         }
         else
         {
@@ -3774,7 +3459,7 @@ struct GenericQMakeProject(TParseTree)
                 return *m;
             else
             {
-                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.and!(pegged.peg.literal!("return"), OPEN_PAR_WS, pegged.peg.option!(pegged.peg.or!(List!(pegged.peg.discard!(pegged.peg.oneOrMore!(space)), pegged.peg.discard!(space)), FunctionFirstArgument, Statement)), CLOSE_PAR_WS), "QMakeProject.ReturnFunctionCall"), "ReturnFunctionCall")(p);
+                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.and!(pegged.peg.literal!("return"), OPEN_PAR_WS, pegged.peg.option!(pegged.peg.or!(List!(pegged.peg.discard!(pegged.peg.oneOrMore!(space)), pegged.peg.discard!(space)), FunctionArgument!(pegged.peg.or!(space, COMMA)), Statement)), CLOSE_PAR_WS), "QMakeProject.ReturnFunctionCall"), "ReturnFunctionCall")(p);
                 memo[tuple(`ReturnFunctionCall`, p.end)] = result;
                 return result;
             }
@@ -3785,12 +3470,12 @@ struct GenericQMakeProject(TParseTree)
     {
         if(__ctfe)
         {
-            return         pegged.peg.defined!(pegged.peg.and!(pegged.peg.literal!("return"), OPEN_PAR_WS, pegged.peg.option!(pegged.peg.or!(List!(pegged.peg.discard!(pegged.peg.oneOrMore!(space)), pegged.peg.discard!(space)), FunctionFirstArgument, Statement)), CLOSE_PAR_WS), "QMakeProject.ReturnFunctionCall")(TParseTree("", false,[], s));
+            return         pegged.peg.defined!(pegged.peg.and!(pegged.peg.literal!("return"), OPEN_PAR_WS, pegged.peg.option!(pegged.peg.or!(List!(pegged.peg.discard!(pegged.peg.oneOrMore!(space)), pegged.peg.discard!(space)), FunctionArgument!(pegged.peg.or!(space, COMMA)), Statement)), CLOSE_PAR_WS), "QMakeProject.ReturnFunctionCall")(TParseTree("", false,[], s));
         }
         else
         {
             forgetMemo();
-            return hooked!(pegged.peg.defined!(pegged.peg.and!(pegged.peg.literal!("return"), OPEN_PAR_WS, pegged.peg.option!(pegged.peg.or!(List!(pegged.peg.discard!(pegged.peg.oneOrMore!(space)), pegged.peg.discard!(space)), FunctionFirstArgument, Statement)), CLOSE_PAR_WS), "QMakeProject.ReturnFunctionCall"), "ReturnFunctionCall")(TParseTree("", false,[], s));
+            return hooked!(pegged.peg.defined!(pegged.peg.and!(pegged.peg.literal!("return"), OPEN_PAR_WS, pegged.peg.option!(pegged.peg.or!(List!(pegged.peg.discard!(pegged.peg.oneOrMore!(space)), pegged.peg.discard!(space)), FunctionArgument!(pegged.peg.or!(space, COMMA)), Statement)), CLOSE_PAR_WS), "QMakeProject.ReturnFunctionCall"), "ReturnFunctionCall")(TParseTree("", false,[], s));
         }
     }
     static string ReturnFunctionCall(GetName g)
