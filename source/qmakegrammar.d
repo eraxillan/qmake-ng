@@ -49,13 +49,13 @@ private enum QMakeProjectCodeBlock =
 private enum QMakeProjectAssignment =
 `
     # Variable or variable property assignment
-    Assignment <- DirectAssignment / AppendAssignment / AppendUniqueAssignment / RemoveAssignment / ReplaceAssignment
+    Assignment <- StandardAssignment / ReplaceAssignment
 
-    DirectAssignment        <- QualifiedIdentifier :space* "="  :space* RvalueExpression? :eol*
-    AppendAssignment        <- QualifiedIdentifier :space* "+=" :space* RvalueExpression? :eol*
-    AppendUniqueAssignment  <- QualifiedIdentifier :space* "*=" :space* RvalueExpression? :eol*
-    RemoveAssignment        <- QualifiedIdentifier :space* "-=" :space* RvalueExpression? :eol*
-    ReplaceAssignment       <- QualifiedIdentifier :space* "~=" :space* RegularExpression? :eol*
+    StandardAssignment <- QualifiedIdentifier :space* StandardAssignmentOperator :space* RvalueExpression? :eol*
+    ReplaceAssignment  <- QualifiedIdentifier :space* ReplaceAssignmentOperator :space* RegularExpression? :eol*
+
+    StandardAssignmentOperator <- "+=" / "*=" / "-=" / "="
+    ReplaceAssignmentOperator  <- "~="
 `;
 
 private enum QMakeProjectRvalue =

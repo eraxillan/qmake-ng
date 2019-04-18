@@ -31,13 +31,13 @@ This module was automatically generated from the following grammar:
     MultiLineBlock  <- :space* "{" :space* :eol* :space* Statement+ :space* :eol* "}" :space* :eol*
 
     # Variable or variable property assignment
-    Assignment <- DirectAssignment / AppendAssignment / AppendUniqueAssignment / RemoveAssignment / ReplaceAssignment
+    Assignment <- StandardAssignment / ReplaceAssignment
 
-    DirectAssignment        <- QualifiedIdentifier :space* "="  :space* RvalueExpression? :eol*
-    AppendAssignment        <- QualifiedIdentifier :space* "+=" :space* RvalueExpression? :eol*
-    AppendUniqueAssignment  <- QualifiedIdentifier :space* "*=" :space* RvalueExpression? :eol*
-    RemoveAssignment        <- QualifiedIdentifier :space* "-=" :space* RvalueExpression? :eol*
-    ReplaceAssignment       <- QualifiedIdentifier :space* "~=" :space* RegularExpression? :eol*
+    StandardAssignment <- QualifiedIdentifier :space* StandardAssignmentOperator :space* RvalueExpression? :eol*
+    ReplaceAssignment  <- QualifiedIdentifier :space* ReplaceAssignmentOperator :space* RegularExpression? :eol*
+
+    StandardAssignmentOperator <- "+=" / "*=" / "-=" / "="
+    ReplaceAssignmentOperator  <- "~="
 
     # Base rvalue statement: function call or variable/property expand
     RvalueAtom <- ReplaceFunctionCall / ExpandStatement / TestFunctionCall
@@ -306,11 +306,10 @@ struct GenericQMakeProject(TParseTree)
         rules["SingleLineBlock"] = toDelegate(&SingleLineBlock);
         rules["MultiLineBlock"] = toDelegate(&MultiLineBlock);
         rules["Assignment"] = toDelegate(&Assignment);
-        rules["DirectAssignment"] = toDelegate(&DirectAssignment);
-        rules["AppendAssignment"] = toDelegate(&AppendAssignment);
-        rules["AppendUniqueAssignment"] = toDelegate(&AppendUniqueAssignment);
-        rules["RemoveAssignment"] = toDelegate(&RemoveAssignment);
+        rules["StandardAssignment"] = toDelegate(&StandardAssignment);
         rules["ReplaceAssignment"] = toDelegate(&ReplaceAssignment);
+        rules["StandardAssignmentOperator"] = toDelegate(&StandardAssignmentOperator);
+        rules["ReplaceAssignmentOperator"] = toDelegate(&ReplaceAssignmentOperator);
         rules["RvalueAtom"] = toDelegate(&RvalueAtom);
         rules["RvalueStopRule"] = toDelegate(&RvalueStopRule);
         rules["RvalueExpression"] = toDelegate(&RvalueExpression);
@@ -847,7 +846,7 @@ struct GenericQMakeProject(TParseTree)
     {
         if(__ctfe)
         {
-            return         pegged.peg.defined!(pegged.peg.or!(DirectAssignment, AppendAssignment, AppendUniqueAssignment, RemoveAssignment, ReplaceAssignment), "QMakeProject.Assignment")(p);
+            return         pegged.peg.defined!(pegged.peg.or!(StandardAssignment, ReplaceAssignment), "QMakeProject.Assignment")(p);
         }
         else
         {
@@ -855,7 +854,7 @@ struct GenericQMakeProject(TParseTree)
                 return *m;
             else
             {
-                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.or!(DirectAssignment, AppendAssignment, AppendUniqueAssignment, RemoveAssignment, ReplaceAssignment), "QMakeProject.Assignment"), "Assignment")(p);
+                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.or!(StandardAssignment, ReplaceAssignment), "QMakeProject.Assignment"), "Assignment")(p);
                 memo[tuple(`Assignment`, p.end)] = result;
                 return result;
             }
@@ -866,12 +865,12 @@ struct GenericQMakeProject(TParseTree)
     {
         if(__ctfe)
         {
-            return         pegged.peg.defined!(pegged.peg.or!(DirectAssignment, AppendAssignment, AppendUniqueAssignment, RemoveAssignment, ReplaceAssignment), "QMakeProject.Assignment")(TParseTree("", false,[], s));
+            return         pegged.peg.defined!(pegged.peg.or!(StandardAssignment, ReplaceAssignment), "QMakeProject.Assignment")(TParseTree("", false,[], s));
         }
         else
         {
             forgetMemo();
-            return hooked!(pegged.peg.defined!(pegged.peg.or!(DirectAssignment, AppendAssignment, AppendUniqueAssignment, RemoveAssignment, ReplaceAssignment), "QMakeProject.Assignment"), "Assignment")(TParseTree("", false,[], s));
+            return hooked!(pegged.peg.defined!(pegged.peg.or!(StandardAssignment, ReplaceAssignment), "QMakeProject.Assignment"), "Assignment")(TParseTree("", false,[], s));
         }
     }
     static string Assignment(GetName g)
@@ -879,155 +878,47 @@ struct GenericQMakeProject(TParseTree)
         return "QMakeProject.Assignment";
     }
 
-    static TParseTree DirectAssignment(TParseTree p)
+    static TParseTree StandardAssignment(TParseTree p)
     {
         if(__ctfe)
         {
-            return         pegged.peg.defined!(pegged.peg.and!(QualifiedIdentifier, pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.literal!("="), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.option!(RvalueExpression), pegged.peg.discard!(pegged.peg.zeroOrMore!(eol))), "QMakeProject.DirectAssignment")(p);
+            return         pegged.peg.defined!(pegged.peg.and!(QualifiedIdentifier, pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), StandardAssignmentOperator, pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.option!(RvalueExpression), pegged.peg.discard!(pegged.peg.zeroOrMore!(eol))), "QMakeProject.StandardAssignment")(p);
         }
         else
         {
-            if (auto m = tuple(`DirectAssignment`, p.end) in memo)
+            if (auto m = tuple(`StandardAssignment`, p.end) in memo)
                 return *m;
             else
             {
-                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.and!(QualifiedIdentifier, pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.literal!("="), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.option!(RvalueExpression), pegged.peg.discard!(pegged.peg.zeroOrMore!(eol))), "QMakeProject.DirectAssignment"), "DirectAssignment")(p);
-                memo[tuple(`DirectAssignment`, p.end)] = result;
+                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.and!(QualifiedIdentifier, pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), StandardAssignmentOperator, pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.option!(RvalueExpression), pegged.peg.discard!(pegged.peg.zeroOrMore!(eol))), "QMakeProject.StandardAssignment"), "StandardAssignment")(p);
+                memo[tuple(`StandardAssignment`, p.end)] = result;
                 return result;
             }
         }
     }
 
-    static TParseTree DirectAssignment(string s)
+    static TParseTree StandardAssignment(string s)
     {
         if(__ctfe)
         {
-            return         pegged.peg.defined!(pegged.peg.and!(QualifiedIdentifier, pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.literal!("="), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.option!(RvalueExpression), pegged.peg.discard!(pegged.peg.zeroOrMore!(eol))), "QMakeProject.DirectAssignment")(TParseTree("", false,[], s));
+            return         pegged.peg.defined!(pegged.peg.and!(QualifiedIdentifier, pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), StandardAssignmentOperator, pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.option!(RvalueExpression), pegged.peg.discard!(pegged.peg.zeroOrMore!(eol))), "QMakeProject.StandardAssignment")(TParseTree("", false,[], s));
         }
         else
         {
             forgetMemo();
-            return hooked!(pegged.peg.defined!(pegged.peg.and!(QualifiedIdentifier, pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.literal!("="), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.option!(RvalueExpression), pegged.peg.discard!(pegged.peg.zeroOrMore!(eol))), "QMakeProject.DirectAssignment"), "DirectAssignment")(TParseTree("", false,[], s));
+            return hooked!(pegged.peg.defined!(pegged.peg.and!(QualifiedIdentifier, pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), StandardAssignmentOperator, pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.option!(RvalueExpression), pegged.peg.discard!(pegged.peg.zeroOrMore!(eol))), "QMakeProject.StandardAssignment"), "StandardAssignment")(TParseTree("", false,[], s));
         }
     }
-    static string DirectAssignment(GetName g)
+    static string StandardAssignment(GetName g)
     {
-        return "QMakeProject.DirectAssignment";
-    }
-
-    static TParseTree AppendAssignment(TParseTree p)
-    {
-        if(__ctfe)
-        {
-            return         pegged.peg.defined!(pegged.peg.and!(QualifiedIdentifier, pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.literal!("+="), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.option!(RvalueExpression), pegged.peg.discard!(pegged.peg.zeroOrMore!(eol))), "QMakeProject.AppendAssignment")(p);
-        }
-        else
-        {
-            if (auto m = tuple(`AppendAssignment`, p.end) in memo)
-                return *m;
-            else
-            {
-                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.and!(QualifiedIdentifier, pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.literal!("+="), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.option!(RvalueExpression), pegged.peg.discard!(pegged.peg.zeroOrMore!(eol))), "QMakeProject.AppendAssignment"), "AppendAssignment")(p);
-                memo[tuple(`AppendAssignment`, p.end)] = result;
-                return result;
-            }
-        }
-    }
-
-    static TParseTree AppendAssignment(string s)
-    {
-        if(__ctfe)
-        {
-            return         pegged.peg.defined!(pegged.peg.and!(QualifiedIdentifier, pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.literal!("+="), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.option!(RvalueExpression), pegged.peg.discard!(pegged.peg.zeroOrMore!(eol))), "QMakeProject.AppendAssignment")(TParseTree("", false,[], s));
-        }
-        else
-        {
-            forgetMemo();
-            return hooked!(pegged.peg.defined!(pegged.peg.and!(QualifiedIdentifier, pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.literal!("+="), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.option!(RvalueExpression), pegged.peg.discard!(pegged.peg.zeroOrMore!(eol))), "QMakeProject.AppendAssignment"), "AppendAssignment")(TParseTree("", false,[], s));
-        }
-    }
-    static string AppendAssignment(GetName g)
-    {
-        return "QMakeProject.AppendAssignment";
-    }
-
-    static TParseTree AppendUniqueAssignment(TParseTree p)
-    {
-        if(__ctfe)
-        {
-            return         pegged.peg.defined!(pegged.peg.and!(QualifiedIdentifier, pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.literal!("*="), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.option!(RvalueExpression), pegged.peg.discard!(pegged.peg.zeroOrMore!(eol))), "QMakeProject.AppendUniqueAssignment")(p);
-        }
-        else
-        {
-            if (auto m = tuple(`AppendUniqueAssignment`, p.end) in memo)
-                return *m;
-            else
-            {
-                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.and!(QualifiedIdentifier, pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.literal!("*="), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.option!(RvalueExpression), pegged.peg.discard!(pegged.peg.zeroOrMore!(eol))), "QMakeProject.AppendUniqueAssignment"), "AppendUniqueAssignment")(p);
-                memo[tuple(`AppendUniqueAssignment`, p.end)] = result;
-                return result;
-            }
-        }
-    }
-
-    static TParseTree AppendUniqueAssignment(string s)
-    {
-        if(__ctfe)
-        {
-            return         pegged.peg.defined!(pegged.peg.and!(QualifiedIdentifier, pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.literal!("*="), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.option!(RvalueExpression), pegged.peg.discard!(pegged.peg.zeroOrMore!(eol))), "QMakeProject.AppendUniqueAssignment")(TParseTree("", false,[], s));
-        }
-        else
-        {
-            forgetMemo();
-            return hooked!(pegged.peg.defined!(pegged.peg.and!(QualifiedIdentifier, pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.literal!("*="), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.option!(RvalueExpression), pegged.peg.discard!(pegged.peg.zeroOrMore!(eol))), "QMakeProject.AppendUniqueAssignment"), "AppendUniqueAssignment")(TParseTree("", false,[], s));
-        }
-    }
-    static string AppendUniqueAssignment(GetName g)
-    {
-        return "QMakeProject.AppendUniqueAssignment";
-    }
-
-    static TParseTree RemoveAssignment(TParseTree p)
-    {
-        if(__ctfe)
-        {
-            return         pegged.peg.defined!(pegged.peg.and!(QualifiedIdentifier, pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.literal!("-="), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.option!(RvalueExpression), pegged.peg.discard!(pegged.peg.zeroOrMore!(eol))), "QMakeProject.RemoveAssignment")(p);
-        }
-        else
-        {
-            if (auto m = tuple(`RemoveAssignment`, p.end) in memo)
-                return *m;
-            else
-            {
-                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.and!(QualifiedIdentifier, pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.literal!("-="), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.option!(RvalueExpression), pegged.peg.discard!(pegged.peg.zeroOrMore!(eol))), "QMakeProject.RemoveAssignment"), "RemoveAssignment")(p);
-                memo[tuple(`RemoveAssignment`, p.end)] = result;
-                return result;
-            }
-        }
-    }
-
-    static TParseTree RemoveAssignment(string s)
-    {
-        if(__ctfe)
-        {
-            return         pegged.peg.defined!(pegged.peg.and!(QualifiedIdentifier, pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.literal!("-="), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.option!(RvalueExpression), pegged.peg.discard!(pegged.peg.zeroOrMore!(eol))), "QMakeProject.RemoveAssignment")(TParseTree("", false,[], s));
-        }
-        else
-        {
-            forgetMemo();
-            return hooked!(pegged.peg.defined!(pegged.peg.and!(QualifiedIdentifier, pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.literal!("-="), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.option!(RvalueExpression), pegged.peg.discard!(pegged.peg.zeroOrMore!(eol))), "QMakeProject.RemoveAssignment"), "RemoveAssignment")(TParseTree("", false,[], s));
-        }
-    }
-    static string RemoveAssignment(GetName g)
-    {
-        return "QMakeProject.RemoveAssignment";
+        return "QMakeProject.StandardAssignment";
     }
 
     static TParseTree ReplaceAssignment(TParseTree p)
     {
         if(__ctfe)
         {
-            return         pegged.peg.defined!(pegged.peg.and!(QualifiedIdentifier, pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.literal!("~="), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.option!(RegularExpression), pegged.peg.discard!(pegged.peg.zeroOrMore!(eol))), "QMakeProject.ReplaceAssignment")(p);
+            return         pegged.peg.defined!(pegged.peg.and!(QualifiedIdentifier, pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), ReplaceAssignmentOperator, pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.option!(RegularExpression), pegged.peg.discard!(pegged.peg.zeroOrMore!(eol))), "QMakeProject.ReplaceAssignment")(p);
         }
         else
         {
@@ -1035,7 +926,7 @@ struct GenericQMakeProject(TParseTree)
                 return *m;
             else
             {
-                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.and!(QualifiedIdentifier, pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.literal!("~="), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.option!(RegularExpression), pegged.peg.discard!(pegged.peg.zeroOrMore!(eol))), "QMakeProject.ReplaceAssignment"), "ReplaceAssignment")(p);
+                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.and!(QualifiedIdentifier, pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), ReplaceAssignmentOperator, pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.option!(RegularExpression), pegged.peg.discard!(pegged.peg.zeroOrMore!(eol))), "QMakeProject.ReplaceAssignment"), "ReplaceAssignment")(p);
                 memo[tuple(`ReplaceAssignment`, p.end)] = result;
                 return result;
             }
@@ -1046,17 +937,89 @@ struct GenericQMakeProject(TParseTree)
     {
         if(__ctfe)
         {
-            return         pegged.peg.defined!(pegged.peg.and!(QualifiedIdentifier, pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.literal!("~="), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.option!(RegularExpression), pegged.peg.discard!(pegged.peg.zeroOrMore!(eol))), "QMakeProject.ReplaceAssignment")(TParseTree("", false,[], s));
+            return         pegged.peg.defined!(pegged.peg.and!(QualifiedIdentifier, pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), ReplaceAssignmentOperator, pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.option!(RegularExpression), pegged.peg.discard!(pegged.peg.zeroOrMore!(eol))), "QMakeProject.ReplaceAssignment")(TParseTree("", false,[], s));
         }
         else
         {
             forgetMemo();
-            return hooked!(pegged.peg.defined!(pegged.peg.and!(QualifiedIdentifier, pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.literal!("~="), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.option!(RegularExpression), pegged.peg.discard!(pegged.peg.zeroOrMore!(eol))), "QMakeProject.ReplaceAssignment"), "ReplaceAssignment")(TParseTree("", false,[], s));
+            return hooked!(pegged.peg.defined!(pegged.peg.and!(QualifiedIdentifier, pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), ReplaceAssignmentOperator, pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.option!(RegularExpression), pegged.peg.discard!(pegged.peg.zeroOrMore!(eol))), "QMakeProject.ReplaceAssignment"), "ReplaceAssignment")(TParseTree("", false,[], s));
         }
     }
     static string ReplaceAssignment(GetName g)
     {
         return "QMakeProject.ReplaceAssignment";
+    }
+
+    static TParseTree StandardAssignmentOperator(TParseTree p)
+    {
+        if(__ctfe)
+        {
+            return         pegged.peg.defined!(pegged.peg.keywords!("+=", "*=", "-=", "="), "QMakeProject.StandardAssignmentOperator")(p);
+        }
+        else
+        {
+            if (auto m = tuple(`StandardAssignmentOperator`, p.end) in memo)
+                return *m;
+            else
+            {
+                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.keywords!("+=", "*=", "-=", "="), "QMakeProject.StandardAssignmentOperator"), "StandardAssignmentOperator")(p);
+                memo[tuple(`StandardAssignmentOperator`, p.end)] = result;
+                return result;
+            }
+        }
+    }
+
+    static TParseTree StandardAssignmentOperator(string s)
+    {
+        if(__ctfe)
+        {
+            return         pegged.peg.defined!(pegged.peg.keywords!("+=", "*=", "-=", "="), "QMakeProject.StandardAssignmentOperator")(TParseTree("", false,[], s));
+        }
+        else
+        {
+            forgetMemo();
+            return hooked!(pegged.peg.defined!(pegged.peg.keywords!("+=", "*=", "-=", "="), "QMakeProject.StandardAssignmentOperator"), "StandardAssignmentOperator")(TParseTree("", false,[], s));
+        }
+    }
+    static string StandardAssignmentOperator(GetName g)
+    {
+        return "QMakeProject.StandardAssignmentOperator";
+    }
+
+    static TParseTree ReplaceAssignmentOperator(TParseTree p)
+    {
+        if(__ctfe)
+        {
+            return         pegged.peg.defined!(pegged.peg.literal!("~="), "QMakeProject.ReplaceAssignmentOperator")(p);
+        }
+        else
+        {
+            if (auto m = tuple(`ReplaceAssignmentOperator`, p.end) in memo)
+                return *m;
+            else
+            {
+                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.literal!("~="), "QMakeProject.ReplaceAssignmentOperator"), "ReplaceAssignmentOperator")(p);
+                memo[tuple(`ReplaceAssignmentOperator`, p.end)] = result;
+                return result;
+            }
+        }
+    }
+
+    static TParseTree ReplaceAssignmentOperator(string s)
+    {
+        if(__ctfe)
+        {
+            return         pegged.peg.defined!(pegged.peg.literal!("~="), "QMakeProject.ReplaceAssignmentOperator")(TParseTree("", false,[], s));
+        }
+        else
+        {
+            forgetMemo();
+            return hooked!(pegged.peg.defined!(pegged.peg.literal!("~="), "QMakeProject.ReplaceAssignmentOperator"), "ReplaceAssignmentOperator")(TParseTree("", false,[], s));
+        }
+    }
+    static string ReplaceAssignmentOperator(GetName g)
+    {
+        return "QMakeProject.ReplaceAssignmentOperator";
     }
 
     static TParseTree RvalueAtom(TParseTree p)
