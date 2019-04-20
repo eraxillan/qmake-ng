@@ -25,7 +25,7 @@ module qmakegrammar;
 private enum QMakeProjectEmptyStatement =
 `
     # No input
-    EmptyStatement <- eps :eol*
+    EmptyStatement <- eps :LineTerminator*
 `;
 
 private enum QMakeProjectComment =
@@ -33,7 +33,7 @@ private enum QMakeProjectComment =
     # Comment, single-line and multi-line (extension)
     Comment                         <~ MultiLineComment / SingleLineComment
     MultiLineComment                <~ :"#*" (!"*#" SourceCharacter)* :"*#"
-    SingleLineComment               <- :"#" SingleLineCommentChars? :eol
+    SingleLineComment               <- :"#" SingleLineCommentChars? :LineTerminator
     SingleLineCommentChars          <- SingleLineCommentChar+
     SingleLineCommentChar           <- !LineTerminator SourceCharacter
 `;
@@ -43,7 +43,7 @@ private enum QMakeProjectCodeBlock =
     # Code block
     Block           <- SingleLineBlock / MultiLineBlock
     SingleLineBlock <- :space* "@" :space* Statement
-    MultiLineBlock  <- :space* "{" :space* :eol* :space* Statement+ :space* :eol* "}" :space* :eol*
+    MultiLineBlock  <- :space* "{" :space* :LineTerminator* :space* Statement+ :space* :LineTerminator* "}" :space* :LineTerminator*
 `;
 
 private enum QMakeProjectAssignment =
@@ -51,8 +51,8 @@ private enum QMakeProjectAssignment =
     # Variable or variable property assignment
     Assignment <- StandardAssignment / ReplaceAssignment
 
-    StandardAssignment <- QualifiedIdentifier :space* StandardAssignmentOperator :space* RvalueExpression? :eol*
-    ReplaceAssignment  <- QualifiedIdentifier :space* ReplaceAssignmentOperator :space* RegularExpression? :eol*
+    StandardAssignment <- QualifiedIdentifier :space* StandardAssignmentOperator :space* RvalueExpression? :LineTerminator*
+    ReplaceAssignment  <- QualifiedIdentifier :space* ReplaceAssignmentOperator :space* RegularExpression? :LineTerminator*
 
     StandardAssignmentOperator <- "+=" / "*=" / "-=" / "="
     ReplaceAssignmentOperator  <- "~="
@@ -75,12 +75,12 @@ private enum QMakeProjectRvalue =
     SingleEnquotedRvalue   <- quote RvalueChain(quote)? quote
 
     Leftover(StopPattern)         <- ~(LeftoverChar(StopPattern)+)
-    LeftoverStopChar(StopPattern) <- eol / ExpandStatement / BACKSLASH / StopPattern
+    LeftoverStopChar(StopPattern) <- LineTerminator / ExpandStatement / BACKSLASH / StopPattern
     LeftoverChar(StopPattern)     <- / !LeftoverStopChar(StopPattern) SourceCharacter
                                      / BACKSLASH EscapeSequence
 
     RegularExpression         <- ~(RegularExpressionChar+)
-    RegularExpressionStopChar <- eol
+    RegularExpressionStopChar <- LineTerminator
     RegularExpressionChar     <- !RegularExpressionStopChar SourceCharacter
 `;
 
@@ -128,14 +128,14 @@ private enum QMakeProjectFunctionArguments =
                                                / Leftover(Q)
 
     FunctionArgumentString(delim)         <- ~(FunctionArgumentStringChar(delim)+)
-    FunctionArgumentStringStopChar(delim) <- delim / eol / ExpandStatement / quote / doublequote / BACKSLASH / EndOfFunction
+    FunctionArgumentStringStopChar(delim) <- delim / LineTerminator / ExpandStatement / quote / doublequote / BACKSLASH / EndOfFunction
     FunctionArgumentStringChar(delim)     <- !FunctionArgumentStringStopChar(delim) SourceCharacter
                                            / BACKSLASH EscapeSequence
 
     # NOTE: function arguments can contain "("/")" themselves, so we need special rule to detect function argument list end
     EndOfFunction <- ")" :space* (
         / [a-zA-Z_0-9\-\+\*/]
-        / eoi / eol
+        / eoi / LineTerminator
         / "=" / "+=" / "*=" / "-=" / "~="
         / "," / "." / "_"
         / "(" / ")"
@@ -256,9 +256,9 @@ private enum QMakeProjectEnquotedString =
     # Enquoted string: can contain any character except of quote
     EnquotedString            <- DoubleEnquotedString / SingleEnquotedString
     DoubleEnquotedString      <- doublequote ~(NonDoubleQuoteCharacter*) doublequote
-    NonDoubleQuoteCharacter   <- !(doublequote / BACKSLASH / eol) SourceCharacter / BACKSLASH EscapeSequence
+    NonDoubleQuoteCharacter   <- !(doublequote / BACKSLASH / LineTerminator) SourceCharacter / BACKSLASH EscapeSequence
     SingleEnquotedString      <- quote ~(NonSingleQuoteCharacter*) quote
-    NonSingleQuoteCharacter   <- !(quote / BACKSLASH / eol) SourceCharacter / BACKSLASH EscapeSequence
+    NonSingleQuoteCharacter   <- !(quote / BACKSLASH / LineTerminator) SourceCharacter / BACKSLASH EscapeSequence
 `;
 
 private enum QMakeProjectIdentifier =
@@ -326,7 +326,9 @@ private enum QMakeProjectTerminals =
     BACKSLASH <- "\\"
 
     SourceCharacter <- [\u0000-\uFFFC]
-    LineTerminator  <- "\u000A" / "\u000D" / "\u2028" / "\u2029"
+    LineTerminator  <- / "\u000A" # LF
+                       / ("\u000D" "\u000A") # CR LF
+                       / "\u2028" / "\u2029" # LineSeparator / ParagraphSeparator
 `;
 
 // --------------------------------------------------------------------------------------------------------------------

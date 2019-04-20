@@ -16,25 +16,25 @@ This module was automatically generated from the following grammar:
                      / EmptyStatement
 
     # No input
-    EmptyStatement <- eps :eol*
+    EmptyStatement <- eps :LineTerminator*
 
     # Comment, single-line and multi-line (extension)
     Comment                         <~ MultiLineComment / SingleLineComment
     MultiLineComment                <~ :"#*" (!"*#" SourceCharacter)* :"*#"
-    SingleLineComment               <- :"#" SingleLineCommentChars? :eol
+    SingleLineComment               <- :"#" SingleLineCommentChars? :LineTerminator
     SingleLineCommentChars          <- SingleLineCommentChar+
     SingleLineCommentChar           <- !LineTerminator SourceCharacter
 
     # Code block
     Block           <- SingleLineBlock / MultiLineBlock
     SingleLineBlock <- :space* "@" :space* Statement
-    MultiLineBlock  <- :space* "{" :space* :eol* :space* Statement+ :space* :eol* "}" :space* :eol*
+    MultiLineBlock  <- :space* "{" :space* :LineTerminator* :space* Statement+ :space* :LineTerminator* "}" :space* :LineTerminator*
 
     # Variable or variable property assignment
     Assignment <- StandardAssignment / ReplaceAssignment
 
-    StandardAssignment <- QualifiedIdentifier :space* StandardAssignmentOperator :space* RvalueExpression? :eol*
-    ReplaceAssignment  <- QualifiedIdentifier :space* ReplaceAssignmentOperator :space* RegularExpression? :eol*
+    StandardAssignment <- QualifiedIdentifier :space* StandardAssignmentOperator :space* RvalueExpression? :LineTerminator*
+    ReplaceAssignment  <- QualifiedIdentifier :space* ReplaceAssignmentOperator :space* RegularExpression? :LineTerminator*
 
     StandardAssignmentOperator <- "+=" / "*=" / "-=" / "="
     ReplaceAssignmentOperator  <- "~="
@@ -54,12 +54,12 @@ This module was automatically generated from the following grammar:
     SingleEnquotedRvalue   <- quote RvalueChain(quote)? quote
 
     Leftover(StopPattern)         <- ~(LeftoverChar(StopPattern)+)
-    LeftoverStopChar(StopPattern) <- eol / ExpandStatement / BACKSLASH / StopPattern
+    LeftoverStopChar(StopPattern) <- LineTerminator / ExpandStatement / BACKSLASH / StopPattern
     LeftoverChar(StopPattern)     <- / !LeftoverStopChar(StopPattern) SourceCharacter
                                      / BACKSLASH EscapeSequence
 
     RegularExpression         <- ~(RegularExpressionChar+)
-    RegularExpressionStopChar <- eol
+    RegularExpressionStopChar <- LineTerminator
     RegularExpressionChar     <- !RegularExpressionStopChar SourceCharacter
 
     # Test function call
@@ -101,14 +101,14 @@ This module was automatically generated from the following grammar:
                                                / Leftover(Q)
 
     FunctionArgumentString(delim)         <- ~(FunctionArgumentStringChar(delim)+)
-    FunctionArgumentStringStopChar(delim) <- delim / eol / ExpandStatement / quote / doublequote / BACKSLASH / EndOfFunction
+    FunctionArgumentStringStopChar(delim) <- delim / LineTerminator / ExpandStatement / quote / doublequote / BACKSLASH / EndOfFunction
     FunctionArgumentStringChar(delim)     <- !FunctionArgumentStringStopChar(delim) SourceCharacter
                                            / BACKSLASH EscapeSequence
 
     # NOTE: function arguments can contain "("/")" themselves, so we need special rule to detect function argument list end
     EndOfFunction <- ")" :space* (
         / [a-zA-Z_0-9\-\+\*/]
-        / eoi / eol
+        / eoi / LineTerminator
         / "=" / "+=" / "*=" / "-=" / "~="
         / "," / "." / "_"
         / "(" / ")"
@@ -208,9 +208,9 @@ This module was automatically generated from the following grammar:
     # Enquoted string: can contain any character except of quote
     EnquotedString            <- DoubleEnquotedString / SingleEnquotedString
     DoubleEnquotedString      <- doublequote ~(NonDoubleQuoteCharacter*) doublequote
-    NonDoubleQuoteCharacter   <- !(doublequote / BACKSLASH / eol) SourceCharacter / BACKSLASH EscapeSequence
+    NonDoubleQuoteCharacter   <- !(doublequote / BACKSLASH / LineTerminator) SourceCharacter / BACKSLASH EscapeSequence
     SingleEnquotedString      <- quote ~(NonSingleQuoteCharacter*) quote
-    NonSingleQuoteCharacter   <- !(quote / BACKSLASH / eol) SourceCharacter / BACKSLASH EscapeSequence
+    NonSingleQuoteCharacter   <- !(quote / BACKSLASH / LineTerminator) SourceCharacter / BACKSLASH EscapeSequence
 
     # NOTE: "a-b" and "c++11" are valid qmake identifiers too
     #Identifier <- identifier
@@ -269,7 +269,9 @@ This module was automatically generated from the following grammar:
     BACKSLASH <- "\\"
 
     SourceCharacter <- [\u0000-\uFFFC]
-    LineTerminator  <- "\u000A" / "\u000D" / "\u2028" / "\u2029"
+    LineTerminator  <- / "\u000A" # LF
+                       / ("\u000D" "\u000A") # CR LF
+                       / "\u2028" / "\u2029" # LineSeparator / ParagraphSeparator
 
 
 +/
@@ -522,7 +524,7 @@ struct GenericQMakeProject(TParseTree)
     {
         if(__ctfe)
         {
-            return         pegged.peg.defined!(pegged.peg.and!(eps, pegged.peg.discard!(pegged.peg.zeroOrMore!(eol))), "QMakeProject.EmptyStatement")(p);
+            return         pegged.peg.defined!(pegged.peg.and!(eps, pegged.peg.discard!(pegged.peg.zeroOrMore!(LineTerminator))), "QMakeProject.EmptyStatement")(p);
         }
         else
         {
@@ -530,7 +532,7 @@ struct GenericQMakeProject(TParseTree)
                 return *m;
             else
             {
-                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.and!(eps, pegged.peg.discard!(pegged.peg.zeroOrMore!(eol))), "QMakeProject.EmptyStatement"), "EmptyStatement")(p);
+                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.and!(eps, pegged.peg.discard!(pegged.peg.zeroOrMore!(LineTerminator))), "QMakeProject.EmptyStatement"), "EmptyStatement")(p);
                 memo[tuple(`EmptyStatement`, p.end)] = result;
                 return result;
             }
@@ -541,12 +543,12 @@ struct GenericQMakeProject(TParseTree)
     {
         if(__ctfe)
         {
-            return         pegged.peg.defined!(pegged.peg.and!(eps, pegged.peg.discard!(pegged.peg.zeroOrMore!(eol))), "QMakeProject.EmptyStatement")(TParseTree("", false,[], s));
+            return         pegged.peg.defined!(pegged.peg.and!(eps, pegged.peg.discard!(pegged.peg.zeroOrMore!(LineTerminator))), "QMakeProject.EmptyStatement")(TParseTree("", false,[], s));
         }
         else
         {
             forgetMemo();
-            return hooked!(pegged.peg.defined!(pegged.peg.and!(eps, pegged.peg.discard!(pegged.peg.zeroOrMore!(eol))), "QMakeProject.EmptyStatement"), "EmptyStatement")(TParseTree("", false,[], s));
+            return hooked!(pegged.peg.defined!(pegged.peg.and!(eps, pegged.peg.discard!(pegged.peg.zeroOrMore!(LineTerminator))), "QMakeProject.EmptyStatement"), "EmptyStatement")(TParseTree("", false,[], s));
         }
     }
     static string EmptyStatement(GetName g)
@@ -630,7 +632,7 @@ struct GenericQMakeProject(TParseTree)
     {
         if(__ctfe)
         {
-            return         pegged.peg.defined!(pegged.peg.and!(pegged.peg.discard!(pegged.peg.literal!("#")), pegged.peg.option!(SingleLineCommentChars), pegged.peg.discard!(eol)), "QMakeProject.SingleLineComment")(p);
+            return         pegged.peg.defined!(pegged.peg.and!(pegged.peg.discard!(pegged.peg.literal!("#")), pegged.peg.option!(SingleLineCommentChars), pegged.peg.discard!(LineTerminator)), "QMakeProject.SingleLineComment")(p);
         }
         else
         {
@@ -638,7 +640,7 @@ struct GenericQMakeProject(TParseTree)
                 return *m;
             else
             {
-                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.and!(pegged.peg.discard!(pegged.peg.literal!("#")), pegged.peg.option!(SingleLineCommentChars), pegged.peg.discard!(eol)), "QMakeProject.SingleLineComment"), "SingleLineComment")(p);
+                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.and!(pegged.peg.discard!(pegged.peg.literal!("#")), pegged.peg.option!(SingleLineCommentChars), pegged.peg.discard!(LineTerminator)), "QMakeProject.SingleLineComment"), "SingleLineComment")(p);
                 memo[tuple(`SingleLineComment`, p.end)] = result;
                 return result;
             }
@@ -649,12 +651,12 @@ struct GenericQMakeProject(TParseTree)
     {
         if(__ctfe)
         {
-            return         pegged.peg.defined!(pegged.peg.and!(pegged.peg.discard!(pegged.peg.literal!("#")), pegged.peg.option!(SingleLineCommentChars), pegged.peg.discard!(eol)), "QMakeProject.SingleLineComment")(TParseTree("", false,[], s));
+            return         pegged.peg.defined!(pegged.peg.and!(pegged.peg.discard!(pegged.peg.literal!("#")), pegged.peg.option!(SingleLineCommentChars), pegged.peg.discard!(LineTerminator)), "QMakeProject.SingleLineComment")(TParseTree("", false,[], s));
         }
         else
         {
             forgetMemo();
-            return hooked!(pegged.peg.defined!(pegged.peg.and!(pegged.peg.discard!(pegged.peg.literal!("#")), pegged.peg.option!(SingleLineCommentChars), pegged.peg.discard!(eol)), "QMakeProject.SingleLineComment"), "SingleLineComment")(TParseTree("", false,[], s));
+            return hooked!(pegged.peg.defined!(pegged.peg.and!(pegged.peg.discard!(pegged.peg.literal!("#")), pegged.peg.option!(SingleLineCommentChars), pegged.peg.discard!(LineTerminator)), "QMakeProject.SingleLineComment"), "SingleLineComment")(TParseTree("", false,[], s));
         }
     }
     static string SingleLineComment(GetName g)
@@ -810,7 +812,7 @@ struct GenericQMakeProject(TParseTree)
     {
         if(__ctfe)
         {
-            return         pegged.peg.defined!(pegged.peg.and!(pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.literal!("{"), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.discard!(pegged.peg.zeroOrMore!(eol)), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.oneOrMore!(Statement), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.discard!(pegged.peg.zeroOrMore!(eol)), pegged.peg.literal!("}"), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.discard!(pegged.peg.zeroOrMore!(eol))), "QMakeProject.MultiLineBlock")(p);
+            return         pegged.peg.defined!(pegged.peg.and!(pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.literal!("{"), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.discard!(pegged.peg.zeroOrMore!(LineTerminator)), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.oneOrMore!(Statement), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.discard!(pegged.peg.zeroOrMore!(LineTerminator)), pegged.peg.literal!("}"), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.discard!(pegged.peg.zeroOrMore!(LineTerminator))), "QMakeProject.MultiLineBlock")(p);
         }
         else
         {
@@ -818,7 +820,7 @@ struct GenericQMakeProject(TParseTree)
                 return *m;
             else
             {
-                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.and!(pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.literal!("{"), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.discard!(pegged.peg.zeroOrMore!(eol)), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.oneOrMore!(Statement), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.discard!(pegged.peg.zeroOrMore!(eol)), pegged.peg.literal!("}"), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.discard!(pegged.peg.zeroOrMore!(eol))), "QMakeProject.MultiLineBlock"), "MultiLineBlock")(p);
+                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.and!(pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.literal!("{"), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.discard!(pegged.peg.zeroOrMore!(LineTerminator)), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.oneOrMore!(Statement), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.discard!(pegged.peg.zeroOrMore!(LineTerminator)), pegged.peg.literal!("}"), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.discard!(pegged.peg.zeroOrMore!(LineTerminator))), "QMakeProject.MultiLineBlock"), "MultiLineBlock")(p);
                 memo[tuple(`MultiLineBlock`, p.end)] = result;
                 return result;
             }
@@ -829,12 +831,12 @@ struct GenericQMakeProject(TParseTree)
     {
         if(__ctfe)
         {
-            return         pegged.peg.defined!(pegged.peg.and!(pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.literal!("{"), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.discard!(pegged.peg.zeroOrMore!(eol)), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.oneOrMore!(Statement), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.discard!(pegged.peg.zeroOrMore!(eol)), pegged.peg.literal!("}"), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.discard!(pegged.peg.zeroOrMore!(eol))), "QMakeProject.MultiLineBlock")(TParseTree("", false,[], s));
+            return         pegged.peg.defined!(pegged.peg.and!(pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.literal!("{"), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.discard!(pegged.peg.zeroOrMore!(LineTerminator)), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.oneOrMore!(Statement), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.discard!(pegged.peg.zeroOrMore!(LineTerminator)), pegged.peg.literal!("}"), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.discard!(pegged.peg.zeroOrMore!(LineTerminator))), "QMakeProject.MultiLineBlock")(TParseTree("", false,[], s));
         }
         else
         {
             forgetMemo();
-            return hooked!(pegged.peg.defined!(pegged.peg.and!(pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.literal!("{"), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.discard!(pegged.peg.zeroOrMore!(eol)), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.oneOrMore!(Statement), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.discard!(pegged.peg.zeroOrMore!(eol)), pegged.peg.literal!("}"), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.discard!(pegged.peg.zeroOrMore!(eol))), "QMakeProject.MultiLineBlock"), "MultiLineBlock")(TParseTree("", false,[], s));
+            return hooked!(pegged.peg.defined!(pegged.peg.and!(pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.literal!("{"), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.discard!(pegged.peg.zeroOrMore!(LineTerminator)), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.oneOrMore!(Statement), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.discard!(pegged.peg.zeroOrMore!(LineTerminator)), pegged.peg.literal!("}"), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.discard!(pegged.peg.zeroOrMore!(LineTerminator))), "QMakeProject.MultiLineBlock"), "MultiLineBlock")(TParseTree("", false,[], s));
         }
     }
     static string MultiLineBlock(GetName g)
@@ -882,7 +884,7 @@ struct GenericQMakeProject(TParseTree)
     {
         if(__ctfe)
         {
-            return         pegged.peg.defined!(pegged.peg.and!(QualifiedIdentifier, pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), StandardAssignmentOperator, pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.option!(RvalueExpression), pegged.peg.discard!(pegged.peg.zeroOrMore!(eol))), "QMakeProject.StandardAssignment")(p);
+            return         pegged.peg.defined!(pegged.peg.and!(QualifiedIdentifier, pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), StandardAssignmentOperator, pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.option!(RvalueExpression), pegged.peg.discard!(pegged.peg.zeroOrMore!(LineTerminator))), "QMakeProject.StandardAssignment")(p);
         }
         else
         {
@@ -890,7 +892,7 @@ struct GenericQMakeProject(TParseTree)
                 return *m;
             else
             {
-                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.and!(QualifiedIdentifier, pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), StandardAssignmentOperator, pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.option!(RvalueExpression), pegged.peg.discard!(pegged.peg.zeroOrMore!(eol))), "QMakeProject.StandardAssignment"), "StandardAssignment")(p);
+                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.and!(QualifiedIdentifier, pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), StandardAssignmentOperator, pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.option!(RvalueExpression), pegged.peg.discard!(pegged.peg.zeroOrMore!(LineTerminator))), "QMakeProject.StandardAssignment"), "StandardAssignment")(p);
                 memo[tuple(`StandardAssignment`, p.end)] = result;
                 return result;
             }
@@ -901,12 +903,12 @@ struct GenericQMakeProject(TParseTree)
     {
         if(__ctfe)
         {
-            return         pegged.peg.defined!(pegged.peg.and!(QualifiedIdentifier, pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), StandardAssignmentOperator, pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.option!(RvalueExpression), pegged.peg.discard!(pegged.peg.zeroOrMore!(eol))), "QMakeProject.StandardAssignment")(TParseTree("", false,[], s));
+            return         pegged.peg.defined!(pegged.peg.and!(QualifiedIdentifier, pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), StandardAssignmentOperator, pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.option!(RvalueExpression), pegged.peg.discard!(pegged.peg.zeroOrMore!(LineTerminator))), "QMakeProject.StandardAssignment")(TParseTree("", false,[], s));
         }
         else
         {
             forgetMemo();
-            return hooked!(pegged.peg.defined!(pegged.peg.and!(QualifiedIdentifier, pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), StandardAssignmentOperator, pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.option!(RvalueExpression), pegged.peg.discard!(pegged.peg.zeroOrMore!(eol))), "QMakeProject.StandardAssignment"), "StandardAssignment")(TParseTree("", false,[], s));
+            return hooked!(pegged.peg.defined!(pegged.peg.and!(QualifiedIdentifier, pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), StandardAssignmentOperator, pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.option!(RvalueExpression), pegged.peg.discard!(pegged.peg.zeroOrMore!(LineTerminator))), "QMakeProject.StandardAssignment"), "StandardAssignment")(TParseTree("", false,[], s));
         }
     }
     static string StandardAssignment(GetName g)
@@ -918,7 +920,7 @@ struct GenericQMakeProject(TParseTree)
     {
         if(__ctfe)
         {
-            return         pegged.peg.defined!(pegged.peg.and!(QualifiedIdentifier, pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), ReplaceAssignmentOperator, pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.option!(RegularExpression), pegged.peg.discard!(pegged.peg.zeroOrMore!(eol))), "QMakeProject.ReplaceAssignment")(p);
+            return         pegged.peg.defined!(pegged.peg.and!(QualifiedIdentifier, pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), ReplaceAssignmentOperator, pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.option!(RegularExpression), pegged.peg.discard!(pegged.peg.zeroOrMore!(LineTerminator))), "QMakeProject.ReplaceAssignment")(p);
         }
         else
         {
@@ -926,7 +928,7 @@ struct GenericQMakeProject(TParseTree)
                 return *m;
             else
             {
-                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.and!(QualifiedIdentifier, pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), ReplaceAssignmentOperator, pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.option!(RegularExpression), pegged.peg.discard!(pegged.peg.zeroOrMore!(eol))), "QMakeProject.ReplaceAssignment"), "ReplaceAssignment")(p);
+                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.and!(QualifiedIdentifier, pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), ReplaceAssignmentOperator, pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.option!(RegularExpression), pegged.peg.discard!(pegged.peg.zeroOrMore!(LineTerminator))), "QMakeProject.ReplaceAssignment"), "ReplaceAssignment")(p);
                 memo[tuple(`ReplaceAssignment`, p.end)] = result;
                 return result;
             }
@@ -937,12 +939,12 @@ struct GenericQMakeProject(TParseTree)
     {
         if(__ctfe)
         {
-            return         pegged.peg.defined!(pegged.peg.and!(QualifiedIdentifier, pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), ReplaceAssignmentOperator, pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.option!(RegularExpression), pegged.peg.discard!(pegged.peg.zeroOrMore!(eol))), "QMakeProject.ReplaceAssignment")(TParseTree("", false,[], s));
+            return         pegged.peg.defined!(pegged.peg.and!(QualifiedIdentifier, pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), ReplaceAssignmentOperator, pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.option!(RegularExpression), pegged.peg.discard!(pegged.peg.zeroOrMore!(LineTerminator))), "QMakeProject.ReplaceAssignment")(TParseTree("", false,[], s));
         }
         else
         {
             forgetMemo();
-            return hooked!(pegged.peg.defined!(pegged.peg.and!(QualifiedIdentifier, pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), ReplaceAssignmentOperator, pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.option!(RegularExpression), pegged.peg.discard!(pegged.peg.zeroOrMore!(eol))), "QMakeProject.ReplaceAssignment"), "ReplaceAssignment")(TParseTree("", false,[], s));
+            return hooked!(pegged.peg.defined!(pegged.peg.and!(QualifiedIdentifier, pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), ReplaceAssignmentOperator, pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.option!(RegularExpression), pegged.peg.discard!(pegged.peg.zeroOrMore!(LineTerminator))), "QMakeProject.ReplaceAssignment"), "ReplaceAssignment")(TParseTree("", false,[], s));
         }
     }
     static string ReplaceAssignment(GetName g)
@@ -1397,7 +1399,7 @@ struct GenericQMakeProject(TParseTree)
     {
         if(__ctfe)
         {
-            return         pegged.peg.defined!(pegged.peg.or!(eol, ExpandStatement, BACKSLASH, StopPattern), "QMakeProject.LeftoverStopChar!(" ~ pegged.peg.getName!(StopPattern) ~ ")")(p);
+            return         pegged.peg.defined!(pegged.peg.or!(LineTerminator, ExpandStatement, BACKSLASH, StopPattern), "QMakeProject.LeftoverStopChar!(" ~ pegged.peg.getName!(StopPattern) ~ ")")(p);
         }
         else
         {
@@ -1405,7 +1407,7 @@ struct GenericQMakeProject(TParseTree)
                 return *m;
             else
             {
-                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.or!(eol, ExpandStatement, BACKSLASH, StopPattern), "QMakeProject.LeftoverStopChar!(" ~ pegged.peg.getName!(StopPattern) ~ ")"), "LeftoverStopChar_1")(p);
+                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.or!(LineTerminator, ExpandStatement, BACKSLASH, StopPattern), "QMakeProject.LeftoverStopChar!(" ~ pegged.peg.getName!(StopPattern) ~ ")"), "LeftoverStopChar_1")(p);
                 memo[tuple("LeftoverStopChar!(" ~ pegged.peg.getName!(StopPattern) ~ ")", p.end)] = result;
                 return result;
             }
@@ -1416,12 +1418,12 @@ struct GenericQMakeProject(TParseTree)
     {
         if(__ctfe)
         {
-            return         pegged.peg.defined!(pegged.peg.or!(eol, ExpandStatement, BACKSLASH, StopPattern), "QMakeProject.LeftoverStopChar!(" ~ pegged.peg.getName!(StopPattern) ~ ")")(TParseTree("", false,[], s));
+            return         pegged.peg.defined!(pegged.peg.or!(LineTerminator, ExpandStatement, BACKSLASH, StopPattern), "QMakeProject.LeftoverStopChar!(" ~ pegged.peg.getName!(StopPattern) ~ ")")(TParseTree("", false,[], s));
         }
         else
         {
             forgetMemo();
-            return hooked!(pegged.peg.defined!(pegged.peg.or!(eol, ExpandStatement, BACKSLASH, StopPattern), "QMakeProject.LeftoverStopChar!(" ~ pegged.peg.getName!(StopPattern) ~ ")"), "LeftoverStopChar_1")(TParseTree("", false,[], s));
+            return hooked!(pegged.peg.defined!(pegged.peg.or!(LineTerminator, ExpandStatement, BACKSLASH, StopPattern), "QMakeProject.LeftoverStopChar!(" ~ pegged.peg.getName!(StopPattern) ~ ")"), "LeftoverStopChar_1")(TParseTree("", false,[], s));
         }
     }
     static string LeftoverStopChar(GetName g)
@@ -1509,7 +1511,7 @@ struct GenericQMakeProject(TParseTree)
     {
         if(__ctfe)
         {
-            return         pegged.peg.defined!(eol, "QMakeProject.RegularExpressionStopChar")(p);
+            return         pegged.peg.defined!(LineTerminator, "QMakeProject.RegularExpressionStopChar")(p);
         }
         else
         {
@@ -1517,7 +1519,7 @@ struct GenericQMakeProject(TParseTree)
                 return *m;
             else
             {
-                TParseTree result = hooked!(pegged.peg.defined!(eol, "QMakeProject.RegularExpressionStopChar"), "RegularExpressionStopChar")(p);
+                TParseTree result = hooked!(pegged.peg.defined!(LineTerminator, "QMakeProject.RegularExpressionStopChar"), "RegularExpressionStopChar")(p);
                 memo[tuple(`RegularExpressionStopChar`, p.end)] = result;
                 return result;
             }
@@ -1528,12 +1530,12 @@ struct GenericQMakeProject(TParseTree)
     {
         if(__ctfe)
         {
-            return         pegged.peg.defined!(eol, "QMakeProject.RegularExpressionStopChar")(TParseTree("", false,[], s));
+            return         pegged.peg.defined!(LineTerminator, "QMakeProject.RegularExpressionStopChar")(TParseTree("", false,[], s));
         }
         else
         {
             forgetMemo();
-            return hooked!(pegged.peg.defined!(eol, "QMakeProject.RegularExpressionStopChar"), "RegularExpressionStopChar")(TParseTree("", false,[], s));
+            return hooked!(pegged.peg.defined!(LineTerminator, "QMakeProject.RegularExpressionStopChar"), "RegularExpressionStopChar")(TParseTree("", false,[], s));
         }
     }
     static string RegularExpressionStopChar(GetName g)
@@ -2114,7 +2116,7 @@ struct GenericQMakeProject(TParseTree)
     {
         if(__ctfe)
         {
-            return         pegged.peg.defined!(pegged.peg.or!(delim, eol, ExpandStatement, quote, doublequote, BACKSLASH, EndOfFunction), "QMakeProject.FunctionArgumentStringStopChar!(" ~ pegged.peg.getName!(delim) ~ ")")(p);
+            return         pegged.peg.defined!(pegged.peg.or!(delim, LineTerminator, ExpandStatement, quote, doublequote, BACKSLASH, EndOfFunction), "QMakeProject.FunctionArgumentStringStopChar!(" ~ pegged.peg.getName!(delim) ~ ")")(p);
         }
         else
         {
@@ -2122,7 +2124,7 @@ struct GenericQMakeProject(TParseTree)
                 return *m;
             else
             {
-                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.or!(delim, eol, ExpandStatement, quote, doublequote, BACKSLASH, EndOfFunction), "QMakeProject.FunctionArgumentStringStopChar!(" ~ pegged.peg.getName!(delim) ~ ")"), "FunctionArgumentStringStopChar_1")(p);
+                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.or!(delim, LineTerminator, ExpandStatement, quote, doublequote, BACKSLASH, EndOfFunction), "QMakeProject.FunctionArgumentStringStopChar!(" ~ pegged.peg.getName!(delim) ~ ")"), "FunctionArgumentStringStopChar_1")(p);
                 memo[tuple("FunctionArgumentStringStopChar!(" ~ pegged.peg.getName!(delim) ~ ")", p.end)] = result;
                 return result;
             }
@@ -2133,12 +2135,12 @@ struct GenericQMakeProject(TParseTree)
     {
         if(__ctfe)
         {
-            return         pegged.peg.defined!(pegged.peg.or!(delim, eol, ExpandStatement, quote, doublequote, BACKSLASH, EndOfFunction), "QMakeProject.FunctionArgumentStringStopChar!(" ~ pegged.peg.getName!(delim) ~ ")")(TParseTree("", false,[], s));
+            return         pegged.peg.defined!(pegged.peg.or!(delim, LineTerminator, ExpandStatement, quote, doublequote, BACKSLASH, EndOfFunction), "QMakeProject.FunctionArgumentStringStopChar!(" ~ pegged.peg.getName!(delim) ~ ")")(TParseTree("", false,[], s));
         }
         else
         {
             forgetMemo();
-            return hooked!(pegged.peg.defined!(pegged.peg.or!(delim, eol, ExpandStatement, quote, doublequote, BACKSLASH, EndOfFunction), "QMakeProject.FunctionArgumentStringStopChar!(" ~ pegged.peg.getName!(delim) ~ ")"), "FunctionArgumentStringStopChar_1")(TParseTree("", false,[], s));
+            return hooked!(pegged.peg.defined!(pegged.peg.or!(delim, LineTerminator, ExpandStatement, quote, doublequote, BACKSLASH, EndOfFunction), "QMakeProject.FunctionArgumentStringStopChar!(" ~ pegged.peg.getName!(delim) ~ ")"), "FunctionArgumentStringStopChar_1")(TParseTree("", false,[], s));
         }
     }
     static string FunctionArgumentStringStopChar(GetName g)
@@ -2190,7 +2192,7 @@ struct GenericQMakeProject(TParseTree)
     {
         if(__ctfe)
         {
-            return         pegged.peg.defined!(pegged.peg.and!(pegged.peg.literal!(")"), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.or!(pegged.peg.or!(pegged.peg.charRange!('a', 'z'), pegged.peg.charRange!('A', 'Z'), pegged.peg.literal!("_"), pegged.peg.charRange!('0', '9'), pegged.peg.literal!("-"), pegged.peg.literal!(`\`), pegged.peg.literal!("+"), pegged.peg.literal!(`\`), pegged.peg.literal!("*"), pegged.peg.literal!("/")), eoi, eol, pegged.peg.literal!("="), pegged.peg.literal!("+="), pegged.peg.literal!("*="), pegged.peg.literal!("-="), pegged.peg.literal!("~="), pegged.peg.literal!(","), pegged.peg.literal!("."), pegged.peg.literal!("_"), pegged.peg.literal!("("), pegged.peg.literal!(")"), EXPAND_MARKER, pegged.peg.literal!("@"), pegged.peg.literal!("{"), pegged.peg.literal!("}"), pegged.peg.literal!(":"), pegged.peg.literal!("|"), pegged.peg.literal!("\""))), "QMakeProject.EndOfFunction")(p);
+            return         pegged.peg.defined!(pegged.peg.and!(pegged.peg.literal!(")"), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.or!(pegged.peg.or!(pegged.peg.charRange!('a', 'z'), pegged.peg.charRange!('A', 'Z'), pegged.peg.literal!("_"), pegged.peg.charRange!('0', '9'), pegged.peg.literal!("-"), pegged.peg.literal!(`\`), pegged.peg.literal!("+"), pegged.peg.literal!(`\`), pegged.peg.literal!("*"), pegged.peg.literal!("/")), eoi, LineTerminator, pegged.peg.literal!("="), pegged.peg.literal!("+="), pegged.peg.literal!("*="), pegged.peg.literal!("-="), pegged.peg.literal!("~="), pegged.peg.literal!(","), pegged.peg.literal!("."), pegged.peg.literal!("_"), pegged.peg.literal!("("), pegged.peg.literal!(")"), EXPAND_MARKER, pegged.peg.literal!("@"), pegged.peg.literal!("{"), pegged.peg.literal!("}"), pegged.peg.literal!(":"), pegged.peg.literal!("|"), pegged.peg.literal!("\""))), "QMakeProject.EndOfFunction")(p);
         }
         else
         {
@@ -2198,7 +2200,7 @@ struct GenericQMakeProject(TParseTree)
                 return *m;
             else
             {
-                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.and!(pegged.peg.literal!(")"), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.or!(pegged.peg.or!(pegged.peg.charRange!('a', 'z'), pegged.peg.charRange!('A', 'Z'), pegged.peg.literal!("_"), pegged.peg.charRange!('0', '9'), pegged.peg.literal!("-"), pegged.peg.literal!(`\`), pegged.peg.literal!("+"), pegged.peg.literal!(`\`), pegged.peg.literal!("*"), pegged.peg.literal!("/")), eoi, eol, pegged.peg.literal!("="), pegged.peg.literal!("+="), pegged.peg.literal!("*="), pegged.peg.literal!("-="), pegged.peg.literal!("~="), pegged.peg.literal!(","), pegged.peg.literal!("."), pegged.peg.literal!("_"), pegged.peg.literal!("("), pegged.peg.literal!(")"), EXPAND_MARKER, pegged.peg.literal!("@"), pegged.peg.literal!("{"), pegged.peg.literal!("}"), pegged.peg.literal!(":"), pegged.peg.literal!("|"), pegged.peg.literal!("\""))), "QMakeProject.EndOfFunction"), "EndOfFunction")(p);
+                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.and!(pegged.peg.literal!(")"), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.or!(pegged.peg.or!(pegged.peg.charRange!('a', 'z'), pegged.peg.charRange!('A', 'Z'), pegged.peg.literal!("_"), pegged.peg.charRange!('0', '9'), pegged.peg.literal!("-"), pegged.peg.literal!(`\`), pegged.peg.literal!("+"), pegged.peg.literal!(`\`), pegged.peg.literal!("*"), pegged.peg.literal!("/")), eoi, LineTerminator, pegged.peg.literal!("="), pegged.peg.literal!("+="), pegged.peg.literal!("*="), pegged.peg.literal!("-="), pegged.peg.literal!("~="), pegged.peg.literal!(","), pegged.peg.literal!("."), pegged.peg.literal!("_"), pegged.peg.literal!("("), pegged.peg.literal!(")"), EXPAND_MARKER, pegged.peg.literal!("@"), pegged.peg.literal!("{"), pegged.peg.literal!("}"), pegged.peg.literal!(":"), pegged.peg.literal!("|"), pegged.peg.literal!("\""))), "QMakeProject.EndOfFunction"), "EndOfFunction")(p);
                 memo[tuple(`EndOfFunction`, p.end)] = result;
                 return result;
             }
@@ -2209,12 +2211,12 @@ struct GenericQMakeProject(TParseTree)
     {
         if(__ctfe)
         {
-            return         pegged.peg.defined!(pegged.peg.and!(pegged.peg.literal!(")"), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.or!(pegged.peg.or!(pegged.peg.charRange!('a', 'z'), pegged.peg.charRange!('A', 'Z'), pegged.peg.literal!("_"), pegged.peg.charRange!('0', '9'), pegged.peg.literal!("-"), pegged.peg.literal!(`\`), pegged.peg.literal!("+"), pegged.peg.literal!(`\`), pegged.peg.literal!("*"), pegged.peg.literal!("/")), eoi, eol, pegged.peg.literal!("="), pegged.peg.literal!("+="), pegged.peg.literal!("*="), pegged.peg.literal!("-="), pegged.peg.literal!("~="), pegged.peg.literal!(","), pegged.peg.literal!("."), pegged.peg.literal!("_"), pegged.peg.literal!("("), pegged.peg.literal!(")"), EXPAND_MARKER, pegged.peg.literal!("@"), pegged.peg.literal!("{"), pegged.peg.literal!("}"), pegged.peg.literal!(":"), pegged.peg.literal!("|"), pegged.peg.literal!("\""))), "QMakeProject.EndOfFunction")(TParseTree("", false,[], s));
+            return         pegged.peg.defined!(pegged.peg.and!(pegged.peg.literal!(")"), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.or!(pegged.peg.or!(pegged.peg.charRange!('a', 'z'), pegged.peg.charRange!('A', 'Z'), pegged.peg.literal!("_"), pegged.peg.charRange!('0', '9'), pegged.peg.literal!("-"), pegged.peg.literal!(`\`), pegged.peg.literal!("+"), pegged.peg.literal!(`\`), pegged.peg.literal!("*"), pegged.peg.literal!("/")), eoi, LineTerminator, pegged.peg.literal!("="), pegged.peg.literal!("+="), pegged.peg.literal!("*="), pegged.peg.literal!("-="), pegged.peg.literal!("~="), pegged.peg.literal!(","), pegged.peg.literal!("."), pegged.peg.literal!("_"), pegged.peg.literal!("("), pegged.peg.literal!(")"), EXPAND_MARKER, pegged.peg.literal!("@"), pegged.peg.literal!("{"), pegged.peg.literal!("}"), pegged.peg.literal!(":"), pegged.peg.literal!("|"), pegged.peg.literal!("\""))), "QMakeProject.EndOfFunction")(TParseTree("", false,[], s));
         }
         else
         {
             forgetMemo();
-            return hooked!(pegged.peg.defined!(pegged.peg.and!(pegged.peg.literal!(")"), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.or!(pegged.peg.or!(pegged.peg.charRange!('a', 'z'), pegged.peg.charRange!('A', 'Z'), pegged.peg.literal!("_"), pegged.peg.charRange!('0', '9'), pegged.peg.literal!("-"), pegged.peg.literal!(`\`), pegged.peg.literal!("+"), pegged.peg.literal!(`\`), pegged.peg.literal!("*"), pegged.peg.literal!("/")), eoi, eol, pegged.peg.literal!("="), pegged.peg.literal!("+="), pegged.peg.literal!("*="), pegged.peg.literal!("-="), pegged.peg.literal!("~="), pegged.peg.literal!(","), pegged.peg.literal!("."), pegged.peg.literal!("_"), pegged.peg.literal!("("), pegged.peg.literal!(")"), EXPAND_MARKER, pegged.peg.literal!("@"), pegged.peg.literal!("{"), pegged.peg.literal!("}"), pegged.peg.literal!(":"), pegged.peg.literal!("|"), pegged.peg.literal!("\""))), "QMakeProject.EndOfFunction"), "EndOfFunction")(TParseTree("", false,[], s));
+            return hooked!(pegged.peg.defined!(pegged.peg.and!(pegged.peg.literal!(")"), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), pegged.peg.or!(pegged.peg.or!(pegged.peg.charRange!('a', 'z'), pegged.peg.charRange!('A', 'Z'), pegged.peg.literal!("_"), pegged.peg.charRange!('0', '9'), pegged.peg.literal!("-"), pegged.peg.literal!(`\`), pegged.peg.literal!("+"), pegged.peg.literal!(`\`), pegged.peg.literal!("*"), pegged.peg.literal!("/")), eoi, LineTerminator, pegged.peg.literal!("="), pegged.peg.literal!("+="), pegged.peg.literal!("*="), pegged.peg.literal!("-="), pegged.peg.literal!("~="), pegged.peg.literal!(","), pegged.peg.literal!("."), pegged.peg.literal!("_"), pegged.peg.literal!("("), pegged.peg.literal!(")"), EXPAND_MARKER, pegged.peg.literal!("@"), pegged.peg.literal!("{"), pegged.peg.literal!("}"), pegged.peg.literal!(":"), pegged.peg.literal!("|"), pegged.peg.literal!("\""))), "QMakeProject.EndOfFunction"), "EndOfFunction")(TParseTree("", false,[], s));
         }
     }
     static string EndOfFunction(GetName g)
@@ -3558,7 +3560,7 @@ struct GenericQMakeProject(TParseTree)
     {
         if(__ctfe)
         {
-            return         pegged.peg.defined!(pegged.peg.or!(pegged.peg.and!(pegged.peg.negLookahead!(pegged.peg.or!(doublequote, BACKSLASH, eol)), SourceCharacter), pegged.peg.and!(BACKSLASH, EscapeSequence)), "QMakeProject.NonDoubleQuoteCharacter")(p);
+            return         pegged.peg.defined!(pegged.peg.or!(pegged.peg.and!(pegged.peg.negLookahead!(pegged.peg.or!(doublequote, BACKSLASH, LineTerminator)), SourceCharacter), pegged.peg.and!(BACKSLASH, EscapeSequence)), "QMakeProject.NonDoubleQuoteCharacter")(p);
         }
         else
         {
@@ -3566,7 +3568,7 @@ struct GenericQMakeProject(TParseTree)
                 return *m;
             else
             {
-                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.or!(pegged.peg.and!(pegged.peg.negLookahead!(pegged.peg.or!(doublequote, BACKSLASH, eol)), SourceCharacter), pegged.peg.and!(BACKSLASH, EscapeSequence)), "QMakeProject.NonDoubleQuoteCharacter"), "NonDoubleQuoteCharacter")(p);
+                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.or!(pegged.peg.and!(pegged.peg.negLookahead!(pegged.peg.or!(doublequote, BACKSLASH, LineTerminator)), SourceCharacter), pegged.peg.and!(BACKSLASH, EscapeSequence)), "QMakeProject.NonDoubleQuoteCharacter"), "NonDoubleQuoteCharacter")(p);
                 memo[tuple(`NonDoubleQuoteCharacter`, p.end)] = result;
                 return result;
             }
@@ -3577,12 +3579,12 @@ struct GenericQMakeProject(TParseTree)
     {
         if(__ctfe)
         {
-            return         pegged.peg.defined!(pegged.peg.or!(pegged.peg.and!(pegged.peg.negLookahead!(pegged.peg.or!(doublequote, BACKSLASH, eol)), SourceCharacter), pegged.peg.and!(BACKSLASH, EscapeSequence)), "QMakeProject.NonDoubleQuoteCharacter")(TParseTree("", false,[], s));
+            return         pegged.peg.defined!(pegged.peg.or!(pegged.peg.and!(pegged.peg.negLookahead!(pegged.peg.or!(doublequote, BACKSLASH, LineTerminator)), SourceCharacter), pegged.peg.and!(BACKSLASH, EscapeSequence)), "QMakeProject.NonDoubleQuoteCharacter")(TParseTree("", false,[], s));
         }
         else
         {
             forgetMemo();
-            return hooked!(pegged.peg.defined!(pegged.peg.or!(pegged.peg.and!(pegged.peg.negLookahead!(pegged.peg.or!(doublequote, BACKSLASH, eol)), SourceCharacter), pegged.peg.and!(BACKSLASH, EscapeSequence)), "QMakeProject.NonDoubleQuoteCharacter"), "NonDoubleQuoteCharacter")(TParseTree("", false,[], s));
+            return hooked!(pegged.peg.defined!(pegged.peg.or!(pegged.peg.and!(pegged.peg.negLookahead!(pegged.peg.or!(doublequote, BACKSLASH, LineTerminator)), SourceCharacter), pegged.peg.and!(BACKSLASH, EscapeSequence)), "QMakeProject.NonDoubleQuoteCharacter"), "NonDoubleQuoteCharacter")(TParseTree("", false,[], s));
         }
     }
     static string NonDoubleQuoteCharacter(GetName g)
@@ -3630,7 +3632,7 @@ struct GenericQMakeProject(TParseTree)
     {
         if(__ctfe)
         {
-            return         pegged.peg.defined!(pegged.peg.or!(pegged.peg.and!(pegged.peg.negLookahead!(pegged.peg.or!(quote, BACKSLASH, eol)), SourceCharacter), pegged.peg.and!(BACKSLASH, EscapeSequence)), "QMakeProject.NonSingleQuoteCharacter")(p);
+            return         pegged.peg.defined!(pegged.peg.or!(pegged.peg.and!(pegged.peg.negLookahead!(pegged.peg.or!(quote, BACKSLASH, LineTerminator)), SourceCharacter), pegged.peg.and!(BACKSLASH, EscapeSequence)), "QMakeProject.NonSingleQuoteCharacter")(p);
         }
         else
         {
@@ -3638,7 +3640,7 @@ struct GenericQMakeProject(TParseTree)
                 return *m;
             else
             {
-                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.or!(pegged.peg.and!(pegged.peg.negLookahead!(pegged.peg.or!(quote, BACKSLASH, eol)), SourceCharacter), pegged.peg.and!(BACKSLASH, EscapeSequence)), "QMakeProject.NonSingleQuoteCharacter"), "NonSingleQuoteCharacter")(p);
+                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.or!(pegged.peg.and!(pegged.peg.negLookahead!(pegged.peg.or!(quote, BACKSLASH, LineTerminator)), SourceCharacter), pegged.peg.and!(BACKSLASH, EscapeSequence)), "QMakeProject.NonSingleQuoteCharacter"), "NonSingleQuoteCharacter")(p);
                 memo[tuple(`NonSingleQuoteCharacter`, p.end)] = result;
                 return result;
             }
@@ -3649,12 +3651,12 @@ struct GenericQMakeProject(TParseTree)
     {
         if(__ctfe)
         {
-            return         pegged.peg.defined!(pegged.peg.or!(pegged.peg.and!(pegged.peg.negLookahead!(pegged.peg.or!(quote, BACKSLASH, eol)), SourceCharacter), pegged.peg.and!(BACKSLASH, EscapeSequence)), "QMakeProject.NonSingleQuoteCharacter")(TParseTree("", false,[], s));
+            return         pegged.peg.defined!(pegged.peg.or!(pegged.peg.and!(pegged.peg.negLookahead!(pegged.peg.or!(quote, BACKSLASH, LineTerminator)), SourceCharacter), pegged.peg.and!(BACKSLASH, EscapeSequence)), "QMakeProject.NonSingleQuoteCharacter")(TParseTree("", false,[], s));
         }
         else
         {
             forgetMemo();
-            return hooked!(pegged.peg.defined!(pegged.peg.or!(pegged.peg.and!(pegged.peg.negLookahead!(pegged.peg.or!(quote, BACKSLASH, eol)), SourceCharacter), pegged.peg.and!(BACKSLASH, EscapeSequence)), "QMakeProject.NonSingleQuoteCharacter"), "NonSingleQuoteCharacter")(TParseTree("", false,[], s));
+            return hooked!(pegged.peg.defined!(pegged.peg.or!(pegged.peg.and!(pegged.peg.negLookahead!(pegged.peg.or!(quote, BACKSLASH, LineTerminator)), SourceCharacter), pegged.peg.and!(BACKSLASH, EscapeSequence)), "QMakeProject.NonSingleQuoteCharacter"), "NonSingleQuoteCharacter")(TParseTree("", false,[], s));
         }
     }
     static string NonSingleQuoteCharacter(GetName g)
@@ -4314,7 +4316,7 @@ struct GenericQMakeProject(TParseTree)
     {
         if(__ctfe)
         {
-            return         pegged.peg.defined!(pegged.peg.keywords!("\u000A", "\u000D", "\u2028", "\u2029"), "QMakeProject.LineTerminator")(p);
+            return         pegged.peg.defined!(pegged.peg.or!(pegged.peg.literal!("\u000A"), pegged.peg.and!(pegged.peg.literal!("\u000D"), pegged.peg.literal!("\u000A")), pegged.peg.literal!("\u2028"), pegged.peg.literal!("\u2029")), "QMakeProject.LineTerminator")(p);
         }
         else
         {
@@ -4322,7 +4324,7 @@ struct GenericQMakeProject(TParseTree)
                 return *m;
             else
             {
-                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.keywords!("\u000A", "\u000D", "\u2028", "\u2029"), "QMakeProject.LineTerminator"), "LineTerminator")(p);
+                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.or!(pegged.peg.literal!("\u000A"), pegged.peg.and!(pegged.peg.literal!("\u000D"), pegged.peg.literal!("\u000A")), pegged.peg.literal!("\u2028"), pegged.peg.literal!("\u2029")), "QMakeProject.LineTerminator"), "LineTerminator")(p);
                 memo[tuple(`LineTerminator`, p.end)] = result;
                 return result;
             }
@@ -4333,12 +4335,12 @@ struct GenericQMakeProject(TParseTree)
     {
         if(__ctfe)
         {
-            return         pegged.peg.defined!(pegged.peg.keywords!("\u000A", "\u000D", "\u2028", "\u2029"), "QMakeProject.LineTerminator")(TParseTree("", false,[], s));
+            return         pegged.peg.defined!(pegged.peg.or!(pegged.peg.literal!("\u000A"), pegged.peg.and!(pegged.peg.literal!("\u000D"), pegged.peg.literal!("\u000A")), pegged.peg.literal!("\u2028"), pegged.peg.literal!("\u2029")), "QMakeProject.LineTerminator")(TParseTree("", false,[], s));
         }
         else
         {
             forgetMemo();
-            return hooked!(pegged.peg.defined!(pegged.peg.keywords!("\u000A", "\u000D", "\u2028", "\u2029"), "QMakeProject.LineTerminator"), "LineTerminator")(TParseTree("", false,[], s));
+            return hooked!(pegged.peg.defined!(pegged.peg.or!(pegged.peg.literal!("\u000A"), pegged.peg.and!(pegged.peg.literal!("\u000D"), pegged.peg.literal!("\u000A")), pegged.peg.literal!("\u2028"), pegged.peg.literal!("\u2029")), "QMakeProject.LineTerminator"), "LineTerminator")(TParseTree("", false,[], s));
         }
     }
     static string LineTerminator(GetName g)
