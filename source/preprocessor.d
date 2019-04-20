@@ -398,8 +398,28 @@ private bool hasSinglelineScope(in string sourceLine, out long colonIndex)
         return false;
 
     // testFunc(): x = y ... : ...
-    immutable auto lastEqIndex = sourceLine.lastIndexOf(STR_EQUALS);
-    long i = (lastEqIndex == -1) ? (cast(long)sourceLine.length - 1) : (lastEqIndex - 1);
+    auto lastEqIndex = sourceLine.lastIndexOf(STR_EQUALS);
+
+    long i;
+    if (lastEqIndex == -1)
+    {
+        i = cast(long)sourceLine.length - 1;
+    }
+    else if (isInsideQuotes(sourceLine, lastEqIndex).success)
+    {
+        trace("assignment operator detected inside quotes on position ", lastEqIndex);
+        while (isInsideQuotes(sourceLine, lastEqIndex).success && (lastEqIndex != -1))
+        {
+            lastEqIndex = sourceLine.lastIndexOf(STR_EQUALS, lastEqIndex);
+        }
+        trace("new assignment operator index on position ", lastEqIndex);
+        i = lastEqIndex - 1;
+    }
+    else
+    {
+        i = lastEqIndex - 1;
+    }
+
     for ( ; i >= 0; i--)
     {
         if ("" ~ sourceLine[cast(uint)i] != STR_COLON)
