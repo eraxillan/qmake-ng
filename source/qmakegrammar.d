@@ -341,16 +341,16 @@ public enum QMakeGrammar =
 `
     QMakeProject:
         Project <- Statement* eoi
-        Statement <- / FunctionDeclaration
-                     / Assignment
-                     / ForStatement
-                     / Scope
-                     / Block
-                     / BooleanExpression
-                     / ReplaceFunctionCall
-                     / TestFunctionCall
-                     / Comment
-                     / EmptyStatement
+        Statement <- | FunctionDeclaration
+                     | Assignment
+                     | ForStatement
+                     | Scope
+                     | Block
+                     | ReplaceFunctionCall
+                     | TestFunctionCall
+                     | BooleanExpression
+                     | Comment
+                     | EmptyStatement
 `
     ~ QMakeProjectEmptyStatement
     ~ QMakeProjectComment

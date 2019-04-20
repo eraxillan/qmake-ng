@@ -4,16 +4,16 @@ This module was automatically generated from the following grammar:
 
     QMakeProject:
         Project <- Statement* eoi
-        Statement <- / FunctionDeclaration
-                     / Assignment
-                     / ForStatement
-                     / Scope
-                     / Block
-                     / BooleanExpression
-                     / ReplaceFunctionCall
-                     / TestFunctionCall
-                     / Comment
-                     / EmptyStatement
+        Statement <- | FunctionDeclaration
+                     | Assignment
+                     | ForStatement
+                     | Scope
+                     | Block
+                     | ReplaceFunctionCall
+                     | TestFunctionCall
+                     | BooleanExpression
+                     | Comment
+                     | EmptyStatement
 
     # No input
     EmptyStatement <- eps :LineTerminator*
@@ -488,7 +488,7 @@ struct GenericQMakeProject(TParseTree)
     {
         if(__ctfe)
         {
-            return         pegged.peg.defined!(pegged.peg.or!(FunctionDeclaration, Assignment, ForStatement, Scope, Block, BooleanExpression, ReplaceFunctionCall, TestFunctionCall, Comment, EmptyStatement), "QMakeProject.Statement")(p);
+            return         pegged.peg.defined!(pegged.peg.longest_match!(FunctionDeclaration, Assignment, ForStatement, Scope, Block, ReplaceFunctionCall, TestFunctionCall, BooleanExpression, Comment, EmptyStatement), "QMakeProject.Statement")(p);
         }
         else
         {
@@ -496,7 +496,7 @@ struct GenericQMakeProject(TParseTree)
                 return *m;
             else
             {
-                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.or!(FunctionDeclaration, Assignment, ForStatement, Scope, Block, BooleanExpression, ReplaceFunctionCall, TestFunctionCall, Comment, EmptyStatement), "QMakeProject.Statement"), "Statement")(p);
+                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.longest_match!(FunctionDeclaration, Assignment, ForStatement, Scope, Block, ReplaceFunctionCall, TestFunctionCall, BooleanExpression, Comment, EmptyStatement), "QMakeProject.Statement"), "Statement")(p);
                 memo[tuple(`Statement`, p.end)] = result;
                 return result;
             }
@@ -507,12 +507,12 @@ struct GenericQMakeProject(TParseTree)
     {
         if(__ctfe)
         {
-            return         pegged.peg.defined!(pegged.peg.or!(FunctionDeclaration, Assignment, ForStatement, Scope, Block, BooleanExpression, ReplaceFunctionCall, TestFunctionCall, Comment, EmptyStatement), "QMakeProject.Statement")(TParseTree("", false,[], s));
+            return         pegged.peg.defined!(pegged.peg.longest_match!(FunctionDeclaration, Assignment, ForStatement, Scope, Block, ReplaceFunctionCall, TestFunctionCall, BooleanExpression, Comment, EmptyStatement), "QMakeProject.Statement")(TParseTree("", false,[], s));
         }
         else
         {
             forgetMemo();
-            return hooked!(pegged.peg.defined!(pegged.peg.or!(FunctionDeclaration, Assignment, ForStatement, Scope, Block, BooleanExpression, ReplaceFunctionCall, TestFunctionCall, Comment, EmptyStatement), "QMakeProject.Statement"), "Statement")(TParseTree("", false,[], s));
+            return hooked!(pegged.peg.defined!(pegged.peg.longest_match!(FunctionDeclaration, Assignment, ForStatement, Scope, Block, ReplaceFunctionCall, TestFunctionCall, BooleanExpression, Comment, EmptyStatement), "QMakeProject.Statement"), "Statement")(TParseTree("", false,[], s));
         }
     }
     static string Statement(GetName g)
