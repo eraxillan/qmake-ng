@@ -148,8 +148,8 @@ private enum QMakeProjectFunctionArguments =
 private enum QMakeProjectFunctionDeclaration =
 `
     FunctionDeclaration        <- ReplaceFunctionDeclaration / TestFunctionDeclaration
-    ReplaceFunctionDeclaration <- "defineReplace" OPEN_PAR_WS FunctionArgumentList? CLOSE_PAR_WS Block
-    TestFunctionDeclaration    <- "defineTest"    OPEN_PAR_WS FunctionArgumentList? CLOSE_PAR_WS Block
+    ReplaceFunctionDeclaration <- "defineReplace" OPEN_PAR_WS QualifiedIdentifier CLOSE_PAR_WS Block
+    TestFunctionDeclaration    <- "defineTest"    OPEN_PAR_WS QualifiedIdentifier CLOSE_PAR_WS Block
 `;
 
 private enum QMakeProjectScope =
@@ -205,9 +205,10 @@ private enum QMakeProjectExpandStatement =
 `
     ExpandStatement                    <- / FunctionArgumentExpandStatement
                                           / ProjectVariableExpandStatement
-                                          / MakefileVariableExpandStatement
                                           / EnvironmentVariableExpandStatement
                                           / PropertyVariableExpandStatement
+                                          / MakefileVariableExpandStatement
+                                          
     FunctionArgumentExpandStatement    <- / "$$" DecNumber
                                           / "$${" DecNumber "}"
     MakefileVariableExpandStatement    <- / "$" QualifiedIdentifier
@@ -216,7 +217,7 @@ private enum QMakeProjectExpandStatement =
                                           / "$${" QualifiedIdentifier "}"
                                           # E.g. result = \$\$"$$call"
                                           / "$$" doublequote ExpandStatement doublequote
-    EnvironmentVariableExpandStatement <- ("$$" / "$") OPEN_PAR_WS QualifiedIdentifier CLOSE_PAR_WS
+    EnvironmentVariableExpandStatement <- ("$$(" / "$(") QualifiedIdentifier ")"
     PropertyVariableExpandStatement    <- "$$[" QualifiedIdentifier ("/get" / "/src")? "]"
 `;
 

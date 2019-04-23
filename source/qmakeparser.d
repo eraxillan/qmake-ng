@@ -118,8 +118,8 @@ This module was automatically generated from the following grammar:
     )
 
     FunctionDeclaration        <- ReplaceFunctionDeclaration / TestFunctionDeclaration
-    ReplaceFunctionDeclaration <- "defineReplace" OPEN_PAR_WS FunctionArgumentList? CLOSE_PAR_WS Block
-    TestFunctionDeclaration    <- "defineTest"    OPEN_PAR_WS FunctionArgumentList? CLOSE_PAR_WS Block
+    ReplaceFunctionDeclaration <- "defineReplace" OPEN_PAR_WS QualifiedIdentifier CLOSE_PAR_WS Block
+    TestFunctionDeclaration    <- "defineTest"    OPEN_PAR_WS QualifiedIdentifier CLOSE_PAR_WS Block
 
     # Conditional statement
     # E.g.:
@@ -163,9 +163,10 @@ This module was automatically generated from the following grammar:
 
     ExpandStatement                    <- / FunctionArgumentExpandStatement
                                           / ProjectVariableExpandStatement
-                                          / MakefileVariableExpandStatement
                                           / EnvironmentVariableExpandStatement
                                           / PropertyVariableExpandStatement
+                                          / MakefileVariableExpandStatement
+                                          
     FunctionArgumentExpandStatement    <- / "$$" DecNumber
                                           / "$${" DecNumber "}"
     MakefileVariableExpandStatement    <- / "$" QualifiedIdentifier
@@ -174,7 +175,7 @@ This module was automatically generated from the following grammar:
                                           / "$${" QualifiedIdentifier "}"
                                           # E.g. result = \$\$"$$call"
                                           / "$$" doublequote ExpandStatement doublequote
-    EnvironmentVariableExpandStatement <- ("$$" / "$") OPEN_PAR_WS QualifiedIdentifier CLOSE_PAR_WS
+    EnvironmentVariableExpandStatement <- ("$$(" / "$(") QualifiedIdentifier ")"
     PropertyVariableExpandStatement    <- "$$[" QualifiedIdentifier ("/get" / "/src")? "]"
 
     # Some built-in replace and test functions that cause difficulties during parsing
@@ -2264,7 +2265,7 @@ struct GenericQMakeProject(TParseTree)
     {
         if(__ctfe)
         {
-            return         pegged.peg.defined!(pegged.peg.and!(pegged.peg.literal!("defineReplace"), OPEN_PAR_WS, pegged.peg.option!(FunctionArgumentList), CLOSE_PAR_WS, Block), "QMakeProject.ReplaceFunctionDeclaration")(p);
+            return         pegged.peg.defined!(pegged.peg.and!(pegged.peg.literal!("defineReplace"), OPEN_PAR_WS, QualifiedIdentifier, CLOSE_PAR_WS, Block), "QMakeProject.ReplaceFunctionDeclaration")(p);
         }
         else
         {
@@ -2272,7 +2273,7 @@ struct GenericQMakeProject(TParseTree)
                 return *m;
             else
             {
-                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.and!(pegged.peg.literal!("defineReplace"), OPEN_PAR_WS, pegged.peg.option!(FunctionArgumentList), CLOSE_PAR_WS, Block), "QMakeProject.ReplaceFunctionDeclaration"), "ReplaceFunctionDeclaration")(p);
+                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.and!(pegged.peg.literal!("defineReplace"), OPEN_PAR_WS, QualifiedIdentifier, CLOSE_PAR_WS, Block), "QMakeProject.ReplaceFunctionDeclaration"), "ReplaceFunctionDeclaration")(p);
                 memo[tuple(`ReplaceFunctionDeclaration`, p.end)] = result;
                 return result;
             }
@@ -2283,12 +2284,12 @@ struct GenericQMakeProject(TParseTree)
     {
         if(__ctfe)
         {
-            return         pegged.peg.defined!(pegged.peg.and!(pegged.peg.literal!("defineReplace"), OPEN_PAR_WS, pegged.peg.option!(FunctionArgumentList), CLOSE_PAR_WS, Block), "QMakeProject.ReplaceFunctionDeclaration")(TParseTree("", false,[], s));
+            return         pegged.peg.defined!(pegged.peg.and!(pegged.peg.literal!("defineReplace"), OPEN_PAR_WS, QualifiedIdentifier, CLOSE_PAR_WS, Block), "QMakeProject.ReplaceFunctionDeclaration")(TParseTree("", false,[], s));
         }
         else
         {
             forgetMemo();
-            return hooked!(pegged.peg.defined!(pegged.peg.and!(pegged.peg.literal!("defineReplace"), OPEN_PAR_WS, pegged.peg.option!(FunctionArgumentList), CLOSE_PAR_WS, Block), "QMakeProject.ReplaceFunctionDeclaration"), "ReplaceFunctionDeclaration")(TParseTree("", false,[], s));
+            return hooked!(pegged.peg.defined!(pegged.peg.and!(pegged.peg.literal!("defineReplace"), OPEN_PAR_WS, QualifiedIdentifier, CLOSE_PAR_WS, Block), "QMakeProject.ReplaceFunctionDeclaration"), "ReplaceFunctionDeclaration")(TParseTree("", false,[], s));
         }
     }
     static string ReplaceFunctionDeclaration(GetName g)
@@ -2300,7 +2301,7 @@ struct GenericQMakeProject(TParseTree)
     {
         if(__ctfe)
         {
-            return         pegged.peg.defined!(pegged.peg.and!(pegged.peg.literal!("defineTest"), OPEN_PAR_WS, pegged.peg.option!(FunctionArgumentList), CLOSE_PAR_WS, Block), "QMakeProject.TestFunctionDeclaration")(p);
+            return         pegged.peg.defined!(pegged.peg.and!(pegged.peg.literal!("defineTest"), OPEN_PAR_WS, QualifiedIdentifier, CLOSE_PAR_WS, Block), "QMakeProject.TestFunctionDeclaration")(p);
         }
         else
         {
@@ -2308,7 +2309,7 @@ struct GenericQMakeProject(TParseTree)
                 return *m;
             else
             {
-                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.and!(pegged.peg.literal!("defineTest"), OPEN_PAR_WS, pegged.peg.option!(FunctionArgumentList), CLOSE_PAR_WS, Block), "QMakeProject.TestFunctionDeclaration"), "TestFunctionDeclaration")(p);
+                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.and!(pegged.peg.literal!("defineTest"), OPEN_PAR_WS, QualifiedIdentifier, CLOSE_PAR_WS, Block), "QMakeProject.TestFunctionDeclaration"), "TestFunctionDeclaration")(p);
                 memo[tuple(`TestFunctionDeclaration`, p.end)] = result;
                 return result;
             }
@@ -2319,12 +2320,12 @@ struct GenericQMakeProject(TParseTree)
     {
         if(__ctfe)
         {
-            return         pegged.peg.defined!(pegged.peg.and!(pegged.peg.literal!("defineTest"), OPEN_PAR_WS, pegged.peg.option!(FunctionArgumentList), CLOSE_PAR_WS, Block), "QMakeProject.TestFunctionDeclaration")(TParseTree("", false,[], s));
+            return         pegged.peg.defined!(pegged.peg.and!(pegged.peg.literal!("defineTest"), OPEN_PAR_WS, QualifiedIdentifier, CLOSE_PAR_WS, Block), "QMakeProject.TestFunctionDeclaration")(TParseTree("", false,[], s));
         }
         else
         {
             forgetMemo();
-            return hooked!(pegged.peg.defined!(pegged.peg.and!(pegged.peg.literal!("defineTest"), OPEN_PAR_WS, pegged.peg.option!(FunctionArgumentList), CLOSE_PAR_WS, Block), "QMakeProject.TestFunctionDeclaration"), "TestFunctionDeclaration")(TParseTree("", false,[], s));
+            return hooked!(pegged.peg.defined!(pegged.peg.and!(pegged.peg.literal!("defineTest"), OPEN_PAR_WS, QualifiedIdentifier, CLOSE_PAR_WS, Block), "QMakeProject.TestFunctionDeclaration"), "TestFunctionDeclaration")(TParseTree("", false,[], s));
         }
     }
     static string TestFunctionDeclaration(GetName g)
@@ -2984,7 +2985,7 @@ struct GenericQMakeProject(TParseTree)
     {
         if(__ctfe)
         {
-            return         pegged.peg.defined!(pegged.peg.or!(FunctionArgumentExpandStatement, ProjectVariableExpandStatement, MakefileVariableExpandStatement, EnvironmentVariableExpandStatement, PropertyVariableExpandStatement), "QMakeProject.ExpandStatement")(p);
+            return         pegged.peg.defined!(pegged.peg.or!(FunctionArgumentExpandStatement, ProjectVariableExpandStatement, EnvironmentVariableExpandStatement, PropertyVariableExpandStatement, MakefileVariableExpandStatement), "QMakeProject.ExpandStatement")(p);
         }
         else
         {
@@ -2992,7 +2993,7 @@ struct GenericQMakeProject(TParseTree)
                 return *m;
             else
             {
-                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.or!(FunctionArgumentExpandStatement, ProjectVariableExpandStatement, MakefileVariableExpandStatement, EnvironmentVariableExpandStatement, PropertyVariableExpandStatement), "QMakeProject.ExpandStatement"), "ExpandStatement")(p);
+                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.or!(FunctionArgumentExpandStatement, ProjectVariableExpandStatement, EnvironmentVariableExpandStatement, PropertyVariableExpandStatement, MakefileVariableExpandStatement), "QMakeProject.ExpandStatement"), "ExpandStatement")(p);
                 memo[tuple(`ExpandStatement`, p.end)] = result;
                 return result;
             }
@@ -3003,12 +3004,12 @@ struct GenericQMakeProject(TParseTree)
     {
         if(__ctfe)
         {
-            return         pegged.peg.defined!(pegged.peg.or!(FunctionArgumentExpandStatement, ProjectVariableExpandStatement, MakefileVariableExpandStatement, EnvironmentVariableExpandStatement, PropertyVariableExpandStatement), "QMakeProject.ExpandStatement")(TParseTree("", false,[], s));
+            return         pegged.peg.defined!(pegged.peg.or!(FunctionArgumentExpandStatement, ProjectVariableExpandStatement, EnvironmentVariableExpandStatement, PropertyVariableExpandStatement, MakefileVariableExpandStatement), "QMakeProject.ExpandStatement")(TParseTree("", false,[], s));
         }
         else
         {
             forgetMemo();
-            return hooked!(pegged.peg.defined!(pegged.peg.or!(FunctionArgumentExpandStatement, ProjectVariableExpandStatement, MakefileVariableExpandStatement, EnvironmentVariableExpandStatement, PropertyVariableExpandStatement), "QMakeProject.ExpandStatement"), "ExpandStatement")(TParseTree("", false,[], s));
+            return hooked!(pegged.peg.defined!(pegged.peg.or!(FunctionArgumentExpandStatement, ProjectVariableExpandStatement, EnvironmentVariableExpandStatement, PropertyVariableExpandStatement, MakefileVariableExpandStatement), "QMakeProject.ExpandStatement"), "ExpandStatement")(TParseTree("", false,[], s));
         }
     }
     static string ExpandStatement(GetName g)
@@ -3128,7 +3129,7 @@ struct GenericQMakeProject(TParseTree)
     {
         if(__ctfe)
         {
-            return         pegged.peg.defined!(pegged.peg.and!(pegged.peg.keywords!("$$", "$"), OPEN_PAR_WS, QualifiedIdentifier, CLOSE_PAR_WS), "QMakeProject.EnvironmentVariableExpandStatement")(p);
+            return         pegged.peg.defined!(pegged.peg.and!(pegged.peg.keywords!("$$(", "$("), QualifiedIdentifier, pegged.peg.literal!(")")), "QMakeProject.EnvironmentVariableExpandStatement")(p);
         }
         else
         {
@@ -3136,7 +3137,7 @@ struct GenericQMakeProject(TParseTree)
                 return *m;
             else
             {
-                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.and!(pegged.peg.keywords!("$$", "$"), OPEN_PAR_WS, QualifiedIdentifier, CLOSE_PAR_WS), "QMakeProject.EnvironmentVariableExpandStatement"), "EnvironmentVariableExpandStatement")(p);
+                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.and!(pegged.peg.keywords!("$$(", "$("), QualifiedIdentifier, pegged.peg.literal!(")")), "QMakeProject.EnvironmentVariableExpandStatement"), "EnvironmentVariableExpandStatement")(p);
                 memo[tuple(`EnvironmentVariableExpandStatement`, p.end)] = result;
                 return result;
             }
@@ -3147,12 +3148,12 @@ struct GenericQMakeProject(TParseTree)
     {
         if(__ctfe)
         {
-            return         pegged.peg.defined!(pegged.peg.and!(pegged.peg.keywords!("$$", "$"), OPEN_PAR_WS, QualifiedIdentifier, CLOSE_PAR_WS), "QMakeProject.EnvironmentVariableExpandStatement")(TParseTree("", false,[], s));
+            return         pegged.peg.defined!(pegged.peg.and!(pegged.peg.keywords!("$$(", "$("), QualifiedIdentifier, pegged.peg.literal!(")")), "QMakeProject.EnvironmentVariableExpandStatement")(TParseTree("", false,[], s));
         }
         else
         {
             forgetMemo();
-            return hooked!(pegged.peg.defined!(pegged.peg.and!(pegged.peg.keywords!("$$", "$"), OPEN_PAR_WS, QualifiedIdentifier, CLOSE_PAR_WS), "QMakeProject.EnvironmentVariableExpandStatement"), "EnvironmentVariableExpandStatement")(TParseTree("", false,[], s));
+            return hooked!(pegged.peg.defined!(pegged.peg.and!(pegged.peg.keywords!("$$(", "$("), QualifiedIdentifier, pegged.peg.literal!(")")), "QMakeProject.EnvironmentVariableExpandStatement"), "EnvironmentVariableExpandStatement")(TParseTree("", false,[], s));
         }
     }
     static string EnvironmentVariableExpandStatement(GetName g)
