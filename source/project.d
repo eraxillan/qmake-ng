@@ -22,10 +22,13 @@
 
 module project;
 
+import std.typecons;
+import std.conv;
 import std.file;
 import std.path;
 import std.string;
 import std.algorithm;
+import std.process;
 
 import std.experimental.logger;
 
@@ -34,19 +37,27 @@ import qmakeexception;
 import qmakeparser;
 
 import common_const;
+import common_utils;
 import project_variable;
+import project_function;
 import project_context;
 import persistent_property;
+import type_deduction;
 
 
 public class Project
 {
-    private ProExecutionContext m_context;
+    // NOTE: variables defined in user-defined qmake functions must be local to them
+    alias ContextStack = QStack!ProExecutionContext;
+    private ContextStack m_contextStack;
+
     private PersistentPropertyStorage m_persistentStorage;
 
     public this(ref ProExecutionContext context, ref PersistentPropertyStorage persistentStorage)
     {
-        m_context = context;
+        m_contextStack = new ContextStack;
+        m_contextStack.push(context);
+
         m_persistentStorage = persistentStorage;
     }
 
@@ -55,17 +66,17 @@ public class Project
         // FIXME: distinguish unset variables from empty ones!!!
 
         trace("\n\nqmake built-in variable values:");
-        foreach (variableName; m_context.getBuiltinVariableNames())
+        foreach (variableName; m_contextStack.top().getBuiltinVariableNames())
         {
-            string[] variableValue = m_context.getVariableRawValue(variableName);
+            string[] variableValue = m_contextStack.top().getVariableRawValue(variableName);
             if (!variableValue.empty)
                 trace(variableName, " = ", variableValue);
         }
         
         trace("\n\nqmake user-defined variable values:");
-        foreach (variableName; m_context.getUserDefinedVariableNames())
+        foreach (variableName; m_contextStack.top().getUserDefinedVariableNames())
         {
-            string[] variableValue = m_context.getVariableRawValue(variableName);
+            string[] variableValue = m_contextStack.top().getVariableRawValue(variableName);
             if (!variableValue.empty)
             {
                 trace(variableName, " = ", variableValue);
@@ -116,7 +127,7 @@ public class Project
         trace("Trying to parse project file '" ~ fileName ~ "'...");
 
         // NOTE: use the previously eval'd state, because we can need already defined variables
-        m_context.setupPaths(fileName);
+        m_contextStack.top().setupPaths(fileName);
 
         auto proFileContents = std.file.readText(fileName);
         LineInfo[] result;
@@ -141,25 +152,11 @@ public class Project
             auto statementNode = child.children[0];
             trace("STATEMENT: " ~ statementNode.name ~ ": [" ~ statementNode.matches.join(" ") ~ "]");
 
-            evalStatementNode(m_context, statementNode);
+            evalStatementNode(statementNode);
         }
 
         // Output all built-in and user-defined variables
-        /*trace("\n\nqmake built-in variable values:");
-        foreach (variableName; m_context.getBuiltinVariableNames())
-        {
-            string[] variableValue = m_context.getVariableRawValue(variableName);
-            if (!variableValue.empty)
-                trace(variableName, " = ", variableValue);
-        }
-        trace("\n\nqmake user-defined variable values:");
-        foreach (variableName; m_context.getUserDefinedVariableNames())
-        {
-            string[] variableValue = m_context.getVariableRawValue(variableName);
-            if (!variableValue.empty)
-                trace(variableName, " = ", variableValue);
-        }
-        trace("\n\n");*/
+        //dump();
 
         trace("Project file '" ~ fileName ~ "' successfully evaluated");
         return true;
@@ -167,7 +164,7 @@ public class Project
 
     // ----------------------------------------------------------------------------------------------------------------------------------------------
 
-    private void evalStatementNode(ref ProExecutionContext context, ref ParseTree statementNode) /+const+/
+    private void evalStatementNode(ref ParseTree statementNode) /+const+/
     {
         switch (statementNode.name)
         {
@@ -175,20 +172,20 @@ public class Project
             trace("Ignore QMakeProject.EmptyStatement");
             break;
         case "QMakeProject.Assignment":
-            evalVariableAssignmentNode(context, statementNode);
+            evalVariableAssignmentNode(statementNode);
             break;
         case "QMakeProject.Scope":
-            evalScopeNode(context, statementNode);
+            evalScopeNode(statementNode);
             break;
         case "QMakeProject.BooleanExpression":
-            evalScopeConditionNode(context, statementNode);
+            evalScopeConditionNode(statementNode);
             break;
         case "QMakeProject.FunctionDeclaration":
             // FIXME: implement
             error("NOT IMPLEMENTED YET");
             break;
         case "QMakeProject.ForStatement":
-            evalForStatement(context, statementNode);
+            evalForStatement(statementNode);
             break;
         default:
             trace(statementNode);
@@ -197,7 +194,7 @@ public class Project
         }
     }
 
-    private void evalForStatement(ref ProExecutionContext context, ref ParseTree forNode)
+    private void evalForStatement(ref ParseTree forNode)
     {
         trace("");
 
@@ -232,9 +229,9 @@ public class Project
                 auto result = evaluator.evalRPN(rpnExpression);*/
                 string[] result;
                 trace("List variable name: ", result);
-                if (!context.isVariableDefined(result[0]))
+                if (!m_contextStack.top().isVariableDefined(result[0]))
                     throw new Exception("Undefined list variable '" ~ result[0] ~ "', aborting");
-                iterableList = context.getVariableRawValue(result[0]);
+                iterableList = m_contextStack.top().getVariableRawValue(result[0]);
                 assert(iterableList.length >= 1);
                 trace("List to iterate on: ", iterableList);
                 break;
@@ -248,18 +245,18 @@ public class Project
         foreach (listValue; iterableList)
         {
             // Declare local counter variable
-            context.assignVariable(variableName, [listValue], VariableType.STRING);
+            m_contextStack.top().assignVariable(variableName, [listValue], VariableType.STRING);
 
-            evalBlock(context, blockMetaNode);
+            evalBlock(blockMetaNode);
         }
 
         // Unset the already unneeded variable
-        context.unsetVariable(variableName);
+        m_contextStack.top().unsetVariable(variableName);
 
         trace("");
     }
 
-    private void evalBlock(ref ProExecutionContext context, ref ParseTree bodyNode)
+    private void evalBlock(ref ParseTree bodyNode)
     {
         assert(bodyNode.name == "QMakeProject.Block");
         assert(bodyNode.children.length == 1);
@@ -267,14 +264,14 @@ public class Project
         /*immutable*/ auto blockNode = bodyNode.children[0];
         if (blockNode.name == "QMakeProject.SingleLineBlock")
             // FIXME: add checks for children count
-            evalStatementNode(context, blockNode.children[0].children[0]);
+            evalStatementNode(blockNode.children[0].children[0]);
         else if (blockNode.name == "QMakeProject.MultiLineBlock")
-            evalMultilineBlockNode(context, blockNode);
+            evalMultilineBlockNode(blockNode);
         else
             throw new Exception("Unknown code block type");
     }
 
-    private void evalMultilineBlockNode(ref ProExecutionContext context, ref ParseTree multilineBlockNode) /+const+/
+    private void evalMultilineBlockNode(ref ParseTree multilineBlockNode) /+const+/
     {
         assert(multilineBlockNode.name == "QMakeProject.MultiLineBlock");
         assert(multilineBlockNode.children.length >= 1);
@@ -285,13 +282,12 @@ public class Project
             auto blockStatementNode = multilineBlockNode.children[i];
             trace("Eval statement [", i, "] of type ", blockStatementNode.children[0].name);
 
-            evalStatementNode(context, blockStatementNode.children[0]);
+            evalStatementNode(blockStatementNode.children[0]);
         }
         trace("}");
     }
 
-    private void evalVariableAssignmentNode(ref ProExecutionContext context,
-            ref ParseTree statementNode) /+const+/
+    private void evalVariableAssignmentNode(ref ParseTree statementNode) /+const+/
     {
         auto variableName = statementNode.matches[0];
         auto variableOperator = statementNode.matches[1];
@@ -299,15 +295,14 @@ public class Project
         trace("Variable name: '" ~ variableName ~ "'");
         trace("Variable assignment operator: '" ~ variableOperator ~ "'");
 
-        if (context.isVariableDefined(variableName))
-            trace("Variable old raw value: ", context.getVariableRawValue(variableName));
+        if (m_contextStack.top().isVariableDefined(variableName))
+            trace("Variable old raw value: ", m_contextStack.top().getVariableRawValue(variableName));
         trace("Variable new raw value: ", variableValue);
 
-        assignVariable(context, variableName, variableOperator, variableValue);
+        assignVariable(variableName, variableOperator, variableValue);
     }
 
-    private void assignVariable(ref ProExecutionContext context, in string name,
-            in string operator, in string[] value) /+const+/
+    private void assignVariable(in string name, in string operator, in string[] value) /+const+/
     {
         // FIXME: implement
         string[] result;
@@ -322,16 +317,16 @@ public class Project
         switch (operator)
         {
         case STR_EQUALS:
-            context.assignVariable(name, result, VariableType.STRING_LIST /*FIXME:*/ );
+            m_contextStack.top().assignVariable(name, result, VariableType.STRING_LIST /*FIXME:*/ );
             break;
         case STR_PLUS_EQUALS:
-            context.appendAssignVariable(name, result);
+            m_contextStack.top().appendAssignVariable(name, result);
             break;
         case STR_ASTERISK_EQUALS:
-            context.appendUniqueAssignVariable(name, result);
+            m_contextStack.top().appendUniqueAssignVariable(name, result);
             break;
         case STR_MINUS_EQUALS:
-            context.removeAssignVariable(name, result);
+            m_contextStack.top().removeAssignVariable(name, result);
             break;
         case STR_TILDE_EQUALS:
             // FIXME: implement
@@ -341,16 +336,16 @@ public class Project
         }
     }
 
-    private void evalScopeNode(ref ProExecutionContext context, ref ParseTree statementNode) /+const+/
+    private void evalScopeNode(ref ParseTree statementNode) /+const+/
     {
         ParseTree scopeConditionNode = statementNode.children[0];
         ParseTree scopeIfTrueBranch = statementNode.children[1];
 
-        if (evalScopeConditionNode(context, scopeConditionNode))
+        if (evalScopeConditionNode(scopeConditionNode))
         {
             trace("Scope main condition '", scopeConditionNode.matches.join(" "),
                 "' evaluated to TRUE, select main branch code path");
-            evalBlock(context, scopeIfTrueBranch.children[0]);
+            evalBlock(scopeIfTrueBranch.children[0]);
             return;
         }
 
@@ -371,11 +366,11 @@ public class Project
                     assert(conditionNode.name == "QMakeProject.BooleanExpression");
 
                     // FIXME: eval and use condition
-                    if (evalScopeConditionNode(context, conditionNode))
+                    if (evalScopeConditionNode(conditionNode))
                     {
                         trace("Scope else-if condition '", conditionNode.matches.join(" "),
                             "' evaluated to TRUE, select else-if branch code path");
-                        evalBlock(context, statementNode.children[i].children[1]);
+                        evalBlock(statementNode.children[i].children[1]);
                         return;
                     }
                     break;
@@ -390,11 +385,11 @@ public class Project
                     auto bodyNode = statementNode.children[i].children[0];
                     if (bodyNode.name == "QMakeProject.Statement")
                     {
-                        evalStatementNode(context, bodyNode.children[0]);
+                        evalStatementNode(bodyNode.children[0]);
                     }
                     else if (bodyNode.name == "QMakeProject.MultiLineBlock")
                     {
-                        evalMultilineBlockNode(context, bodyNode);
+                        evalMultilineBlockNode(bodyNode);
                     }
                     else
                     {
@@ -407,7 +402,7 @@ public class Project
         }
     }
 
-    private bool evalScopeConditionNode(ref ProExecutionContext context, ref ParseTree statementNode) /+const+/
+    private bool evalScopeConditionNode(ref ParseTree statementNode) /+const+/
     {
         assert(statementNode.name == "QMakeProject.BooleanExpression");
         assert(statementNode.children.length == 1);
@@ -446,7 +441,7 @@ public class Project
                 auto boolExprNode = boolMetaExprNode.children[0];
                 if (j == 0)
                 {
-                    andResult = evalBooleanExressionNode(context, boolExprNode);
+                    andResult = evalBooleanExressionNode(boolExprNode);
                     if (notMarker)
                     {
                         trace("Apply NOT 1: '", andResult, "' --> '", !andResult, "'");
@@ -455,7 +450,7 @@ public class Project
                 }
                 else
                 {
-                    andResult = andResult && evalBooleanExressionNode(context, boolExprNode);
+                    andResult = andResult && evalBooleanExressionNode(boolExprNode);
                     if (!andResult)
                     {
                         trace("operand [", j, "] of AND-expression is FALSE, aborting");
@@ -477,7 +472,7 @@ public class Project
         return orResult;
     }
 
-    private bool evalBooleanExressionNode(ref ProExecutionContext context, ref ParseTree boolExprNode) /+const+/
+    private bool evalBooleanExressionNode(ref ParseTree boolExprNode) /+const+/
     {
         assert(boolExprNode.children.length == 1);
         switch (boolExprNode.name)
@@ -497,9 +492,9 @@ public class Project
                 // FIXME: implement
                 throw new Exception("Not implemented yet");
             case "QMakeProject.TestFunctionCall":
-                return evalTestFunctionNode(context, boolAtomNode);
+                return evalTestFunctionNode(boolAtomNode);
             case "QMakeProject.QualifiedIdentifier":
-                return evalBooleanVariableNode(context, boolAtomNode);
+                return evalBooleanVariableNode(boolAtomNode);
             case "QMakeProject.BooleanConst":
                 // FIXME: implement
                 throw new Exception("Not implemented yet");
@@ -514,7 +509,7 @@ public class Project
        // return false;
     }
 
-    private bool evalTestFunctionNode(ref ProExecutionContext context, ref ParseTree testFunctionNode) /+const+/
+    private bool evalTestFunctionNode(ref ParseTree testFunctionNode) /+const+/
     {
         assert(testFunctionNode.name == "QMakeProject.TestFunctionCall");
         assert(testFunctionNode.children.length == 1);
@@ -559,7 +554,7 @@ public class Project
                 if (listNode.children.length >= 2)
                     warning("'include' test function optional arguments not implemented yet");
 
-			    string projectDirectory = context.getVariableRawValue("PWD")[0];
+			    string projectDirectory = m_contextStack.top().getVariableRawValue("PWD")[0];
 			    if (!isAbsolute(projectFileName))
 				    projectFileName = buildNormalizedPath(absolutePath(projectFileName, projectDirectory));
 			    trace("absolute project path: '", projectFileName, "'");
@@ -583,7 +578,8 @@ public class Project
                 }
             }
 
-			auto pro = new Project(context, m_persistentStorage);
+            // FIXME: should sub-projects also have new context?
+			auto pro = new Project(m_contextStack.top(), m_persistentStorage);
     		if (!pro.eval(projectFileName))
     		{
                 error("qmake project file '", projectFileName, "' evaluation failed");
@@ -622,7 +618,7 @@ public class Project
         }
     }
 
-    private bool evalBooleanVariableNode(ref ProExecutionContext context, ref ParseTree boolAtomNode) const
+    private bool evalBooleanVariableNode(ref ParseTree boolAtomNode)
     {
         assert(boolAtomNode.children.length == 0);
         assert(boolAtomNode.matches.length == 1);
@@ -641,9 +637,9 @@ public class Project
             return false;
         }
 
-        string[] platformValue = context.getVariableRawValue("QMAKE_PLATFORM");
-        string[] configValue = context.getVariableRawValue("CONFIG");
-        string[] specValue = context.getVariableRawValue("QMAKESPEC");
+        string[] platformValue = m_contextStack.top().getVariableRawValue("QMAKE_PLATFORM");
+        string[] configValue = m_contextStack.top().getVariableRawValue("CONFIG");
+        string[] specValue = m_contextStack.top().getVariableRawValue("QMAKESPEC");
         immutable(string) spec = baseName(specValue[0]);
         if (platformValue.countUntil(variableValue) >= 0)
         {

@@ -42,12 +42,12 @@ public class QStack(DataType)
 {
 	DataType[] m_array;
 
-    public void push(in DataType item)
+    public void push(DataType item)
 	{
 		m_array ~= item;
 	}
 	
-	public void push(in DataType[] item)
+	public void push(DataType[] item)
 	{
 		m_array ~= item;
 	}
@@ -64,17 +64,17 @@ public class QStack(DataType)
 		throw new Exception("trying to pop item from empty stack");
 	}
 
-    public DataType top()
+    public ref DataType top()
 	{
 		if (!m_array.empty)
 			return m_array[m_array.length - 1];
 
-		static DataType defaultValue;
-		return defaultValue;
-//		throw new Exception("trying to get top item value from empty stack");
+//		static DataType defaultValue;
+//		return defaultValue;
+		throw new Exception("trying to get top item value from empty stack");
     }
 
-    public void setTop(in DataType value)
+    public void setTop(DataType value)
 	{
 		if (m_array.empty)
 			throw new Exception("trying to set top item value from empty stack");
