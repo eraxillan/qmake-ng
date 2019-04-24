@@ -166,35 +166,102 @@ public class Project
 
     private void evalStatementNode(ref ParseTree statementNode) /+const+/
     {
+        /*
+        Statement <- | FunctionDeclaration
+                     | Assignment
+                     | ForStatement
+                     | Scope
+                     | Block
+                     | ReplaceFunctionCall
+                     | TestFunctionCall
+                     | BooleanExpression
+                     | Comment
+                     | EmptyStatement
+        */
         switch (statementNode.name)
         {
-        case "QMakeProject.EmptyStatement":
-            trace("Ignore QMakeProject.EmptyStatement");
-            break;
-        case "QMakeProject.Assignment":
-            evalVariableAssignmentNode(statementNode);
-            break;
-        case "QMakeProject.Scope":
-            evalScopeNode(statementNode);
-            break;
-        case "QMakeProject.BooleanExpression":
-            evalScopeConditionNode(statementNode);
-            break;
-        case "QMakeProject.FunctionDeclaration":
-            // FIXME: implement
-            error("NOT IMPLEMENTED YET");
-            break;
-        case "QMakeProject.ForStatement":
-            evalForStatement(statementNode);
-            break;
-        default:
-            trace(statementNode);
-            error("Invalid statement type '" ~ statementNode.name ~ "'");
-            throw new Exception("Invalid statement type '" ~ statementNode.name ~ "'");
+            case "QMakeProject.FunctionDeclaration":
+            {
+                evalFunctionDeclarationNode(statementNode);
+                break;
+            }
+            case "QMakeProject.Assignment":
+            {
+                evalVariableAssignmentNode(statementNode);
+                break;
+            }
+            case "QMakeProject.ForStatement":
+            {
+                evalForStatementNode(statementNode);
+                break;
+            }
+            case "QMakeProject.Scope":
+            {
+                evalScopeNode(statementNode);
+                break;
+            }
+            case "QMakeProject.Block":
+            {
+                evalBlock(statementNode);
+                break;
+            }
+            case "QMakeProject.ReplaceFunctionCall":
+            {
+                // NOTE: replace function designed to be used as rvalue;
+                //       however, it result can be ignored with just a warning
+                //
+                // FIXME: get function name and line/column in source
+                warning("Replace function result ignored");
+                evalReplaceFunctionNode(statementNode);
+                break;
+            }
+            case "QMakeProject.TestFunctionCall":
+            {
+                // NOTE: also ignore function result, but without warning
+                evalTestFunctionNode(statementNode);
+                break;
+            }
+            case "QMakeProject.BooleanExpression":
+            {
+                evalScopeConditionNode(statementNode);
+                break;
+            }
+            case "QMakeProject.Comment":
+            {
+                trace("Comment was ignored");
+                break;
+            }
+            case "QMakeProject.EmptyStatement":
+            {
+                trace("Empty statement was ignored");
+                break;
+            }
+            default:
+            {
+                trace(statementNode);
+                error("Invalid statement type '" ~ statementNode.name ~ "'");
+                throw new Exception("Invalid statement type '" ~ statementNode.name ~ "'");
+            }
         }
     }
 
-    private void evalForStatement(ref ParseTree forNode)
+    private void evalFunctionDeclarationNode(ref ParseTree declNode)
+    in
+    {
+        assert(declNode.name.startsWith("QMakeProject.FunctionDeclaration"));
+        assert(declNode.children.length == 1);
+    }
+    do
+    {
+        /*
+        FunctionDeclaration        <- ReplaceFunctionDeclaration / TestFunctionDeclaration
+        ReplaceFunctionDeclaration <- "defineReplace" OPEN_PAR_WS QualifiedIdentifier CLOSE_PAR_WS Block
+        TestFunctionDeclaration    <- "defineTest"    OPEN_PAR_WS QualifiedIdentifier CLOSE_PAR_WS Block
+        */
+        // FIXME: implement
+    }
+
+    private void evalForStatementNode(ref ParseTree forNode)
     {
         trace("");
 
@@ -507,6 +574,32 @@ public class Project
         }
 
        // return false;
+    }
+
+    private RvalueEvalResult evalReplaceFunctionNode(ref ParseTree replaceFunctionNode)
+    in
+    {
+        assert(replaceFunctionNode.name == "QMakeProject.ReplaceFunctionCall");
+        assert(replaceFunctionNode.children.length == 2);
+    }
+    do
+    {
+        auto testFunctionNode = replaceFunctionNode.children[1];
+        assert(testFunctionNode.name == "QMakeProject.TestFunctionCall");
+        assert(testFunctionNode.children.length == 1);
+
+        // FunctionCall <- FunctionId OPEN_PAR_WS FunctionArgumentList? CLOSE_PAR_WS :space* :eol*
+        auto functionNode = testFunctionNode.children[0];
+        assert(functionNode.name == "QMakeProject.EvalTestFunctionCall"
+            || functionNode.name == "QMakeProject.CacheTestFunctionCall"
+            || functionNode.name == "QMakeProject.ContainsTestFunctionCall"
+            || functionNode.name == "QMakeProject.ReturnFunctionCall"
+            || functionNode.name == "QMakeProject.RequiresFunctionCall"
+            || functionNode.name == "QMakeProject.FunctionCall"
+        );
+
+        // FIXME: implement
+        return RvalueEvalResult(VariableType.UNKNOWN, []);
     }
 
     private bool evalTestFunctionNode(ref ParseTree testFunctionNode) /+const+/
