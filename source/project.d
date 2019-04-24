@@ -34,11 +34,10 @@ import qmakeexception;
 import qmakeparser;
 
 import common_const;
-import eval;
 import project_variable;
 import project_context;
 import persistent_property;
-import rpn;
+
 
 public class Project
 {
@@ -226,10 +225,12 @@ public class Project
         switch (listNode.name)
         {
             case "QMakeProject.FunctionFirstArgument":
-                string value = listNode.matches.join("");
+                // FIXME: implement
+                /*string value = listNode.matches.join("");
                 auto evaluator = new ExpressionEvaluator(context, m_persistentStorage);
                 auto rpnExpression = convertToRPN(value);
-                auto result = evaluator.evalRPN(rpnExpression);
+                auto result = evaluator.evalRPN(rpnExpression);*/
+                string[] result;
                 trace("List variable name: ", result);
                 if (!context.isVariableDefined(result[0]))
                     throw new Exception("Undefined list variable '" ~ result[0] ~ "', aborting");
@@ -308,14 +309,15 @@ public class Project
     private void assignVariable(ref ProExecutionContext context, in string name,
             in string operator, in string[] value) /+const+/
     {
+        // FIXME: implement
         string[] result;
-        if (!value.empty)
+        /*if (!value.empty)
         {
             auto evaluator = new ExpressionEvaluator(context, m_persistentStorage);
             auto rpnExpression = convertToRPN(value.join(" "));
             result = evaluator.evalRPN(rpnExpression);
             trace("Variable '", name, "' new value: ", result);
-        }
+        }*/
 
         switch (operator)
         {
@@ -545,10 +547,13 @@ public class Project
                 auto listNode = argumentsNode.children[0];
                 assert(listNode.children.length >= 1);
                 projectFileName = listNode.children[0].matches.join("");
+                // FIXME: implement
+                /*
                 auto evaluator = new ExpressionEvaluator(context, m_persistentStorage);
                 auto rpnExpression = convertToRPN(projectFileName);
                 auto rpnResult = evaluator.evalRPN(rpnExpression);
                 projectFileName = rpnResult[0];
+                */
 
                 // FIXME: implement other argument usage
                 if (listNode.children.length >= 2)
@@ -591,9 +596,13 @@ public class Project
               || functionName == "debug"   || functionName == "message"
               || functionName == "warning" || functionName == "error")
         {
+            // FIXME: implement
+            /+
             auto evaluator = new ExpressionEvaluator(context, m_persistentStorage);
             auto rpnExpression = convertToRPN(functionNode.matches.join("") /*.replace(",", ", ")*/ );
             auto rpnResult = evaluator.evalRPN(rpnExpression);
+            +/
+            string[] rpnResult;
             trace("Function '", functionName, "' result = ", rpnResult);
             if (functionName == "error")
                 throw new Exception("User-defined error raised");
@@ -601,11 +610,15 @@ public class Project
         }
         else
         {
+            // FIXME: implement
+            /*
             auto evaluator = new ExpressionEvaluator(context, m_persistentStorage);
             auto rpnExpression = convertToRPN(functionNode.matches);
             auto rpnResult = evaluator.evalRPN(rpnExpression);
             trace("Function '", functionName, "' result = ", rpnResult);
             return (rpnResult[0] == "true");
+            */
+            return true;
         }
     }
 

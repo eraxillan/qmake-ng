@@ -38,6 +38,7 @@ import common_const;
 
 // -------------------------------------------------------------------------------------------------
 
+// FIXME: rename to `DataType` and move to the separate module
 public enum VariableType
 {
     UNKNOWN = -1,
@@ -55,6 +56,14 @@ public enum VariableType
 //    FILE_PATH,
 //    DIR_PATH
 	COUNT
+}
+public bool isStringType(in VariableType type)
+{
+    return type == VariableType.RAW_STRING || type == VariableType.STRING || type == VariableType.RESTRICTED_STRING;
+}
+public bool isStringListType(in VariableType type)
+{
+    return type == VariableType.STRING_LIST || type == VariableType.RESTRICTED_STRING_LIST;
 }
 
 // FIXME: implement read-only built-in variables
@@ -313,8 +322,8 @@ static this()
     
     temp1["QMAKE_AR"] = ProVariable("QMAKE_AR", VariableType.STRING_LIST, [], []);
     temp1["QMAKE_AR_LTCG"] = ProVariable("QMAKE_AR_LTCG", VariableType.STRING_LIST, [], []);
-    temp1["QMAKE_CC"] = ProVariable("QMAKE_CC", VariableType.STRING_LIST, [], []);
-    temp1["QMAKE_CD"] = ProVariable("QMAKE_CD", VariableType.STRING_LIST, [], []);
+    temp1["QMAKE_CC"] = ProVariable("QMAKE_CC", VariableType.STRING, [], []);
+    temp1["QMAKE_CD"] = ProVariable("QMAKE_CD", VariableType.STRING, [], []);
     temp1["QMAKE_CFLAGS_AESNI"] = ProVariable("QMAKE_CFLAGS_AESNI", VariableType.STRING_LIST, [], []);
     temp1["QMAKE_CFLAGS_APP"] = ProVariable("QMAKE_CFLAGS_APP", VariableType.STRING_LIST, [], []);
     temp1["QMAKE_CFLAGS_AVX"] = ProVariable("QMAKE_CFLAGS_AVX", VariableType.STRING_LIST, [], []);
@@ -369,7 +378,7 @@ static this()
     temp1["QMAKE_COPY"] = ProVariable("QMAKE_COPY", VariableType.STRING_LIST, [], []);
     temp1["QMAKE_COPY_DIR"] = ProVariable("QMAKE_COPY_DIR", VariableType.STRING_LIST, [], []);
     temp1["QMAKE_COPY_FILE"] = ProVariable("QMAKE_COPY_FILE", VariableType.STRING_LIST, [], []);
-    temp1["QMAKE_CXX"] = ProVariable("QMAKE_CXX", VariableType.STRING_LIST, [], []);
+    temp1["QMAKE_CXX"] = ProVariable("QMAKE_CXX", VariableType.STRING, [], []);
     temp1["QMAKE_CXXFLAGS"] = ProVariable("QMAKE_CXXFLAGS", VariableType.STRING_LIST, [], []);
     temp1["QMAKE_CXXFLAGS_APP"] = ProVariable("QMAKE_CXXFLAGS_APP", VariableType.STRING_LIST, [], []);
     temp1["QMAKE_CXXFLAGS_CXX11"] = ProVariable("QMAKE_CXXFLAGS_CXX11", VariableType.STRING_LIST, [], []);
@@ -494,7 +503,7 @@ static this()
     temp1["QMAKE_STRIP"] = ProVariable("QMAKE_STRIP", VariableType.STRING_LIST, [], []);
     temp1["QMAKE_STRIPFLAGS_LIB"] = ProVariable("QMAKE_STRIPFLAGS_LIB", VariableType.STRING_LIST, [], []);
     temp1["QMAKE_SYMBOLIC_LINK"] = ProVariable("QMAKE_SYMBOLIC_LINK", VariableType.STRING_LIST, [], []);
-    temp1["QMAKE_SYSTEM_NULL_DEVICE"] = ProVariable("QMAKE_SYSTEM_NULL_DEVICE", VariableType.STRING_LIST, [], []);
+    temp1["QMAKE_SYSTEM_NULL_DEVICE"] = ProVariable("QMAKE_SYSTEM_NULL_DEVICE", VariableType.STRING, [], []);
     temp1["QMAKE_TAR"] = ProVariable("QMAKE_TAR", VariableType.STRING_LIST, [], []);
     temp1["QMAKE_WAYLAND_SCANNER"] = ProVariable("QMAKE_WAYLAND_SCANNER", VariableType.STRING_LIST, [], []);
     temp1["QMAKE_YACC"] = ProVariable("QMAKE_YACC", VariableType.STRING_LIST, [], []);

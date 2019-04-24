@@ -24,44 +24,28 @@ module project_context;
 
 import std.experimental.logger;
 
-import std.uni;
 import std.algorithm;
 import std.conv;
 import std.stdio;
-import std.file;
-import std.getopt;
 import std.path;
 import std.string;
-import std.range;
-import std.regex;
-import std.process;
-
+import common_const;
+import common_utils;
+import qmakeexception;
 import project_variable;
-import persistent_property;
+import project_function;
 
 // -------------------------------------------------------------------------------------------------
 
-// 1) OUTPUT_LIB = $${LIB_NAME}
-private const auto projectVariableExpansionRegex_1 = r"\$\$\{(?P<name>([_a-zA-Z][_a-zA-Z0-9]*)+)\}";
-// 2) OUTPUT_LIB = $$LIB_NAME
-private const auto projectVariableExpansionRegex_2 = r"\$\$(?P<name>([_a-zA-Z][_a-zA-Z0-9]*)+)\b";
-// 3) DESTDIR = $(PWD)
-private const auto environmentVariableExpansionRegex_1 = r"\$\((?P<name>(([_a-zA-Z][_a-zA-Z0-9]*)+))\)";
-// 4) DESTDIR = $$(PWD)
-private const auto environmentVariableExpansionRegex_2 = r"\$\$\((?P<name>(([_a-zA-Z][_a-zA-Z0-9]*)+))\)";
-// 5) target.path = $$[QT_INSTALL_PLUGINS]/designer
-private const auto qmakePropertyExpansionRegex_1 = r"\$\$\[(?P<name>([_a-zA-Z][_a-zA-Z0-9]*)+)\]";
-private const auto qmakePropertyExpansionRegex_2 = r"\$\$\[(?P<name>([_a-zA-Z][_a-zA-Z0-9]*)+\/get)\]";
-
-// -------------------------------------------------------------------------------------------------
-
-
-// FIXME: add qmake persistent storage
-// FIXME: add environment variables
 public class ProExecutionContext
 {
 	private ProVariable[string] m_builtinVariables;
 	private ProVariable[string] m_userVariables;
+
+    private ProFunction[string] m_builtinReplaceFunctions;
+    private ProFunction[string] m_builtinTestFunctions;
+    private ProFunction[string] m_userReplaceFunctions;
+    private ProFunction[string] m_userTestFunctions;
 	
 	private ProVariable[string] cloneBuiltinVariables() const
 	{
@@ -71,18 +55,41 @@ public class ProExecutionContext
 		return result;
 	}
 
+    private ProFunction[string] cloneBuiltinReplaceFunctions() const
+    {
+		ProFunction[string] result;
+		foreach (name; builtinReplaceFunctions.keys)
+			result[name] = builtinReplaceFunctions[name].dup();
+		return result;
+	}
+
+    private ProFunction[string] cloneBuiltinTestFunctions() const
+    {
+		ProFunction[string] result;
+		foreach (name; builtinTestFunctions.keys)
+			result[name] = builtinTestFunctions[name].dup();
+		return result;
+	}
+
     this()
 	{
 		m_builtinVariables = cloneBuiltinVariables();
+        m_builtinReplaceFunctions = cloneBuiltinReplaceFunctions();
+        m_builtinTestFunctions = cloneBuiltinTestFunctions();
     }
 
     public void reset()
 	{
         m_builtinVariables = cloneBuiltinVariables();
+        m_builtinReplaceFunctions = cloneBuiltinReplaceFunctions();
+        m_builtinTestFunctions = cloneBuiltinTestFunctions();
+
         m_userVariables.clear;
+        m_userReplaceFunctions.clear;
+        m_userTestFunctions.clear;
     }
 
-    public bool isBuiltinVariable(in string name) const
+    private bool isBuiltinVariable(in string name) const
 	in
 	{
 		assert(!name.empty, "project variable name cannot be empty");
@@ -92,7 +99,7 @@ public class ProExecutionContext
         return (name in m_builtinVariables) !is null;
     }
 
-    public bool isUserDefinedVariable(in string name) const
+    private bool isUserDefinedVariable(in string name) const
 	in
 	{
 		assert(!name.empty, "project variable name cannot be empty");
@@ -106,6 +113,7 @@ public class ProExecutionContext
     {
         return m_builtinVariables.keys.sort.release();
     }
+
     public string[] getUserDefinedVariableNames() const
     {
         return m_userVariables.keys.sort.release();
@@ -113,10 +121,43 @@ public class ProExecutionContext
 
     public void setupPaths(in string projectFileName)
     {
-        assignVariable("PWD", [dirName(projectFileName)], VariableType.STRING);
-        assignVariable("OUT_PWD", [dirName(projectFileName)], VariableType.STRING);
+        string dir = dirName(projectFileName);
+        assignVariable("PWD", [dir], VariableType.STRING);
+        assignVariable("OUT_PWD", [dir], VariableType.STRING);
         assignVariable("_PRO_FILE_", [projectFileName], VariableType.STRING);
-        assignVariable("_PRO_FILE_PWD_", [dirName(projectFileName)], VariableType.STRING);
+        assignVariable("_PRO_FILE_PWD_", [dir], VariableType.STRING);
+    }
+
+    // FIXME: workaround needed until cache file `.qmake.stash` support code will be implemented
+    // Also, those values are valid for Linux+gcc platform only
+    public void setupCacheVariables()
+    {
+        /*assignVariable("QMAKE_CXX.INCDIRS",
+            [
+            "/usr/include/c++/5", " /usr/include/x86_64-linux-gnu/c++/5",
+            "/usr/include/c++/5/backward", "/usr/lib/gcc/x86_64-linux-gnu/5/include",
+            "/usr/local/include", "/usr/lib/gcc/x86_64-linux-gnu/5/include-fixed",
+            "/usr/include/x86_64-linux-gnu", "/usr/include"
+            ],
+            VariableType.STRING_LIST);
+        assignVariable("QMAKE_CXX.LIBDIRS",
+            [
+                "/usr/lib/gcc/x86_64-linux-gnu/5", "/usr/lib/x86_64-linux-gnu",
+                "/usr/lib", "/lib/x86_64-linux-gnu", " /lib"
+            ],
+            VariableType.STRING_LIST);
+        assignVariable("QMAKE_CXX.QT_COMPILER_STDCXX", ["199711L"], VariableType.STRING);
+        assignVariable("QMAKE_CXX.QMAKE_GCC_MAJOR_VERSION", ["5"], VariableType.STRING);
+        assignVariable("QMAKE_CXX.QMAKE_GCC_MINOR_VERSION", ["4"], VariableType.STRING);
+        assignVariable("QMAKE_CXX.QMAKE_GCC_PATCH_VERSION", ["0"], VariableType.STRING);
+        assignVariable("QMAKE_CXX.COMPILER_MACROS",
+            [
+                "QT_COMPILER_STDCXX",
+                "QMAKE_GCC_MAJOR_VERSION",
+                "QMAKE_GCC_MINOR_VERSION",
+                "QMAKE_GCC_PATCH_VERSION"
+            ],
+            VariableType.STRING_LIST);*/
     }
 
     public bool isVariableDefined(in string name) const
@@ -158,15 +199,17 @@ public class ProExecutionContext
 		return true;
     }
 
-    private string[] getBuiltinVariableDefaultRawValue(in string name)
-	in
+    public VariableType getVariableType(in string name) /+const+/
+    in
 	{
 		assert(!name.empty, "project variable name cannot be empty");
-		assert((name in builtinVariables) !is null);
+        assert((isBuiltinVariable(name) || isUserDefinedVariable(name)));
 	}
 	do
 	{
-        return builtinVariables[name].value.dup;
+        ProVariable variableDescription;
+		getVariableDescription(name, variableDescription);
+        return variableDescription.type;
     }
 
 	// FIXME: add const
@@ -174,41 +217,13 @@ public class ProExecutionContext
 	in
 	{
 		assert(!name.empty, "project variable name cannot be empty");
+        assert((isBuiltinVariable(name) || isUserDefinedVariable(name)));
 	}
 	do
 	{
         ProVariable variableDescription;
 		getVariableDescription(name, variableDescription);
         return variableDescription.value;
-    }
-
-	// FIXME: add const
-    private string getVariableValue(in string name) /+const+/
-	in
-	{
-		assert(!name.empty, "project variable name cannot be empty");
-	}
-	do
-	{
-        ProVariable variableDescription;
-		getVariableDescription(name, variableDescription);
-        switch (variableDescription.type)
-		{
-            case VariableType.STRING:
-            case VariableType.RESTRICTED_STRING:
-                if (variableDescription.value.empty)
-                {
-                    return [];
-                }
-                return variableDescription.value[0];
-            case VariableType.STRING_LIST:
-            case VariableType.RESTRICTED_STRING_LIST:
-                return variableDescription.value.join(" ");
-            default:
-			{
-                throw new Exception("Unsupported variable type '" ~ to!string(variableDescription.type) ~ "'");
-            }
-        }
     }
 	
 	private void setVariableValue(in string name, in string[] value)
@@ -218,10 +233,23 @@ public class ProExecutionContext
 	}
 	do
 	{
+        string[] clearValue;
+        foreach (v; value)
+        {
+            if (!v.empty)
+                clearValue ~= v;
+        }
+
         if (isBuiltinVariable(name))
-            m_builtinVariables[name].value = value.dup;
+        {
+            trace("Set built-in variable ", "`", name, "`", " value to ", clearValue);
+            m_builtinVariables[name].value = clearValue.dup;
+        }
         else if (isUserDefinedVariable(name))
-            m_userVariables[name].value = value.dup;
+        {
+            trace("Set user-defined variable ", "`", name, "`", " value to ", clearValue);
+            m_userVariables[name].value = clearValue.dup;
+        }
         else
             throw new Exception("Undefined variable '" ~ name ~ "'");
     }
@@ -375,100 +403,108 @@ public class ProExecutionContext
         }
     }
 
-    public string expandVariables(ref PersistentPropertyStorage persistentStorage, in string strSource)
+    // ---------------------------------------------------------------------------------------------------------------------------
+
+    private bool isBuiltinReplaceFunction(in string name)
+    {
+        return ((name in m_builtinReplaceFunctions) !is null);
+    }
+
+    private bool isUserReplaceFunction(in string name)
+    {
+        return ((name in m_userReplaceFunctions) !is null);
+    }
+
+    private bool isBuiltinTestFunction(in string name)
+    {
+        return ((name in m_builtinTestFunctions) !is null);
+    }
+
+    private bool isUserTestFunction(in string name)
+    {
+        return ((name in m_userTestFunctions) !is null);
+    }
+
+    // ---------------------------------------------------------------------------------------------------------------------------
+
+	bool hasReplaceFunctionDescription(in string name)
+	in
 	{
-        if (strSource.empty)
-            return strSource;
-/+
-        auto replaceProVarFunc = (getVariableValue, match, variableName, offset, string) {
-            assert.isString(variableName);
-            assert.isNotEmpty(variableName);
-            assert.isFunction(getVariableValue);
-            return this.getVariableValue(variableName);
-        }
+		assert(!name.empty, "function name cannot be empty");
+        assert(!m_builtinReplaceFunctions.empty);
+	}
+	do
+	{
+		return isBuiltinReplaceFunction(name) || isUserReplaceFunction(name);
+	}
 
-        auto replaceEnvVarFunc = function(match, variableName, offset, string) {
-            assert.isString(variableName);
-            assert.isNotEmpty(variableName);
+	ProFunction getReplaceFunctionDescription(in string name)
+	in
+	{
+		assert(!name.empty, "function name cannot be empty");
+        assert(!m_builtinReplaceFunctions.empty);
+	}
+	do
+	{
+        if (isBuiltinReplaceFunction(name))
+		    return m_builtinReplaceFunctions[name];
+        else if (isUserReplaceFunction(name))
+            return m_userReplaceFunctions[name];
+        else
+            throw new NotImplementedException("replace function " ~ "`" ~ name ~ "`" ~ " was not defined yet");
+	}
 
-            return (process.env[variableName] !== undefined) ? process.env[variableName] : "";
-        }
+    bool hasTestFunctionDescription(in string name)
+	in
+	{
+		assert(!name.empty, "function name cannot be empty");
+        assert(!m_builtinTestFunctions.empty);
+	}
+	do
+	{
+		return isBuiltinTestFunction(name) || isUserTestFunction(name);
+	}
 
-        auto replacePropertyFunc = function(match, variableName, offset, string) {
-            assert.isString(variableName);
-            assert.isNotEmpty(variableName);
+	ProFunction getTestFunctionDescription(in string name)
+	in
+	{
+		assert(!name.empty, "function name cannot be empty");
+        assert(!m_builtinTestFunctions.empty);
+	}
+	do
+	{
+		if (isBuiltinTestFunction(name))
+		    return m_builtinTestFunctions[name];
+        else if (isUserTestFunction(name))
+            return m_userTestFunctions[name];
+        else
+            throw new NotImplementedException("test function " ~ "`" ~ name ~ "`" ~ " was not defined yet");
+	}
 
-            return persistentStorage.query(variableName);
-        }
-+/
-        string strExpanded = strSource.dup;
-		
-		auto replaceProVarFunc(Captures!string captures)
-		{
-			string variableName = captures["name"];
-			if (variableName.empty)
-				throw new Exception("variable name cannot be empty");
-            
-            trace("Expanding variable '", variableName, "'...");
-            if (!isVariableDefined(variableName))
-            {
-                warning("Expand undefined variable '", variableName, "' to empty string");
-                return "";
-            }
+    void addReplaceFunctionDescription(in string name, in ProFunction.Action action)
+    {
+        /*
+        this(in string name, in VariableType returnType,
+            in bool isVariadic, in int requiredArgumentCount, in int optionalArgumentCount,
+            VariableType[] argumentTypes, in Action action)
+        */
+        m_userReplaceFunctions[name] = ProFunction(
+            name,
+            VariableType.STRING_LIST, /*FIXME: detect return type*/
+            true, -1, -1, // all user-defined functions are variadic
+            [VariableType.STRING],
+            action
+        );
+    }
 
-            trace("Variable pretty value: ", getVariableValue(variableName));
-            trace("Variable raw value: ", getVariableRawValue(variableName));
-			return getVariableValue(variableName);
-		}
-
-        auto replaceEnvVarFunc(Captures!string captures)
-        {
-            string environmentVariableName = captures["name"];
-			if (environmentVariableName.empty)
-				throw new Exception("environment variable name cannot be empty");
-            
-            trace("Expanding environment variable '", environmentVariableName, "'...");
-
-            auto value = environment.get(environmentVariableName);
-            if (value is null)
-            {
-                error("Expand undefined environment variable '", environmentVariableName, "' to empty string");
-                return "";
-            }
-
-            trace("Environment variable value: ", value);
-            return value;
-        }
-
-        auto replacePropertyFunc(Captures!string captures)
-        {
-            string propertyName = captures["name"];
-			if (propertyName.empty)
-				throw new Exception("qmake persistent property name cannot be empty");
-            
-            trace("Expanding property '", propertyName, "'...");
-            
-            string propertyValue;
-            if (!persistentStorage.hasValue(propertyName))
-            {
-                warning("Expand undefined persistent property '", propertyName, "' to empty string");
-                //return "";
-                // FIXME: temponary for debug
-                throw new Exception("Undefined persistent property '" ~ propertyName ~ "'");
-            }
-
-            propertyValue = persistentStorage.value(propertyName);
-            trace("Property value: ", propertyValue);
-			return propertyValue;
-        }
-		
-		strExpanded = replaceAll!replaceProVarFunc(strExpanded, regex(projectVariableExpansionRegex_1, "g"));
-        strExpanded = replaceAll!replaceProVarFunc(strExpanded, regex(projectVariableExpansionRegex_2, "g"));
-        strExpanded = replaceAll!replaceEnvVarFunc(strExpanded, regex(environmentVariableExpansionRegex_2, "g"));
-        strExpanded = replaceAll!replaceEnvVarFunc(strExpanded, regex(environmentVariableExpansionRegex_1, "g"));
-        strExpanded = replaceAll!replacePropertyFunc(strExpanded, regex(qmakePropertyExpansionRegex_1, "g"));
-        strExpanded = replaceAll!replacePropertyFunc(strExpanded, regex(qmakePropertyExpansionRegex_2, "g"));
-
-        return strExpanded;
+    void addTestFunctionDescription(in string name, ProFunction.Action action)
+    {
+        m_userTestFunctions[name] = ProFunction(
+            name,
+            VariableType.STRING_LIST, /*FIXME: detect type*/
+            true, -1, -1, // all user-defined functions are variadic
+            [VariableType.STRING],
+            action
+        );
     }
 }

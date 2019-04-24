@@ -39,112 +39,161 @@ import common_const;
 import common_utils;
 import project_variable;
 import project_context;
+
 // -------------------------------------------------------------------------------------------------
 
-public class ProFunction
+public struct ProFunction
 {
-	// Helper
-	private static string[] returnBoolString(in bool b)
+	this(in string name, in VariableType returnType, in bool isVariadic, in int requiredArgumentCount,
+			in int optionalArgumentCount, VariableType[] argumentTypes, in Action action)
 	{
-		return b ? [STR_TRUE] : [STR_FALSE];
+		m_name = name;
+		m_returnType = returnType;
+		m_isVariadic = isVariadic;
+		m_requiredArgumentCount = requiredArgumentCount;
+		m_optionalArgumentCount = optionalArgumentCount;
+		m_argumentTypes = argumentTypes;
+		m_action = action;
 	}
 
-	private static bool isActiveConfig(in string config, in string specName, in string[] configVarValues, in bool useRegex = false)
+	// Compile-time function info
+	public string m_name;
+	public VariableType m_returnType;
+	public bool m_isVariadic;
+	public int m_requiredArgumentCount;
+	public int m_optionalArgumentCount;
+	public VariableType[] m_argumentTypes;
+
+	// Run-time function info
+	public string[] m_arguments;
+	//alias Action = const(string[]) function(ref ProExecutionContext context, in string[] arguments);
+	alias Action = const(string[]) delegate(ref ProExecutionContext context, in string[] arguments);
+	public Action m_action;
+
+	ProFunction dup() const @property
 	{
-    	// Magic types for easy flipping
-    	if (config == STR_TRUE)
-        	return true;
-    	if (config == STR_FALSE)
-        	return false;
+		auto result = ProFunction(m_name.dup, m_returnType, m_isVariadic,
+				m_requiredArgumentCount, m_optionalArgumentCount, m_argumentTypes.dup, m_action);
+		return result;
+	}
+}
 
-		// FIXME: implement "host_build { ... }" scope statement in parser first
-    	/+
-		if (config == STR_HOSTBUILD)
-        	return m_hostBuild;
-		+/
+// --------------------------------------------------------------------------------------------------------------------
 
-		if (useRegex && (config.canFind('*') || config.canFind('?')))
+// qmake builtin test and replace functions
+public immutable ProFunction[string] builtinTestFunctions;
+public immutable ProFunction[string] builtinReplaceFunctions;
+
+// Helpers
+private static string[] returnBoolString(in bool b)
+{
+	return b ? [STR_TRUE] : [STR_FALSE];
+}
+
+private static bool isActiveConfig(in string config, in string specName,
+		in string[] configVarValues, in bool useRegex = false)
+{
+	// Magic types for easy flipping
+	if (config == STR_TRUE)
+		return true;
+	if (config == STR_FALSE)
+		return false;
+
+	// FIXME: implement "host_build { ... }" scope statement in parser first
+	/+
+	if (config == STR_HOSTBUILD)
+        return m_hostBuild;
+	+/
+
+	if (useRegex && (config.canFind('*') || config.canFind('?')))
+	{
+		// FIXME: need testing!
+		bool b = true;
+		if (b)
+			assert(0);
+
+		auto re = regex(wildcardToRegex(config));
+
+		// mkspecs
+		if (specName.matchFirst(re))
+			return true;
+
+		// CONFIG variable
+		foreach (configValue; configVarValues)
 		{
-			// FIXME: need testing!
-			bool b = true; if (b) assert(0);
+			if (configValue.matchFirst(re))
+				return true;
+		}
+	}
+	else
+	{
+		// mkspecs
+		if (specName == config)
+			return true;
 
-			auto re = regex(wildcardToRegex(config));
-
-        	// mkspecs
-			if (specName.matchFirst(re))
-            	return true;
-
-        	// CONFIG variable
-        	foreach (configValue; configVarValues)
-			{
-            	if (configValue.matchFirst(re))
-                	return true;
-        	}
-    	}
-		else
-		{
-        	// mkspecs
-        	if (specName == config)
-            	return true;
-
-        	// CONFIG variable
-        	if (configVarValues.canFind(config))
-            	return true;
-    	}
-
-    	return false;
+		// CONFIG variable
+		if (configVarValues.canFind(config))
+			return true;
 	}
 
+	return false;
+}
 
-	static this()
-	{
-		replaceFunctions["first"] = new ProFunction("first", VariableType.STRING, true, 1, -1, [VariableType.STRING_LIST],
-			(ref ProExecutionContext context, in string[] arguments) {
-				if (arguments.length < 1)
-					throw new Exception("Invalid argument count: expected 1, got " ~ to!string(arguments.length));
-				return [arguments[0]];
-			}
-		);
-		replaceFunctions["files"] = new ProFunction("files", VariableType.STRING_LIST,
-			false, 1, 1, [VariableType.STRING_LIST],
-			(ref ProExecutionContext context, in string[] arguments) {
-				string[] result;
+static this()
+{
+	import std.exception : assumeUnique;
 
-				immutable string pattern = arguments[0];
-				immutable bool recursive = arguments.length == 2 ? (arguments[1] == "true" ? true : false) : false;
+	ProFunction[string] temp; // mutable buffer
 
-				immutable string dir = std.path.dirName(pattern);
-				immutable string filenamePattern = std.path.baseName(pattern);
+	// qmake built-in replace functions
 
-				trace("Glob pattern: ", pattern);
-				trace("Directory: ", dir);
-				trace("File name pattern: ", filenamePattern);
-				assert(std.file.exists(dir));
-				auto deResult = std.file.dirEntries(dir, filenamePattern, recursive ? SpanMode.depth : SpanMode.shallow, true);
-				foreach (DirEntry de; deResult)
-				{
-					assert(std.file.exists(de.name));
+	temp["first"] = ProFunction("first", VariableType.STRING, true, 1, -1,
+			[VariableType.STRING_LIST], (ref ProExecutionContext context, in string[] arguments) {
+		if (arguments.length < 1)
+			throw new Exception(
+				"Invalid argument count: expected 1, got " ~ to!string(arguments.length));
+		return [arguments[0]];
+	});
+	temp["files"] = ProFunction("files", VariableType.STRING_LIST, false, 1, 1,
+			[VariableType.STRING_LIST], (ref ProExecutionContext context, in string[] arguments) {
+		string[] result;
 
-					result ~= de.name;
-				}
+		immutable string pattern = arguments[0];
+		immutable bool recursive = arguments.length == 2
+			? (arguments[1] == "true" ? true : false) : false;
 
-				// Showcase stable sorting
-				import std.algorithm.mutation : SwapStrategy;
-				std.algorithm.sort!("a < b", SwapStrategy.unstable)(result);
-				trace("Matches:");
-				writeln(result);
+		immutable string dir = std.path.dirName(pattern);
+		immutable string filenamePattern = std.path.baseName(pattern);
 
-				return result;
-			}
-		);
-		replaceFunctions["list"] = new ProFunction("list", VariableType.STRING_LIST, true, 1, -1, [VariableType.STRING],
-			(ref ProExecutionContext context, in string[] arguments) {
-				return arguments;
-			}
-		);
+		trace("Glob pattern: ", pattern);
+		trace("Directory: ", dir);
+		trace("File name pattern: ", filenamePattern);
+		assert(std.file.exists(dir));
+		auto deResult = std.file.dirEntries(dir, filenamePattern, recursive
+			? SpanMode.depth : SpanMode.shallow, true);
+		foreach (DirEntry de; deResult)
+		{
+			assert(std.file.exists(de.name));
 
-		replaceFunctions["replace"] = new ProFunction("replace", VariableType.STRING_LIST,
-			false, 3, 0, [VariableType.STRING, VariableType.STRING, VariableType.STRING],
+			result ~= de.name;
+		}
+
+		// Showcase stable sorting
+		import std.algorithm.mutation : SwapStrategy;
+
+		std.algorithm.sort!("a < b", SwapStrategy.unstable)(result);
+		trace("Matches:");
+		writeln(result);
+
+		return result;
+	});
+	temp["list"] = ProFunction("list", VariableType.STRING_LIST, true, 1, -1,
+			[VariableType.STRING], (ref ProExecutionContext context, in string[] arguments) {
+		return arguments;
+	});
+
+	temp["replace"] = ProFunction("replace", VariableType.STRING_LIST, false, 3, 0, [VariableType.STRING,
+			VariableType.STRING, VariableType.STRING],
 			(ref ProExecutionContext context, in string[] arguments) {
 				string variableName = arguments[0];
 				string sourceString = arguments[1];
@@ -158,54 +207,49 @@ public class ProFunction
 				trace("Regular expression: ", sourceString);
 				trace("Result: ", result);
 				return [result];
-			}
-		);
+			});
 
-		replaceFunctions["reverse"] = new ProFunction("reverse", VariableType.STRING_LIST,
-			false, 1, 0, [VariableType.STRING],
-			(ref ProExecutionContext context, in string[] arguments) {
-				string variableName = arguments[0];
+	temp["reverse"] = ProFunction("reverse", VariableType.STRING_LIST, false, 1, 0,
+			[VariableType.STRING], (ref ProExecutionContext context, in string[] arguments) {
+		string variableName = arguments[0];
 
-				string[] variableValue = context.getVariableRawValue(variableName);
-				string[] result = variableValue.reverse;
-				trace("Variable name: ", variableName);
-				trace("Variable value: ", variableValue);
-				trace("Variable reversed value: ", result);
-				return result;
-			}
-		);
+		string[] variableValue = context.getVariableRawValue(variableName);
+		string[] result = variableValue.reverse;
+		trace("Variable name: ", variableName);
+		trace("Variable value: ", variableValue);
+		trace("Variable reversed value: ", result);
+		return result;
+	});
 
-		replaceFunctions["section"] = new ProFunction("section", VariableType.STRING_LIST,
-			false, 3, 1, [VariableType.STRING],
-			(ref ProExecutionContext context, in string[] arguments) {
-				trace(arguments);
-				assert(arguments.length == 3 || arguments.length == 4);
+	temp["section"] = ProFunction("section", VariableType.STRING, false, 3, 1,
+			[VariableType.STRING], (ref ProExecutionContext context, in string[] arguments) {
+		trace(arguments);
+		assert(arguments.length == 3 || arguments.length == 4);
 
-				string variableName = arguments[0];
-				string separator = arguments[1];
-				int begin = to!int(arguments[2]);
-				int end = -1;
-				if (arguments.length == 4)
-					end = to!int(arguments[3]);
+		string variableName = arguments[0];
+		string separator = arguments[1];
+		int begin = to!int(arguments[2]);
+		int end = -1;
+		if (arguments.length == 4)
+			end = to!int(arguments[3]);
 
-				string[] value = context.getVariableRawValue(variableName);
+		string[] value = context.getVariableRawValue(variableName);
 
-				string[] result;
-				foreach (str; value)
-				{
-					result ~= sectionString(str, separator, begin, end);
-				}
+		string[] result;
+		foreach (str; value)
+		{
+			result ~= sectionString(str, separator, begin, end);
+		}
 
-				trace("Variable name: ", variableName);
-				trace("Variable value: ", value);
-				trace("Sectioned value: ", result);
+		trace("Variable name: ", variableName);
+		trace("Variable value: ", value);
+		trace("Sectioned value: ", result);
 
-				return result;
-			}
-		);
+		return result;
+	});
 
-		replaceFunctions["split"] = new ProFunction("split", VariableType.STRING_LIST,
-			false, 2, 0, [VariableType.STRING, VariableType.STRING],
+	temp["split"] = ProFunction("split", VariableType.STRING_LIST, false, 2, 0,
+			[VariableType.STRING, VariableType.STRING],
 			(ref ProExecutionContext context, in string[] arguments) {
 				string variableName = arguments[0];
 				string separator = arguments[1];
@@ -216,37 +260,140 @@ public class ProFunction
 				trace("Variable value: ", variableValue);
 				trace("Variable splitted value: ", result);
 				return result;
-			}
-		);
+			});
 
-		replaceFunctions["unique"] = new ProFunction("unique", VariableType.STRING_LIST,
-			false, 1, 0, [VariableType.STRING],
+	temp["unique"] = ProFunction("unique", VariableType.STRING_LIST, false, 1, 0,
+			[VariableType.STRING], (ref ProExecutionContext context, in string[] arguments) {
+		string variableName = arguments[0];
+
+		string[] variableValue;
+		if (context.isVariableDefined(variableName))
+			variableValue = context.getVariableRawValue(variableName);
+		else
+			error("Undefined variable '", variableName, "', assume empty string");
+
+		string[] result;
+		foreach (item; variableValue)
+		{
+			if (result.countUntil(item) == -1)
+				result ~= item;
+		}
+		trace("Variable name: ", variableName);
+		trace("Variable value: ", variableValue);
+		trace("Variable uniqued value: ", result);
+		return result;
+	});
+
+	// system(command[, mode[, stsvar]])
+	temp["system"] = ProFunction("system", VariableType.STRING_LIST, false, 1, 2, [VariableType.STRING,
+			VariableType.STRING, VariableType.STRING],
 			(ref ProExecutionContext context, in string[] arguments) {
-				string variableName = arguments[0];
+		trace(arguments);
+		assert(arguments.length == 1 || arguments.length == 2 || arguments.length == 3);
 
-				string[] variableValue;
-				if (context.isVariableDefined(variableName))
-					variableValue = context.getVariableRawValue(variableName);
-				else
-					error("Undefined variable '", variableName, "', assume empty string");
+		string command = arguments[0];
 
-				string[] result;
-				foreach (item; variableValue)
-				{
-					if (result.countUntil(item) == -1)
-						result ~= item;
-				}
-				trace("Variable name: ", variableName);
-				trace("Variable value: ", variableValue);
-				trace("Variable uniqued value: ", result);
-				return result;
+		/+
+		bool blob = false;
+        bool lines = false;
+        bool singleLine = true;
+        if (arguments.length >= 2)
+		{
+			if (toLower(arguments[1]) == "false")
+				singleLine = false;
+            else if (toLower(arguments[1]) == "blob")
+                blob = true;
+            else if (toLower(arguments[1]) == "lines")
+                lines = true;
+        }
+//
+		string exitStatusVar = arguments[2];
+
+		import std.process : pipeProcess, pipeShell, wait, Redirect;
+
+		// Launch external process
+		// NOTE: assume that it writes to stdout and might write to stderr
+		command = "LC_ALL=C g++ -pipe -E -v -xc++ - 2>&1 </dev/null >/dev/null";
+		auto pipes = pipeShell(command, Redirect.stdout | Redirect.stderr);
+
+		// Wait for process completion
+		int exitCode = wait(pipes.pid);
+		trace("External process finished with code `", exitCode, "`");
+
+		// Save exit status value in the specified variable (if any)
+		if (arguments.length >= 3)
+		{
+			immutable string variableName = arguments[2];
+			// FIXME: also check using regex whether such name is suitable as ID
+			assert(!variableName.empty);
+			// NOTE: whether this variable defined or not doesn't matter
+			context.assignVariable(variableName, [to!string(exitCode)], VariableType.STRING);
+			trace("Exit code was saved into project variable `", variableName, "`");
+		}
+
+		// Store lines of errors.
+		/*string[] errors;
+		foreach (line; pipes.stderr.byLine) errors ~= line.idup;
+		writeln("");
+		writeln(errors);*/
+		
+		lines = false;
+		if (lines)
+		{
+			/*
+            QTextStream stream(bytes);
+            while (!stream.atEnd())
+                ret += ProString(stream.readLine());
+			*/
+
+			// Store lines of output
+			string[] output;
+			foreach (line; pipes.stdout.byLine) output ~= line.idup;
+			writeln("");
+			foreach (line; output)
+				writeln(line);
+			writeln("");
+        }
+		else
+		{
+			string output;
+			char[256] buffer;
+			while (!pipes.stdout.eof())
+			{
+				output ~= pipes.stdout.rawRead(buffer);
 			}
-		);
+			writeln("");
+			writeln(output);
+			writeln("");
 
-		// ------------------------------------------------------------------------------------------------------------
+            /*QString output = QString::fromLocal8Bit(bytes);
+            if (blob) {
+                ret += ProString(output);
+            } else {
+                output.replace(QLatin1Char('\t'), QLatin1Char(' '));
+                if (singleLine)
+                    output.replace(QLatin1Char('\n'), QLatin1Char(' '));
+                ret += split_value_list(QStringRef(&output));
+            }*/
+        }
+        +/
 
-		testFunctions["defined"] = new ProFunction("defined", VariableType.BOOLEAN,
-			false, 1, 1, [VariableType.STRING, VariableType.STRING],
+		bool b = true;
+		if (b)
+			assert(0);
+		return [""];
+	});
+
+	temp.rehash; // for faster lookups
+	builtinReplaceFunctions = assumeUnique(temp);
+
+	// ----------------------------------------------------------------------------------------------------------------
+	// qmake built-in test functions
+	temp.clear();
+	assert(temp.empty);
+
+	temp["defined"] = ProFunction("defined", VariableType.BOOLEAN, false, 1, 1,
+			[VariableType.STRING, VariableType.STRING],
 			(ref ProExecutionContext context, in string[] arguments) {
 				trace(arguments);
 				assert(arguments.length == 1 || arguments.length == 2);
@@ -257,33 +404,33 @@ public class ProFunction
 					immutable string type = arguments[1];
 					switch (type)
 					{
-						case "test":
+					case "test":
 						{
 							// return returnBool(m_functionDefs.testFunctions.contains(var));
 							throw new NotImplementedException("test");
 						}
-						case "replace":
+					case "replace":
 						{
 							// return returnBool(m_functionDefs.replaceFunctions.contains(var));
 							throw new NotImplementedException("replace");
 						}
-						case "var":
+					case "var":
 						{
 							immutable bool b = context.isVariableDefined(name);
 							trace("Variable name: ", name);
 							trace("Whether variable defined: ", b);
 							return returnBoolString(b);
 						}
-						default: throw new Exception("Unexpected type " ~ type);
+					default:
+						throw new Exception("Unexpected type " ~ type);
 					}
 				}
 				// return returnBool(m_functionDefs.replaceFunctions.contains(var) || m_functionDefs.testFunctions.contains(var));
-				throw new NotImplementedException("test || replace"); 
-			}
-		);
+				throw new NotImplementedException("test || replace");
+			});
 
-		testFunctions["CONFIG"] = new ProFunction("CONFIG", VariableType.BOOLEAN,
-			false, 1, 1, [VariableType.STRING, VariableType.STRING],
+	temp["CONFIG"] = ProFunction("CONFIG", VariableType.BOOLEAN, false, 1, 1,
+			[VariableType.STRING, VariableType.STRING],
 			(ref ProExecutionContext context, in string[] arguments) {
 				trace(arguments);
 				assert(arguments.length == 1 || arguments.length == 2);
@@ -307,301 +454,232 @@ public class ProFunction
 				const auto mutuals = splitString(arguments[1], "|", true);
 				trace("Mutual conditions: ", mutuals);
 
-				for (ulong i = configValue.length - 1; i >= 0; i--)
+				for (long i = configValue.length - 1; i >= 0; i--)
 				{
-            		for (ulong mut = 0; mut < mutuals.length; mut++)
+					for (long mut = 0; mut < mutuals.length; mut++)
 					{
-                		if (configValue[i] == mutuals[mut].strip())
+						if (configValue[i] == mutuals[mut].strip())
 						{
 							bool b = configValue[i] == arguments[0];
 							trace("CONFIG result 2: ", b);
-                    		return returnBoolString(b);
+							return returnBoolString(b);
 						}
-            		}
-        		}
+					}
+				}
 
 				trace("CONFIG result 3: ", false);
 				return returnBoolString(false);
-			}
-		);
-		testFunctions["isActiveConfig"] = testFunctions["CONFIG"];
+			});
+	temp["isActiveConfig"] = temp["CONFIG"];
 
-		testFunctions["for"] = new ProFunction("for", VariableType.BOOLEAN,
-			false, 2, 0, [VariableType.STRING, VariableType.STRING],
-			(ref ProExecutionContext context, in string[] arguments) {
-				error("Control flow error: currently implemented in project.d");
-				return ["false"];
-			}
-		);
+	temp["for"] = ProFunction("for", VariableType.BOOLEAN, false, 2, 0, [VariableType.STRING,
+			VariableType.STRING], (ref ProExecutionContext context, in string[] arguments) {
+		error("Control flow error: currently implemented in project.d");
+		return ["false"];
+	});
 
-		testFunctions["include"] = new ProFunction("include", VariableType.BOOLEAN, false, 1, 0, [VariableType.STRING],
-			(ref ProExecutionContext context, in string[] arguments) {
-				error("Control flow error: currently implemented in project.d");
-				return ["false"];
-			}
-		);
+	temp["include"] = ProFunction("include", VariableType.BOOLEAN, false, 1, 3,
+			[VariableType.STRING], (ref ProExecutionContext context, in string[] arguments) {
+		import project : Project;
+		import persistent_property : PersistentPropertyStorage;
 
-		testFunctions["equals"] = new ProFunction("equals", VariableType.BOOLEAN,
-			false, 2, 0, [VariableType.STRING, VariableType.STRING],
+		assert(arguments.length >= 1);
+		if (arguments.length > 1)
+			error("Optional 'include' test functions arguments are not implemented yet");
+		string projectFileName = arguments[0];
+		string projectDirectory = context.getVariableRawValue("PWD")[0];
+		if (!isAbsolute(projectFileName))
+			projectFileName = buildNormalizedPath(absolutePath(projectFileName, projectDirectory));
+		trace("absolute project path: '", projectFileName, "'");
+		if (!exists(projectFileName) || !isFile(projectFileName))
+		{
+			//error("project file '", projectFileName, "' was not found, so return FALSE");
+			//return false;
+			throw new NotImplementedException("file not found: " ~ "`" ~ projectFileName ~ "`");
+		}
+
+		// FIXME: pass persistent storage object too, with context
+		auto persistentStorage = new PersistentPropertyStorage();
+		auto pro = new Project(context, persistentStorage);
+		if (!pro.eval(projectFileName))
+		{
+			error("qmake project file '", projectFileName, "' evaluation failed, include failed");
+			return ["false"];
+		}
+		info("qmake project file '" ~ projectFileName ~ "' was successfully parsed and included");
+		return ["true"];
+	});
+
+	temp["load"] = ProFunction("load", VariableType.BOOLEAN, false, 1, 0,
+			[VariableType.STRING], (ref ProExecutionContext context, in string[] arguments) {
+		import project : Project;
+		import persistent_property : PersistentPropertyStorage;
+
+		assert(arguments.length >= 1);
+		if (arguments.length > 1)
+			error("Optional 'include' test functions arguments are not implemented yet");
+		string projectFileName = arguments[0];
+
+		// FIXME: use PlatformInfo class, need to extract it from app.d first
+		string featureDirectory = "/opt/Qt/5.11.3/gcc_64/mkspecs/features";
+		projectFileName = buildNormalizedPath(featureDirectory, projectFileName);
+		projectFileName = std.path.setExtension(projectFileName, "prf");
+		trace("absolute feature file path: '", projectFileName, "'");
+		if (!std.file.exists(projectFileName) || !std.file.isFile(projectFileName))
+		{
+			error("feature file '", projectFileName,
+				"' was not found or not a file, so return FALSE");
+			throw new NotImplementedException("file not found: " ~ "`" ~ projectFileName ~ "`");
+			//return false;
+		}
+
+		// FIXME: pass persistent storage object too, with context
+		auto persistentStorage = new PersistentPropertyStorage();
+		auto pro = new Project(context, persistentStorage);
+		if (!pro.eval(projectFileName))
+		{
+			error("qmake project file '", projectFileName, "' evaluation failed, include failed");
+			return ["false"];
+		}
+		info("qmake project file '" ~ projectFileName ~ "' was successfully parsed and included");
+		return ["true"];
+	});
+
+	temp["equals"] = ProFunction("equals", VariableType.BOOLEAN, false, 2, 0,
+			[VariableType.STRING, VariableType.STRING],
 			(ref ProExecutionContext context, in string[] arguments) {
 				string variableName = arguments[0];
 				string value = arguments[1];
+				trace("Variable name: ", "`", variableName, "`");
+				trace("Variable value: ", "`", value, "`");
 
 				string[] variableRawValue = context.getVariableRawValue(variableName);
 				if (variableRawValue.length >= 2)
-					throw new Exception("Variable type mismatch: 'equals' test function can work only with string-typed variable");
-				
+					throw new Exception(
+						"Variable type mismatch: 'equals' test function can work only with string-typed variable");
+
 				string variableValue = variableRawValue[0];
 				trace("Variable value: '", variableValue, "'");
 				trace("String to compare with: '", value, "'");
 				return (variableRawValue[0] == value) ? ["true"] : ["false"];
-			}
-		);
+			});
+	temp["isEqual"] = temp["equals"];
 
-		testFunctions["isEmpty"] = new ProFunction("isEmpty", VariableType.BOOLEAN,
-			false, 1, 0, [VariableType.STRING],
-			(ref ProExecutionContext context, in string[] arguments) {
-				string variableName = arguments[0];
+	temp["isEmpty"] = ProFunction("isEmpty", VariableType.BOOLEAN, false, 1, 0,
+			[VariableType.STRING], (ref ProExecutionContext context, in string[] arguments) {
+		string variableName = arguments[0];
 
-				if (!context.isBuiltinVariable(variableName) && !context.isUserDefinedVariable(variableName))
-				{
-					trace("Variable was not defined yet");
-					return ["true"];
-				}
-
-				string[] variableRawValue = context.getVariableRawValue(variableName);
-				immutable(bool) isEmpty = variableRawValue.empty || variableRawValue[0].empty;
-				trace("Variable name: ", variableName);
-				trace("Variable value: ", variableRawValue);
-				trace("Variable value is empty: ", isEmpty);
-				return isEmpty ? ["true"] : ["false"];
-			}
-		);
-
-		testFunctions["contains"] = new ProFunction("contains", VariableType.BOOLEAN,
-			false, 2, 0, [VariableType.STRING],
-			(ref ProExecutionContext context, in string[] arguments) {
-				string variableName = arguments[0];
-				string value = arguments[1];
-
-				string[] variableRawValue = context.getVariableRawValue(variableName);
-				assert(variableRawValue.length >= 1);
-
-				trace("Variable name: ", variableName);
-				trace("Variable value: ", variableRawValue);
-				trace("Value to search for: ", value);
-				return (variableRawValue.countUntil(value) > 0) ? ["true"] : ["false"];
-			}
-		);
-
-		testFunctions["exists"] = new ProFunction("exists", VariableType.BOOLEAN,
-			false, 1, 0, [VariableType.STRING],
-			(ref ProExecutionContext context, in string[] arguments) {
-				string fileName = arguments[0];
-
-				trace("File name: ", fileName);
-				trace("Whether file exists: ", std.file.exists(fileName));
-				return std.file.exists(fileName) ? ["true"] : ["false"];
-			}
-		);
-
-		testFunctions["debug"] = new ProFunction("debug", VariableType.BOOLEAN,
-			true, 2, -1, [VariableType.STRING_LIST],
-			(ref ProExecutionContext /*context*/, in string[] arguments) {
-				assert(arguments.length >= 2);
-
-				// FIXME: implement level usage
-				immutable int level = to!int(arguments[0]);
-				writefln("DEBUG LEVEL: %d", level);
-
-				string message = arguments[1 .. $].join(" ");
-				writefln("Project DEBUG: " ~ message);
-
-				return ["true"];
-			}
-		);
-
-		testFunctions["message"] = new ProFunction("message", VariableType.BOOLEAN,
-			true, 1, -1, [VariableType.STRING_LIST],
-			(ref ProExecutionContext /*context*/, in string[] arguments) {
-				assert(arguments.length >= 1);
-
-				string message = arguments.join(" ");
-				writefln("Project MESSAGE: " ~ message);
-
-				return ["true"];
-			}
-		);
-
-		testFunctions["warning"] = new ProFunction("warning", VariableType.BOOLEAN,
-			true, 1, -1, [VariableType.STRING_LIST],
-			(ref ProExecutionContext /*context*/, in string[] arguments) {
-				assert(arguments.length >= 1);
-
-				string message = arguments.join(" ");
-				writefln("Project WARNING: " ~ message);
-
-				return ["true"];
-			}
-		);
-
-		testFunctions["error"] = new ProFunction("error", VariableType.VOID,
-			true, 1, -1, [VariableType.STRING_LIST],
-			(ref ProExecutionContext /*context*/, in string[] arguments) {
-				assert(arguments.length >= 1);
-
-				string message = arguments.join(" ");
-				writefln("Project ERROR: " ~ message);
-
-				return ["true"];
-			}
-		);
-
-		testFunctions["unset"] = new ProFunction("unset", VariableType.VOID,
-			false, 1, 0, [VariableType.STRING],
-			(ref ProExecutionContext context, in string[] arguments) {
-				assert(arguments.length == 1);
-
-				string variableName = arguments[0];
-				if (context.isVariableDefined(variableName))
-					context.unsetVariable(variableName);
-				else
-					error("Variable '", variableName, "' was already unset, nothing to do");
-
-				// NOTE: just a workaround to let compiler auto-deduce lambda function return type
-				return ["true"];
-			}
-		);
-	}
-	
-	this(in string name, in VariableType returnType, in bool isVariadic, in int requiredArgumentCount, in int optionalArgumentCount, VariableType[] argumentTypes, Action action)
-	{
-		m_name = name;
-		m_returnType = returnType;
-		m_isVariadic = isVariadic;
-		m_requiredArgumentCount = requiredArgumentCount;
-		m_optionalArgumentCount = optionalArgumentCount;
-		m_argumentTypes = argumentTypes;
-		m_action = action;
-	}
-	
-	// Compile-time function info
-	public string m_name;
-	public VariableType m_returnType;
-	public bool m_isVariadic;
-	public int m_requiredArgumentCount;
-	public int m_optionalArgumentCount;
-	public VariableType[] m_argumentTypes;
-	
-	// Run-time function info
-	public string[] m_arguments;
-	alias Action = const(string[]) function(ref ProExecutionContext context, in string[] arguments);
-	public Action m_action;
-
-	// qmake builtin test and replace functions
-	private static ProFunction[string] testFunctions;
-	private static ProFunction[string] replaceFunctions;
-	
-    static VariableType getFunctionArgumentType(in string functionName, in int argumentIndex)
-	{
-        if (isReplaceFunction(functionName))
+		if (!context.isVariableDefined(variableName))
 		{
-			string pureFunctionName = functionName[STR_FUNCTION_EXPAND_MARKER.length .. $];
+			trace("Variable was not defined yet");
+			return ["true"];
+		}
 
-			if ((pureFunctionName in replaceFunctions) is null)
-				throw new Exception("Undefined replace function '" ~ pureFunctionName ~ "' found, aborting");
+		string[] variableRawValue = context.getVariableRawValue(variableName);
+		immutable(bool) isEmpty = variableRawValue.empty || variableRawValue[0].empty;
+		trace("Variable name: ", variableName);
+		trace("Variable value: ", variableRawValue);
+		trace("Variable value is empty: ", isEmpty);
+		return isEmpty ? ["true"] : ["false"];
+	});
 
-            return replaceFunctions[pureFunctionName].m_argumentTypes[argumentIndex];
-        }
-		else if (isTestFunction(functionName))
-		{
-			if ((functionName in testFunctions) is null)
-				throw new Exception("Undefined test function '" ~ functionName ~ "' found, aborting");
+	temp["contains"] = ProFunction("contains", VariableType.BOOLEAN, false, 2, 0,
+			[VariableType.STRING], (ref ProExecutionContext context, in string[] arguments) {
+		string variableName = arguments[0];
+		string value = arguments[1];
 
-            return testFunctions[functionName].m_argumentTypes[argumentIndex];
-        }
+		string[] variableRawValue = context.getVariableRawValue(variableName);
+		assert(variableRawValue.length >= 1);
+
+		trace("Variable name: ", variableName);
+		trace("Variable value: ", variableRawValue);
+		trace("Value to search for: ", value);
+		return (variableRawValue.countUntil(value) > 0) ? ["true"] : ["false"];
+	});
+
+	temp["exists"] = ProFunction("exists", VariableType.BOOLEAN, false, 1, 0,
+			[VariableType.STRING], (ref ProExecutionContext context, in string[] arguments) {
+		string fileName = arguments[0];
+
+		trace("File name: ", fileName);
+		trace("Whether file exists: ", std.file.exists(fileName));
+		return std.file.exists(fileName) ? ["true"] : ["false"];
+	});
+
+	temp["debug"] = ProFunction("debug", VariableType.BOOLEAN, true, 2, -1,
+			[VariableType.STRING_LIST], (ref ProExecutionContext /*context*/ , in string[] arguments) {
+		assert(arguments.length >= 2);
+
+		// FIXME: implement level usage
+		immutable int level = to!int(arguments[0]);
+		writefln("DEBUG LEVEL: %d", level);
+
+		string message = arguments[1 .. $].join(" ");
+		writefln("Project DEBUG: " ~ message);
+
+		return ["true"];
+	});
+
+	temp["message"] = ProFunction("message", VariableType.BOOLEAN, true, 1, -1,
+			[VariableType.STRING_LIST], (ref ProExecutionContext /*context*/ , in string[] arguments) {
+		assert(arguments.length >= 1);
+
+		string message = arguments.join(" ");
+		writefln("Project MESSAGE: " ~ message);
+
+		return ["true"];
+	});
+
+	temp["warning"] = ProFunction("warning", VariableType.BOOLEAN, true, 1, -1,
+			[VariableType.STRING_LIST], (ref ProExecutionContext /*context*/ , in string[] arguments) {
+		assert(arguments.length >= 1);
+
+		string message = arguments.join(" ");
+		writefln("Project WARNING: " ~ message);
+
+		return ["true"];
+	});
+
+	temp["error"] = ProFunction("error", VariableType.BOOLEAN, true, 1, -1,
+			[VariableType.STRING_LIST], (ref ProExecutionContext /*context*/ , in string[] arguments) {
+		assert(arguments.length >= 1);
+
+		string message = arguments.join(" ");
+		writefln("Project ERROR: " ~ message);
+
+		return ["true"];
+	});
+
+	// export(variablename)
+	// Exports the current value of variablename from the local context of a function to the global context.
+	temp["export"] = ProFunction("export", VariableType.BOOLEAN, false, 1, 0,
+			[VariableType.STRING], (ref ProExecutionContext context, in string[] arguments) {
+		assert(arguments.length == 1);
+
+		string variableName = arguments[0];
+		if (!context.isVariableDefined(variableName))
+			throw new Exception("Variable '" ~ variableName ~ "' was defined yet");
+
+		// FIXME: implement
+
+		// NOTE: just a workaround to let compiler auto-deduce lambda function return type
+		return ["true"];
+	});
+
+	temp["unset"] = ProFunction("unset", VariableType.BOOLEAN, false, 1, 0,
+			[VariableType.STRING], (ref ProExecutionContext context, in string[] arguments) {
+		assert(arguments.length == 1);
+
+		string variableName = arguments[0];
+		if (context.isVariableDefined(variableName))
+			context.unsetVariable(variableName);
 		else
-		{
-            throw new Exception("Replace/test function not found: " ~ functionName);
-        }
-    }
+			error("Variable '", variableName, "' was already unset, nothing to do");
 
-	// NOTE: 'system' function has both replace and test versions
-	static bool isTestFunction(in string str)
-	{
-		auto functionNames = [
-			"cache", "CONFIG", "contains", "count", "debug",
-			"defined", "equals", "error", "eval", "exists",
-			"export", "for", "greaterThan", "if", "include",
-			"infile", "isActiveConfig", "isEmpty", "isEqual",
-			"lessThan", "load", "log", "message", "mkpath",
-			"requires", "system", "touch", "unset", "warning",
-			"write_file",
-			"packagesExist", "prepareRecursiveTarget", "qtCompileTest", "qtHaveModule"
-		];
+		// NOTE: just a workaround to let compiler auto-deduce lambda function return type
+		return ["true"];
+	});
 
-		return functionNames.countUntil(str) != -1;
-	}
-	
-	static bool hasTestFunctionDescription(in string name)
-	in
-	{
-		assert(!name.empty, "function name cannot be empty");
-	}
-	do
-	{
-		return (name in testFunctions) !is null;
-	}
-	
-	static ProFunction getTestFunctionDescription(in string name)
-	in
-	{
-		assert(!name.empty, "function name cannot be empty");
-	}
-	do
-	{
-		return testFunctions[name];
-	}
-
-	static bool isReplaceFunction(in string str)
-	{
-		auto functionNames = [
-			"absolute_path", "basename", "cat", "clean_path", "dirname",
-			"enumerate_vars", "escape_expand", "find", "files", "first",
-			"format_number", "fromfile", "getenv", "join", "last", "list",
-			"lower", "member", "num_add", "prompt", "quote", "re_escape",
-			"relative_path", "replace", "sprintf", "resolve_depends",
-			"reverse", "section", "shadowed", "shell_path", "shell_quote",
-			"size", "sort_depends", "sorted", "split", "str_member", "str_size",
-			"system", "system_path", "system_quote", "take_first", "take_last",
-			"unique", "upper", "val_escape"
-		];
-
-		if (!str.startsWith(STR_FUNCTION_EXPAND_MARKER))
-			return false;
-
-		// FIXME: check
-		// return functionNames.canFind(str.substring(STR_FUNCTION_EXPAND_MARKER.length));
-		return functionNames.countUntil(str[STR_FUNCTION_EXPAND_MARKER.length .. $]) != -1;
-	}
-	
-	static bool hasReplaceFunctionDescription(in string name)
-	in
-	{
-		assert(!name.empty, "function name cannot be empty");
-	}
-	do
-	{
-		return (name in replaceFunctions) !is null;
-	}
-	
-	static ProFunction getReplaceFunctionDescription(in string name)
-	in
-	{
-		assert(!name.empty, "function name cannot be empty");
-	}
-	do
-	{
-		return replaceFunctions[name];
-	}
+	temp.rehash; // for faster lookups
+	builtinTestFunctions = assumeUnique(temp);
 }
