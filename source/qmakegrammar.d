@@ -93,6 +93,8 @@ private enum QMakeProjectFunctionCall =
                         / CacheTestFunctionCall
                         / ContainsTestFunctionCall
                         / ReturnFunctionCall
+                        / BreakFunctionCall
+                        / NextFunctionCall
                         / RequiresFunctionCall
                         / FunctionCall
 
@@ -104,14 +106,19 @@ private enum QMakeProjectFunctionCall =
     # NOTE: "$${call}($$opt, $$val, $$nextok)" is also a valid function call statement;
     #       also is \$\$"$$call"()
     FunctionCall <- FunctionId OPEN_PAR_WS FunctionArgumentList? CLOSE_PAR_WS
-    FunctionId   <- (!("defineReplace" / "defineTest" / "eval" / "cache" / "contains" / "return" / "requires")
-                    ("{" :space* QualifiedIdentifier :space* "}" / QualifiedIdentifier / EnquotedString))
+    CustomFunctionId <- / "defineReplace" / "defineTest"
+                        / "eval" / "cache" / "contains" / "requires"
+                        / "return" / "break" / "next" 
+    FunctionId   <- !CustomFunctionId
+                    ("{" :space* QualifiedIdentifier :space* "}" / QualifiedIdentifier / EnquotedString)
 `;
 
 private enum QMakeProjectFunctionArguments =
 `
-    FunctionArgumentList       <- List(COMMA_WS, COMMA) / List(:space+, :space) / FunctionArgument(space / COMMA)
-    List(delimRule, delimChar) <- FunctionArgument(space / COMMA) (delimRule (FunctionArgument(delimChar))?)+
+    FunctionArgumentStopRule   <- space / COMMA
+
+    FunctionArgumentList       <- List(COMMA_WS, COMMA) / List(:space+, :space) / FunctionArgument(FunctionArgumentStopRule)
+    List(delimRule, delimChar) <- FunctionArgument(FunctionArgumentStopRule) (delimRule (FunctionArgument(delimChar))?)+
 
     FunctionArgument(delim)           <- FunctionArgumentImpl(delim) (FunctionArgumentImpl(delim))*
     FunctionArgumentImpl(delim)       <- / RvalueAtom
@@ -128,7 +135,7 @@ private enum QMakeProjectFunctionArguments =
                                                / Leftover(Q)
 
     FunctionArgumentString(delim)         <- ~(FunctionArgumentStringChar(delim)+)
-    FunctionArgumentStringStopChar(delim) <- delim / LineTerminator / ExpandStatement / quote / doublequote / BACKSLASH / EndOfFunction
+    FunctionArgumentStringStopChar(delim) <- :(delim / LineTerminator / ExpandStatement / quote / doublequote / BACKSLASH / EndOfFunction)
     FunctionArgumentStringChar(delim)     <- !FunctionArgumentStringStopChar(delim) SourceCharacter
                                            / BACKSLASH EscapeSequence
 
@@ -197,7 +204,7 @@ private enum QMakeProjectForStatement =
     ForStatement <- ForEachInListStatement / ForEverStatement
     ForEachInListStatement <- "for" OPEN_PAR_WS ForIteratorVariableName COMMA_WS ForIterableList CLOSE_PAR_WS Block
     ForIteratorVariableName <- QualifiedIdentifier
-    ForIterableList <- List(:space+, :space) / FunctionArgument(space / COMMA)
+    ForIterableList <- List(:space+, :space) / FunctionArgument(FunctionArgumentStopRule)
     ForEverStatement <- "for" OPEN_PAR_WS "ever" CLOSE_PAR_WS Block
 `;
 
@@ -239,14 +246,21 @@ private enum QMakeProjectBuiltinFunctions =
     # Special case:
     # cache(, super)
     CacheTestFunctionCall       <- "cache" OPEN_PAR_WS CacheTestFunctionCallParams? CLOSE_PAR_WS
-    CacheTestFunctionCallParams <- QualifiedIdentifier? (COMMA_WS CacheTestFunctionParam2)? (COMMA_WS FunctionArgument(space / COMMA))?
+    CacheTestFunctionCallParams <- QualifiedIdentifier? (COMMA_WS CacheTestFunctionParam2)? (COMMA_WS FunctionArgument(FunctionArgumentStopRule))?
     CacheTestFunctionParam2     <- ("set" / "add" / "sub")? :space* ("transient")? :space* ("super" / "stash")?
     
     # contains(variablename, value)
     ContainsTestFunctionCall <- "contains" OPEN_PAR_WS QualifiedIdentifier (COMMA_WS EnquotedString) CLOSE_PAR_WS
 
+    # Program flow control statements: return, break, next (aka continue)
     # return(expression)
-    ReturnFunctionCall <- "return" OPEN_PAR_WS (List(:space+, :space) / FunctionArgument(space / COMMA) / Statement)? CLOSE_PAR_WS
+    ReturnFunctionCall <- "return" OPEN_PAR_WS (List(:space+, :space) / FunctionArgument(FunctionArgumentStopRule) / Statement)? CLOSE_PAR_WS
+
+    # break()
+    BreakFunctionCall <- "break" OPEN_PAR_WS CLOSE_PAR_WS
+
+    # next()
+    NextFunctionCall <- "next" OPEN_PAR_WS CLOSE_PAR_WS
 
     # requires(condition)
     RequiresFunctionCall <- "requires" OPEN_PAR_WS BooleanExpression CLOSE_PAR_WS
