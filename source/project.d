@@ -253,12 +253,120 @@ public class Project
     }
     do
     {
-        /*
-        FunctionDeclaration        <- ReplaceFunctionDeclaration / TestFunctionDeclaration
-        ReplaceFunctionDeclaration <- "defineReplace" OPEN_PAR_WS QualifiedIdentifier CLOSE_PAR_WS Block
-        TestFunctionDeclaration    <- "defineTest"    OPEN_PAR_WS QualifiedIdentifier CLOSE_PAR_WS Block
-        */
-        // FIXME: implement
+        auto concreteDeclNode = declNode.children[0];
+        assert(concreteDeclNode.children.length == 4);
+        switch (concreteDeclNode.name)
+        {
+            case "QMakeProject.ReplaceFunctionDeclaration":
+            {
+                // alias Action = const(string[]) function(ref ProExecutionContext context, in string[] arguments);
+                auto nameNode = concreteDeclNode.children[1];
+                assert(nameNode.children.length == 0);
+                assert(nameNode.matches.length == 1);
+
+                string name = nameNode.matches[0];
+                trace("Declare user-defined replace function ", "`", name, "`");
+
+                auto functionBlock = concreteDeclNode.children[3];
+                const(string[]) replaceAction(ref ProExecutionContext /*context*/, in string[] arguments)
+                {
+                    trace("Invoking user-defined replace function ", "`", name, "`");
+
+                    const(string[]) result = [""];
+
+                    m_contextStack.push(new ProExecutionContext());
+
+                    // Declare function arguments like $${1} etc.
+                    for (int i = 0; i < arguments.length; i++)
+                    {
+                        immutable string argName = to!string(i + 1);
+                        trace("Declare function argument variable `$${", argName, "}` = `", arguments[i], "`");
+                        m_contextStack.top().assignVariable(argName, [arguments[i]], VariableType.STRING);
+                    }
+                    // NOTE: return() call is optional in vanilla qmake;
+                    //       so we need to add an implicit `return(true)` for test functions
+                    //       and `return("")` for replace ones
+                    //
+                    // FIXME: implement this stuff
+                    //
+
+                    assert(functionBlock.name == "QMakeProject.Block");
+                    assert(functionBlock.children.length == 1);
+
+                    auto blockNode = functionBlock.children[0];
+                    if (blockNode.name == "QMakeProject.SingleLineBlock")
+                        evalStatementNode(blockNode.children[0].children[0]);
+                    else if (blockNode.name == "QMakeProject.MultiLineBlock")
+                        evalMultilineBlockNode(blockNode);
+                    else
+                        throw new Exception("Unknown code block type");
+                    
+                    //
+                    // FIXME: merge all global variables from internal function context
+                    //
+                    m_contextStack.pop();
+
+                    trace("User-defined replace function result: ", result);
+                    return result;
+                }
+                m_contextStack.top().addReplaceFunctionDescription(name.dup, &replaceAction);
+                break;
+            }
+            case "QMakeProject.TestFunctionDeclaration":
+            {
+                auto nameNode = concreteDeclNode.children[1];
+                assert(nameNode.children.length == 0);
+                assert(nameNode.matches.length == 1);
+                string name = nameNode.matches[0];
+                trace("Declare user-defined test function ", "`", name, "`");
+
+                auto functionBlock = concreteDeclNode.children[3];
+                const(string[]) testAction(ref ProExecutionContext /*context*/, in string[] arguments)
+                {
+                    trace("Invoking user-defined test function ", "`", name, "`");
+
+                    const(string[]) result = ["true"];
+
+                    m_contextStack.push(new ProExecutionContext());
+
+                    // Declare function arguments like $${1} etc.
+                    for (int i = 0; i < arguments.length; i++)
+                    {
+                        immutable string argName = to!string(i + 1);
+                        trace("Declare function argument variable `$${", argName, "}` = `", arguments[i], "`");
+                        m_contextStack.top().assignVariable(argName, [arguments[i]], VariableType.STRING);
+                    }
+                    // NOTE: return() call is optional in vanilla qmake;
+                    //       so we need to add an implicit `return(true)` for test functions
+                    //       and `return("")` for replace ones
+                    //
+                    // FIXME: implement this stuff
+                    //
+
+                    assert(functionBlock.name == "QMakeProject.Block");
+                    assert(functionBlock.children.length == 1);
+
+                    auto blockNode = functionBlock.children[0];
+                    if (blockNode.name == "QMakeProject.SingleLineBlock")
+                        evalStatementNode(blockNode.children[0].children[0]);
+                    else if (blockNode.name == "QMakeProject.MultiLineBlock")
+                        evalMultilineBlockNode(blockNode);
+                    else
+                        throw new Exception("Unknown code block type");
+                    
+                    //
+                    // FIXME: merge all global variables from internal function context
+                    //
+                    m_contextStack.pop();
+
+                    trace("User-defined test function result: ", result);
+                    return result;
+                }
+                m_contextStack.top().addTestFunctionDescription(name.dup, &testAction);
+                break;
+            }
+            default: throw new NotImplementedException("");
+        }
     }
 
     private void evalForStatementNode(ref ParseTree forNode)
@@ -598,117 +706,390 @@ public class Project
             || functionNode.name == "QMakeProject.FunctionCall"
         );
 
-        // FIXME: implement
-        return RvalueEvalResult(VariableType.UNKNOWN, []);
+        RvalueEvalResult result = evalConcreteFunctionNode(functionNode, ProFunctionType.Replace);
+        return result;
     }
 
     private bool evalTestFunctionNode(ref ParseTree testFunctionNode) /+const+/
+    in
     {
         assert(testFunctionNode.name == "QMakeProject.TestFunctionCall");
         assert(testFunctionNode.children.length == 1);
-
+    }
+    do
+    {
         // FunctionCall <- FunctionId OPEN_PAR_WS FunctionArgumentList? CLOSE_PAR_WS :space* :eol*
         auto functionNode = testFunctionNode.children[0];
-        assert(functionNode.name == "QMakeProject.FunctionCall"
-            || functionNode.name == "QMakeProject.ContainsTestFunctionCall");
-        // assert(functionNode.children.length == 4);
-        string functionName = functionNode.children[0].matches[0];
-        if (functionNode.name == "QMakeProject.ContainsTestFunctionCall")
-        {
-            functionName = "contains";
-        }
-        trace("Eval function '", functionName, "'...");
+        assert(functionNode.name == "QMakeProject.EvalTestFunctionCall"
+            || functionNode.name == "QMakeProject.CacheTestFunctionCall"
+            || functionNode.name == "QMakeProject.ContainsTestFunctionCall"
+            || functionNode.name == "QMakeProject.ReturnFunctionCall"
+            || functionNode.name == "QMakeProject.RequiresFunctionCall"
+            || functionNode.name == "QMakeProject.FunctionCall"
+        );
 
-        // FIXME: looks hacky :( is there another way to break circular dependency project_function <--> eval?
-        if (functionName == "include" || functionName == "load")
+        bool result = true;
+        RvalueEvalResult resultAsRaw = evalConcreteFunctionNode(functionNode, ProFunctionType.Test);
+        // NOTE: test function must return boolean as string `true`/`false`
+        assert(resultAsRaw.value.length == 1);
+        switch (resultAsRaw.type)
         {
-            assert(functionNode.children.length == 4);
-            assert(functionNode.children[1].matches[0] == STR_OPENING_PARENTHESIS);
-            assert(functionNode.children[3].matches[0] == STR_CLOSING_PARENTHESIS);
-
-            string projectFileName = functionNode.children[2].matches[0];
-            if (functionName == "include")
+            case VariableType.BOOLEAN:
             {
-                auto argumentsNode = functionNode.children[2];
-                assert(argumentsNode.name == "QMakeProject.FunctionArgumentList");
-                assert(argumentsNode.children.length == 1);
-                auto listNode = argumentsNode.children[0];
-                assert(listNode.children.length >= 1);
-                projectFileName = listNode.children[0].matches.join("");
-                // FIXME: implement
-                /*
-                auto evaluator = new ExpressionEvaluator(context, m_persistentStorage);
-                auto rpnExpression = convertToRPN(projectFileName);
-                auto rpnResult = evaluator.evalRPN(rpnExpression);
-                projectFileName = rpnResult[0];
-                */
-
-                // FIXME: implement other argument usage
-                if (listNode.children.length >= 2)
-                    warning("'include' test function optional arguments not implemented yet");
-
-			    string projectDirectory = m_contextStack.top().getVariableRawValue("PWD")[0];
-			    if (!isAbsolute(projectFileName))
-				    projectFileName = buildNormalizedPath(absolutePath(projectFileName, projectDirectory));
-			    trace("absolute project path: '", projectFileName, "'");
-			    if (!exists(projectFileName) || !isFile(projectFileName))
+                switch (resultAsRaw.value[0])
                 {
-				    error("project file '", projectFileName, "' was not found, so return FALSE");
-				    return false;
-			    }
+                    case "true":
+                        result = true;
+                        break;
+                    case "false":
+                        result = false;
+                        break;
+                    default:
+                        throw new EvalLogicException("boolean constant must be true or false, not "
+                            ~ resultAsRaw.value[0]);
+                }
+                break;
             }
-            else
+            default: throw new EvalLogicException("test function must return boolean, not "
+                ~ to!string(resultAsRaw.type));
+        }
+        return result;
+    }
+
+    private RvalueEvalResult evalConcreteFunctionNode(ref ParseTree functionNode, ProFunctionType functionType)
+    in
+    {
+        assert(functionNode.name == "QMakeProject.EvalTestFunctionCall"
+            || functionNode.name == "QMakeProject.CacheTestFunctionCall"
+            || functionNode.name == "QMakeProject.ContainsTestFunctionCall"
+            || functionNode.name == "QMakeProject.ReturnFunctionCall"
+            || functionNode.name == "QMakeProject.RequiresFunctionCall"
+            || functionNode.name == "QMakeProject.FunctionCall"
+        );
+        assert((functionType >= ProFunctionType.Replace)
+            && (functionType <= ProFunctionType.Test));
+    }
+    do
+    {
+        RvalueEvalResult result;
+        switch (functionNode.name)
+        {
+            case "QMakeProject.EvalTestFunctionCall":
             {
-                // FIXME: use PlatformInfo class, need to extract it from app.d first
-                string featureDirectory = "/opt/Qt/5.11.3/gcc_64/mkspecs/features";
-                projectFileName = buildNormalizedPath(featureDirectory, projectFileName);
-                projectFileName = std.path.setExtension(projectFileName, "prf");
-                if (!std.file.exists(projectFileName) || !std.file.isFile(projectFileName))
+                // EvalTestFunctionCall <- "eval" OPEN_PAR_WS EvalArg CLOSE_PAR_WS
+                // EvalArg <- (QualifiedIdentifier :space* "=" :space* Statement) / Statement
+                throw new NotImplementedException("EVAL");
+                //break;
+            }
+            case "QMakeProject.CacheTestFunctionCall":
+            {
+                // CacheTestFunctionCall       <- "cache" OPEN_PAR_WS CacheTestFunctionCallParams? CLOSE_PAR_WS
+                // CacheTestFunctionCallParams <- QualifiedIdentifier? (COMMA_WS CacheTestFunctionParam2)? (COMMA_WS FunctionArgument(space / COMMA))?
+                // CacheTestFunctionParam2     <- ("set" / "add" / "sub")? :space* ("transient")? :space* ("super" / "stash")?
+                
+                // FIXME: implement
+                result.type = VariableType.BOOLEAN;
+                result.value = ["true"];
+                break;
+            }
+            case "QMakeProject.ContainsTestFunctionCall":
+            {
+                // ContainsTestFunctionCall <- "contains" OPEN_PAR_WS QualifiedIdentifier (COMMA_WS EnquotedString) CLOSE_PAR_WS
+                string functionName = "contains";
+
+                assert(functionNode.children[0].name == "QMakeProject.OPEN_PAR_WS");
+                assert(functionNode.children[1].name == "QMakeProject.QualifiedIdentifier");
+                assert(functionNode.children[2].name == "QMakeProject.COMMA_WS");
+                assert(functionNode.children[3].name == "QMakeProject.EnquotedString");
+                assert(functionNode.children[4].name == "QMakeProject.CLOSE_PAR_WS");
+
+                assert(functionNode.children[1].matches.length == 1);
+                string variableName = functionNode.children[1].matches[0];
+
+                assert(functionNode.children[3].matches.length == 3);
+                assert(functionNode.children[3].matches[0] == "\"");
+                assert(functionNode.children[3].matches[2] == "\"");
+                string expression = functionNode.children[3].matches[1];
+                trace("Calling contains(", variableName, ", ", expression, ")");
+
+                // Get function description
+                ProFunction functionDescription;
+                if (m_contextStack.top().hasTestFunctionDescription(functionName))
+                    functionDescription = m_contextStack.top().getTestFunctionDescription(functionName);
+                else
+                    throw new Exception("Unsupported function '" ~ functionName ~ "'");
+                
+                // Invoke function
+                const(string[]) resultAsList = functionDescription.m_action(m_contextStack.top(), [variableName, expression]);
+                if (functionDescription.m_returnType == VariableType.STRING_LIST)
                 {
-                    error("feature file '", projectFileName, "' was not found or not a file, so return FALSE");
-                    assert(false);
-                    //return false;
+                    trace("Function ", "`", functionName, "`", " returns list: ", resultAsList);
+                }
+                else
+                {
+                    trace("Function ", "`", functionName, "`", " returns string: ", "`", resultAsList[0], "`");
+                }
+                result.type = functionDescription.m_returnType;
+                result.value = resultAsList.dup;
+                break;
+            }
+            case "QMakeProject.ReturnFunctionCall":
+            {
+                // ReturnFunctionCall <- "return" OPEN_PAR_WS (List(:space+, :space) / FunctionArgument(space / COMMA) / Statement)? CLOSE_PAR_WS
+                // FIXME: implement
+                //break;
+                throw new NotImplementedException("RETURN");
+            }
+            case "QMakeProject.RequiresFunctionCall":
+            {
+                // RequiresFunctionCall <- "requires" OPEN_PAR_WS BooleanExpression CLOSE_PAR_WS
+                // FIXME: implement
+                break;
+            }
+            case "QMakeProject.FunctionCall":
+            {
+                result = evalFunctionNode(functionNode, functionType);
+                break;
+            }
+            default: throw new NotImplementedException("Unsupported function call statement");
+        }
+        return result;
+    }
+
+    private RvalueEvalResult evalFunctionNode(ref ParseTree functionCallNode, ProFunctionType functionType)
+    in
+    {
+        assert(functionCallNode.name == "QMakeProject.FunctionCall");
+        assert(functionCallNode.children.length == 3
+            || functionCallNode.children.length == 4);
+    }
+    do
+    {
+        RvalueEvalResult result;
+
+        // Get function name            
+        auto functionNameNode = functionCallNode.children[0];
+        assert(functionNameNode.name == "QMakeProject.FunctionId");
+        assert(functionNameNode.children.length == 1);
+        string functionName = functionNameNode.matches[0];
+        assert(!functionName.empty);
+        //assert(isValidFunctionName(functionName));
+        trace("Invoking function ", "`", functionName, "`");
+
+        // Get function description
+        ProFunction functionDescription;
+        switch (functionType)
+        {
+            case ProFunctionType.Replace:
+                if (m_contextStack.top().hasReplaceFunctionDescription(functionName))
+                    functionDescription = m_contextStack.top().getReplaceFunctionDescription(functionName);
+                else
+                    throw new Exception("Unsupported replace function '" ~ functionName ~ "'");
+                break;
+            case ProFunctionType.Test:
+                if (m_contextStack.top().hasTestFunctionDescription(functionName))
+                    functionDescription = m_contextStack.top().getTestFunctionDescription(functionName);
+                else
+                    throw new Exception("Unsupported test function '" ~ functionName ~ "'");
+                break;
+            default:
+                throw new Exception("Unsupported function type'" ~ to!string(functionType) ~ "'");
+        }
+        
+        auto openParNode = functionCallNode.children[1];
+        assert(openParNode.name == "QMakeProject.OPEN_PAR_WS");
+        assert(openParNode.children.length == 0);
+
+        // Get function actual argument count
+        // FunctionArgumentList <- List(COMMA_WS, COMMA) / List(:space+, :space) / FunctionArgument(space / COMMA)
+        int actualOperandCount = 0;
+        auto functionArgumentListNode = functionCallNode.children[2];
+        if (functionArgumentListNode.name.startsWith("QMakeProject.FunctionArgumentList"))
+        {
+            assert(functionArgumentListNode.name == "QMakeProject.FunctionArgumentList");
+            assert(functionArgumentListNode.children.length == 1);
+            if (functionArgumentListNode.children[0].name.startsWith("QMakeProject.List!")) // comma or whitespace-separated list
+            {
+                auto listNode = functionArgumentListNode.children[0];
+                for (int i = 0; i < listNode.children.length; i++)
+                {
+                    if (listNode.children[i].name.startsWith("QMakeProject.FunctionArgument"))
+                        actualOperandCount ++;
                 }
             }
-
-            // FIXME: should sub-projects also have new context?
-			auto pro = new Project(m_contextStack.top(), m_persistentStorage);
-    		if (!pro.eval(projectFileName))
-    		{
-                error("qmake project file '", projectFileName, "' evaluation failed");
-        		return false;
-    		}
-            info("qmake project file '" ~ projectFileName ~ "' was successfully parsed");
-        	return true;
+            else if (functionArgumentListNode.children[0].name.startsWith("QMakeProject.FunctionArgument!"))    // single argument
+            {
+                actualOperandCount = 1;
+            }
+            else
+                throw new EvalLogicException("Unknown function argument type");
         }
-        else if (functionName == "contains"
-              || functionName == "debug"   || functionName == "message"
-              || functionName == "warning" || functionName == "error")
+        else if (functionArgumentListNode.name == "QMakeProject.CLOSE_PAR_WS")
         {
-            // FIXME: implement
-            /+
-            auto evaluator = new ExpressionEvaluator(context, m_persistentStorage);
-            auto rpnExpression = convertToRPN(functionNode.matches.join("") /*.replace(",", ", ")*/ );
-            auto rpnResult = evaluator.evalRPN(rpnExpression);
-            +/
-            string[] rpnResult;
-            trace("Function '", functionName, "' result = ", rpnResult);
-            if (functionName == "error")
-                throw new Exception("User-defined error raised");
-            return (rpnResult[0] == "true");
+        }
+        else
+            throw new EvalLogicException("function argument list or closing parenthehis expected");
+
+        trace("Actual function ", "`", functionName, "`", " argument count: ", actualOperandCount);
+
+        validateFunctionCall(actualOperandCount, functionDescription);
+        
+        // Get function argument values
+        string[] actualArguments;
+        if (actualOperandCount > 0)
+        {
+            if (functionArgumentListNode.children[0].name.startsWith("QMakeProject.List!")) // comma or whitespace-separated list
+            {
+                auto listNode = functionArgumentListNode.children[0];
+                actualArguments = evalFunctionArgumentList(listNode);
+            }
+            else if (functionArgumentListNode.children[0].name.startsWith("QMakeProject.FunctionArgument!"))    // single argument
+            {
+                actualArguments = evalFunctionArgument(functionArgumentListNode.children[0]);
+            }
+            else throw new EvalLogicException("Unknown function argument type");
+        }
+        trace("Actual function ", "`", functionName, "`", " arguments: ", actualArguments);
+
+        // Invoke function
+        const(string[]) resultAsList = functionDescription.m_action(m_contextStack.top(), actualArguments);
+        if (functionDescription.m_returnType == VariableType.STRING_LIST)
+        {
+            trace("Function ", "`", functionName, "`", " returns list: ", resultAsList);
         }
         else
         {
-            // FIXME: implement
-            /*
-            auto evaluator = new ExpressionEvaluator(context, m_persistentStorage);
-            auto rpnExpression = convertToRPN(functionNode.matches);
-            auto rpnResult = evaluator.evalRPN(rpnExpression);
-            trace("Function '", functionName, "' result = ", rpnResult);
-            return (rpnResult[0] == "true");
-            */
-            return true;
+            trace("Function ", "`", functionName, "`", " returns string: ", "`", resultAsList[0], "`");
         }
+        result.type = functionDescription.m_returnType;
+        result.value = resultAsList.dup;
+
+        return result;
+    }
+
+    private string[] evalFunctionArgumentList(ref ParseTree listNode)
+    in
+    {
+        assert(listNode.name.startsWith("QMakeProject.List!")); // comma or whitespace-separated list
+    }
+    do
+    {
+        string[] result;
+        for (int i = 0; i < listNode.children.length; i++)
+        {
+            if (listNode.children[i].name.startsWith("QMakeProject.FunctionArgument!"))
+            {
+                string[] temp = evalFunctionArgument(listNode.children[i]);
+                if (!temp.empty)
+                    result ~= temp;
+            }
+        }
+        return result;
+    }
+
+    // NOTE: in compile-time function argument is a single token, but in runtime in can expand to list;
+    //       message($$QMAKE_PLATFORM) ---> message(linux unix posix)
+    //       must not be confused with chain statements:
+    //       message($${var}/dir/file.txt) ---> message(path/dir/file.txt)
+    //       i.e. one token stay one
+    private string[] evalFunctionArgument(ref ParseTree argumentNode)
+    {
+        string[] result;
+
+        assert(argumentNode.name.startsWith("QMakeProject.FunctionArgument!"));
+        assert(argumentNode.children.length >= 1);
+        bool hasLeftovers = false;
+        for (int i = 0; i < argumentNode.children.length; i++)
+        {
+            auto argumentImplNode = argumentNode.children[i];
+            assert(argumentImplNode.name.startsWith("QMakeProject.FunctionArgumentImpl!"));
+            assert(argumentImplNode.children.length == 1);
+
+            auto argumentValueNode = argumentImplNode.children[0];
+            if (argumentValueNode.name.startsWith("QMakeProject.RvalueAtom"))
+            {
+                auto r = evalRvalueAtomNode(argumentValueNode);
+                if (r.type == VariableType.STRING)
+                    trace("type = ", r.type, ", value = ", "`", (r.value.empty ? "<empty>" : r.value[0]), "`");
+                else
+                    trace("type = ", r.type, ", value = ", "`", r.value, "`");
+                result ~= r.value;
+            }
+            else if (argumentValueNode.name.startsWith("QMakeProject.EnquotedFunctionArgument"))
+            {
+                assert(argumentValueNode.children.length == 1);
+                auto enquotedNote = argumentValueNode.children[0];
+                assert(enquotedNote.name.startsWith("QMakeProject.DoubleEnquotedFunctionArgument!")
+                    || enquotedNote.name.startsWith("QMakeProject.SingleEnquotedFunctionArgument!"));
+                if (enquotedNote.children.empty)
+                {
+                    result ~= "";
+                    continue;
+                }
+
+                assert(enquotedNote.children.length == 1);
+
+                auto chainNode = enquotedNote.children[0];
+                assert(chainNode.name.startsWith("QMakeProject.EnquotedFunctionArgumentChain!"));
+                assert(chainNode.children.length >= 1);
+
+                string tempResult;
+                for (int j = 0; j < chainNode.children.length; j++)
+                {
+                    auto implNode = chainNode.children[j];
+                    assert(implNode.name.startsWith("QMakeProject.FunctionArgumentImpl_2"));
+                    assert(implNode.children.length == 1);
+
+                    auto stringNode = implNode.children[0];
+                    if (stringNode.name.startsWith("QMakeProject.RvalueAtom"))
+                    {
+                        RvalueEvalResult r = evalRvalueAtomNode(stringNode);
+                        trace("Rvalue atom: ", "`", r.value, "`");
+
+                        // FIXME: use type information somehow?
+                        tempResult ~= r.value.join("");
+                    }
+                    else if (stringNode.name.startsWith("QMakeProject.FunctionArgumentString!"))
+                    {
+                        assert(stringNode.matches.length == 1);
+                        trace("Enquoted argument: ", "`", stringNode.matches[0], "`");
+
+                        tempResult ~= stringNode.matches[0];
+                        hasLeftovers = true;
+                    }
+                    else if (stringNode.name.startsWith("QMakeProject.Leftover!"))
+                    {
+                        assert(stringNode.matches.length == 1);
+                        trace("Leftover: ", "`", stringNode.matches[0], "`");
+
+                        tempResult ~= stringNode.matches[0];
+                        hasLeftovers = true;
+                    }
+                    else
+                        throw new NotImplementedException("Invalid function argument implementation node " ~ stringNode.name);
+                }
+                result ~= tempResult;
+            }
+            else if (argumentValueNode.name.startsWith("QMakeProject.FunctionArgumentString!"))
+            {
+                assert(argumentValueNode.matches.length == 1);
+                trace("Leftover argument: ", "`", argumentValueNode.matches[0], "`");
+                result ~= argumentValueNode.matches[0];
+                hasLeftovers = true;
+            }
+            else throw new NotImplementedException("Invalid function argument type");
+        }
+
+        if (hasLeftovers)
+        {
+            trace("Function argument contains leftovers, so implicitly convert result from list to single string");
+            string tempResult = result.join("");
+            result = [];
+            assert(result.length == 0);
+            result ~= tempResult;
+            assert(result.length == 1);
+        }
+        return result;
     }
 
     private bool evalBooleanVariableNode(ref ParseTree boolAtomNode)
@@ -754,6 +1135,197 @@ public class Project
         trace("'", variableValue,
                 "' not belongs to QMAKE_PLATFORM/CONFIG/QMAKESPEC --> condition is FALSE");
         return false;
+    }
+
+    private RvalueEvalResult evalRvalueAtomNode(ref ParseTree rvalueAtomMetaNode)
+    {
+        assert(rvalueAtomMetaNode.name.startsWith("QMakeProject.RvalueAtom"));
+
+        RvalueEvalResult result;
+
+        // RvalueAtom <- ReplaceFunctionCall / ExpandStatement / TestFunctionCall
+        auto rvalueAtomNode = rvalueAtomMetaNode.children[0];
+        assert(rvalueAtomNode.children.length >= 1);
+
+        if (rvalueAtomNode.name == "QMakeProject.ReplaceFunctionCall")
+        {
+            result = evalReplaceFunctionNode(rvalueAtomNode);
+        }
+        else if (rvalueAtomNode.name == "QMakeProject.ExpandStatement")
+        {
+            assert(rvalueAtomNode.children.length == 1);
+
+            auto expandNode = rvalueAtomNode.children[0];
+            assert(expandNode.children.length == 1);
+            switch (expandNode.name)
+            {
+                case "QMakeProject.FunctionArgumentExpandStatement":
+                {
+                    string variableName = expandNode.children[0].matches[0];
+                    trace("Function argument name: ", variableName);
+
+                    // Unlike project variable, function argument must be defined earlier
+                    if (!m_contextStack.top().isVariableDefined(variableName))
+                        throw new EvalLogicException("Undefined project variable found");
+                    
+                    assert(m_contextStack.top().getVariableType(variableName) == VariableType.STRING);
+
+                    string[] variableValue = m_contextStack.top().getVariableRawValue(variableName);
+                    assert(variableValue.length == 1);
+                    trace("Function argument value: ", "`", variableValue[0], "`");
+
+                    result.type = VariableType.STRING;
+                    result.value = variableValue;
+                    break;
+                }
+                case "QMakeProject.ProjectVariableExpandStatement":
+                {
+                    string variableName = expandNode.children[0].matches[0];
+                    trace("Project variable name: ", variableName);
+                    if (!m_contextStack.top().isVariableDefined(variableName))
+                    {
+                        // FIXME: looks like undefined variable is not an error in qmake;
+                        //        but is it always or just in some cases?
+                        warning("undefined variable ", "`", variableName, "`");
+                        result.type = VariableType.STRING_LIST;
+                        result.value = [""];
+                        //throw new EvalLogicException("Undefined project variable found");
+                    }
+                    else
+                    {
+                        VariableType variableType = m_contextStack.top().getVariableType(variableName);
+                        assert(isStringType(variableType) || isStringListType(variableType));
+                        result.type = variableType;
+                        trace("Variable type: ", variableType);
+
+                        string[] variableValue = m_contextStack.top().getVariableRawValue(variableName);
+                        if (isStringType(variableType))
+                        {
+                            assert(variableValue.empty || variableValue.length == 1);
+                            trace("Variable value: ", variableValue.empty ? "<empty>" : variableValue[0]);
+                        }
+                        else if (isStringListType(variableType))
+                        {
+                            assert(variableValue.empty || variableValue.length >= 1);
+                            trace("Variable value: ", variableValue.empty ? ["<empty>"] : variableValue);
+                        }
+                        result.value = variableValue;
+                    }
+
+                    break;
+                }
+                case "QMakeProject.MakefileVariableExpandStatement":
+                {
+                    // FIXME: implement
+                    //bool b = true; if (b) assert(0);
+                    string variableName = expandNode.children[0].matches[0];
+                    trace("Makefile variable name: ", variableName);
+                    //if (!m_context.isVariableDefined(variableName))
+                    //    throw new EvalLogicException("Undefined project variable found");
+                    result.type = VariableType.STRING;
+                    result.value = [variableName];
+                    break;
+                }
+                case "QMakeProject.EnvironmentVariableExpandStatement":
+                {
+                    // FIXME: implement
+                    string environmentVariableName = expandNode.children[0].matches[0];
+                    trace("Environment variable name: ", environmentVariableName);
+                    auto environmentVariableValue = environment.get(environmentVariableName);
+                    bool isEmpty = false;
+                    if (environmentVariableValue is null)
+                    {
+                        warning("Expand undefined environment variable '", environmentVariableName, "' to empty string");
+
+                        environmentVariableValue = "";
+                        isEmpty = true;
+                    }
+                    trace("Environment variable value: ", "`", environmentVariableValue, "`");
+                    
+                    result.type = VariableType.STRING;
+                    result.value = isEmpty ? [] : [environmentVariableValue];
+                    break;
+                }
+                case "QMakeProject.PropertyVariableExpandStatement":
+                {
+                    string propertyName = expandNode.children[0].matches[0];
+                    trace("Persistent property name: ", propertyName);
+                    if (!m_persistentStorage.hasValue(propertyName))
+                        throw new EvalLogicException("Undefined persistent property found");
+
+                    // FIXME: investigate whether properties can be lists
+                    result.type = VariableType.STRING;
+                    trace("Persistent property type: ", result.type);
+
+                    string propertyValue = m_persistentStorage.value(propertyName);
+                    trace("Persistent property value: ", "`", propertyValue, "`");
+                    result.value = [propertyValue];
+                    break;
+                }
+                default: throw new NotImplementedException("Unknown expand statement type: " ~ expandNode.name);
+            }
+        }
+        else if (rvalueAtomNode.name == "QMakeProject.TestFunctionCall")
+        {
+            // FIXME: implement
+            bool b = true; if (b) assert(0);
+        }
+        else throw new NotImplementedException("");
+
+        return result;
+    }
+
+    private void validateFunctionCall(in int actualOperandCount, ref ProFunction functionDescription)
+    {
+        // Report function expected and actual argument count (if applicable)
+        // FIXME: implement user-defined functions support and add condition
+        // `&& !functionDescription.m_isUserDefined`
+        if (!functionDescription.m_isVariadic)
+        {
+            string temp;
+            if (functionDescription.m_requiredArgumentCount > 0)
+                temp ~= to!string(functionDescription.m_requiredArgumentCount) ~ " " ~ "required";
+            if (functionDescription.m_optionalArgumentCount)
+                temp ~= ", " ~ to!string(functionDescription.m_optionalArgumentCount) ~ " " ~ "optional";
+            trace("Expected replace function count: ", temp);
+        }
+        else
+        {
+            trace("Replace function is variadic one, no required/optional argument count was specified");
+        }
+
+        // Validate arguments count for non-variadic functions
+        if (!functionDescription.m_isVariadic)
+        {
+            if (functionDescription.m_requiredArgumentCount < 0)
+            {
+                throw new Exception(
+                        "Invalid function '" ~ functionDescription.m_name ~ "' argument count description");
+            }
+
+            if (functionDescription.m_optionalArgumentCount < 0)
+            {
+                if (actualOperandCount < functionDescription.m_requiredArgumentCount)
+                {
+                    throw new  /*RangeError*/ Exception(
+                            "Invalid number of arguments for function '" ~ functionDescription.m_name ~ "': " ~ to!string(
+                            functionDescription.m_requiredArgumentCount) ~ " expected, but " ~ to!string(
+                            actualOperandCount) ~ " given");
+                }
+            }
+            else
+            {
+                int minArgCount = functionDescription.m_requiredArgumentCount;
+                int maxArgCount = minArgCount + functionDescription.m_optionalArgumentCount;
+                if ((actualOperandCount < minArgCount) || (actualOperandCount > maxArgCount))
+                {
+                    throw new  /*RangeError*/ Exception(
+                            "Invalid number of arguments for function '" ~ functionDescription.m_name ~ "': from " ~ to!string(
+                            minArgCount) ~ " to " ~ to!string(
+                            maxArgCount) ~ " expected, but " ~ to!string(actualOperandCount) ~ " given");
+                }
+            }
+        }
     }
 }
 

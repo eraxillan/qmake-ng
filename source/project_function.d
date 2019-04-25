@@ -42,6 +42,8 @@ import project_context;
 
 // -------------------------------------------------------------------------------------------------
 
+enum ProFunctionType { Invalid = -1, Replace = 0, Test, Count }
+
 public struct ProFunction
 {
 	this(in string name, in VariableType returnType, in bool isVariadic, in int requiredArgumentCount,
