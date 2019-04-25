@@ -514,50 +514,103 @@ public class Project
         trace("}");
     }
 
-    private void evalVariableAssignmentNode(ref ParseTree statementNode) /+const+/
+    private void evalVariableAssignmentNode(ref ParseTree statementNode)
+    in
     {
-        auto variableName = statementNode.matches[0];
-        auto variableOperator = statementNode.matches[1];
-        auto variableValue = statementNode.matches[2 .. $];
+        assert(statementNode.name == "QMakeProject.Assignment");
+        assert(statementNode.children.length == 1);
+    }
+    do
+    {
+        auto assignmentTypeNode = statementNode.children[0];
+        assert(assignmentTypeNode.name == "QMakeProject.StandardAssignment"
+            || assignmentTypeNode.name == "QMakeProject.ReplaceAssignment"
+        );
+        assert(assignmentTypeNode.children.length >= 1);
+
+        auto variableNameNode = assignmentTypeNode.children[0];
+        assert(variableNameNode.name == "QMakeProject.QualifiedIdentifier");
+        assert(variableNameNode.children.length == 0);
+        assert(variableNameNode.matches.length == 1);
+        string variableName = variableNameNode.matches[0];
+
+        auto variableOperatorNode = assignmentTypeNode.children[1];
+        assert(variableOperatorNode.name == "QMakeProject.StandardAssignmentOperator"
+            || variableOperatorNode.name == "QMakeProject.ReplaceAssignmentOperator");
+        string variableOperator = variableOperatorNode.matches[0];
+
+        // 1) Detect rvalue compile-time and run-time type (string or list)
+        // NOTE: default type is list
+        VariableType variableRuntimeType = VariableType.STRING_LIST;
+        string[] variableValue;
+        if (assignmentTypeNode.children.length >= 3)
+        {
+            auto rvalueExpr = assignmentTypeNode.children[2];
+            assert(rvalueExpr.name == "QMakeProject.RvalueExpression");
+            auto rvalueNode = rvalueExpr.children[0];
+            trace(rvalueNode.name);
+            assert(rvalueNode.name.startsWith("QMakeProject.RvalueList")
+                || rvalueNode.name.startsWith("QMakeProject.RvalueChain"));
+
+            if (rvalueNode.name.startsWith("QMakeProject.RvalueList"))
+            {
+                trace("Parsing rvalue list...");
+                RvalueEvalResult[] rvalueCollection;
+                for (int i = 0; i < rvalueNode.children.length; i++)    // RvalueList
+                {
+                    auto rvalueChainNode = rvalueNode.children[i];
+                    RvalueEvalResult rvalueResult = evalRvalueChain(rvalueChainNode);
+                    rvalueCollection ~= rvalueResult;
+                }
+                // NOTE: no need in call `deduceRvalueType(rvalueCollection)`:
+                //       we already know that we got list
+                variableRuntimeType = VariableType.STRING_LIST;
+                variableValue = prettifyRvalue(rvalueCollection, variableRuntimeType);
+            }
+            else if (rvalueNode.name.startsWith("QMakeProject.RvalueChain"))
+            {
+                trace("Parsing rvalue chain...");
+                RvalueEvalResult rvalueResult = evalRvalueChain(rvalueNode);
+                variableRuntimeType = rvalueResult.type;
+                variableValue = rvalueResult.value;
+            }
+            else
+                throw new NotImplementedException("Unknown rvalue node type " ~ rvalueNode.name);
+        }
+        else
+        {
+            warning("empty rvalue detected, please use clear(var) test function call instead");
+        }
+
         trace("Variable name: '" ~ variableName ~ "'");
         trace("Variable assignment operator: '" ~ variableOperator ~ "'");
-
         if (m_contextStack.top().isVariableDefined(variableName))
             trace("Variable old raw value: ", m_contextStack.top().getVariableRawValue(variableName));
         trace("Variable new raw value: ", variableValue);
+        trace("Variable data type: ", variableRuntimeType);
 
-        assignVariable(variableName, variableOperator, variableValue);
+        assignVariable(variableName, variableOperator, variableValue, variableRuntimeType);
     }
 
-    private void assignVariable(in string name, in string operator, in string[] value) /+const+/
+    private void assignVariable(in string name, in string operator, in string[] value, in VariableType type)
     {
-        // FIXME: implement
-        string[] result;
-        /*if (!value.empty)
-        {
-            auto evaluator = new ExpressionEvaluator(context, m_persistentStorage);
-            auto rpnExpression = convertToRPN(value.join(" "));
-            result = evaluator.evalRPN(rpnExpression);
-            trace("Variable '", name, "' new value: ", result);
-        }*/
-
         switch (operator)
         {
         case STR_EQUALS:
-            m_contextStack.top().assignVariable(name, result, VariableType.STRING_LIST /*FIXME:*/ );
+            m_contextStack.top().assignVariable(name, value, type);
             break;
         case STR_PLUS_EQUALS:
-            m_contextStack.top().appendAssignVariable(name, result);
+            m_contextStack.top().appendAssignVariable(name, value);
             break;
         case STR_ASTERISK_EQUALS:
-            m_contextStack.top().appendUniqueAssignVariable(name, result);
+            m_contextStack.top().appendUniqueAssignVariable(name, value);
             break;
         case STR_MINUS_EQUALS:
-            m_contextStack.top().removeAssignVariable(name, result);
+            m_contextStack.top().removeAssignVariable(name, value);
             break;
         case STR_TILDE_EQUALS:
             // FIXME: implement
-            throw new Exception("Not implemented yet");
+            throw new NotImplementedException("Not implemented yet");
         default:
             throw new Exception("Invalid assignment operator '" ~ operator ~ "'");
         }
@@ -1187,6 +1240,59 @@ public class Project
         trace("'", variableValue,
                 "' not belongs to QMAKE_PLATFORM/CONFIG/QMAKESPEC --> condition is FALSE");
         return false;
+    }
+
+    private RvalueEvalResult evalRvalueChain(ref ParseTree rvalueChainNode)
+    in
+    {
+        assert(rvalueChainNode.name.startsWith("QMakeProject.RvalueChain"));
+    }
+    do
+    {
+        trace("Parsing rvalue chain...");
+
+        RvalueEvalResult[] resultCollection;
+        for (int i = 0; i < rvalueChainNode.children.length; i++)
+        {
+            trace("Chain node: ", rvalueChainNode.children[i].name);
+            auto rvalueChainNode_2 = rvalueChainNode.children[i];
+            assert(rvalueChainNode_2.name.startsWith("QMakeProject.Rvalue!"));
+            assert(rvalueChainNode_2.children.length == 1);
+
+            auto rvalueAtomMetaNode = rvalueChainNode_2.children[0];
+            if (rvalueAtomMetaNode.name.startsWith("QMakeProject.RvalueAtom"))
+            {
+                RvalueEvalResult result = evalRvalueAtomNode(rvalueAtomMetaNode);
+                trace("Atom expanded value: ", result);
+                resultCollection ~= result;
+            }
+            else if (rvalueAtomMetaNode.name.startsWith("QMakeProject.EnquotedRvalue"))
+            {
+                assert(rvalueAtomMetaNode.children.length == 1);
+                auto enquotedNote = rvalueAtomMetaNode.children[0];
+                assert(enquotedNote.name.startsWith("QMakeProject.DoubleEnquotedRvalue")
+                    || enquotedNote.name.startsWith("QMakeProject.SingleEnquotedRvalue"));
+                assert(enquotedNote.children.length == 1);
+                auto chainNode = enquotedNote.children[0];
+                RvalueEvalResult result = evalRvalueChain(chainNode);
+                trace("Enquoted value = ", result);
+                resultCollection ~= result;
+            }
+            else if (rvalueAtomMetaNode.name.startsWith("QMakeProject.Leftover"))
+            {
+                assert(rvalueAtomMetaNode.children.length == 0);
+                assert(rvalueAtomMetaNode.matches.length == 1);
+                string leftover = rvalueAtomMetaNode.matches[0];
+                trace("Leftover: ", "`", leftover, "`");
+                resultCollection ~= RvalueEvalResult(VariableType.STRING, [leftover]);
+            }
+            else throw new NotImplementedException("");
+        }
+
+        VariableType finalType = deduceRvalueType(resultCollection);
+        string[] variableValue = prettifyRvalue(resultCollection, finalType);
+
+        return RvalueEvalResult(finalType, variableValue);
     }
 
     private RvalueEvalResult evalRvalueAtomNode(ref ParseTree rvalueAtomMetaNode)
