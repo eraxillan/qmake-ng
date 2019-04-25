@@ -730,15 +730,16 @@ public class Project
                 }
                 else
                 {
-                    andResult = andResult && evalBooleanExressionNode(boolExprNode);
-                    if (!andResult)
+                    bool tempAndResult = evalBooleanExressionNode(boolExprNode);
+                    if (notMarker)
+                    {
+                        trace("Apply NOT 2: '", andResult, "' --> '", !andResult, "'");
+                        tempAndResult = !tempAndResult;
+                    }
+                    andResult = andResult && tempAndResult;
+                    if (!tempAndResult)
                     {
                         trace("operand [", j, "] of AND-expression is FALSE, aborting");
-                        if (notMarker)
-                        {
-                            trace("Apply NOT 2: '", andResult, "' --> '", !andResult, "'");
-                            andResult = !andResult;
-                        }
                         break;
                     }
                 }
