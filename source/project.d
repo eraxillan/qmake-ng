@@ -370,63 +370,115 @@ public class Project
     }
 
     private void evalForStatementNode(ref ParseTree forNode)
+    in
+    {
+        assert(forNode.name == "QMakeProject.ForStatement");
+        assert(forNode.children.length == 1);
+    }
+    do
     {
         trace("");
 
-        assert(forNode.name == "QMakeProject.ForStatement");
-        assert(forNode.children.length == 6);
+        auto forSubtypeNode = forNode.children[0];
+        assert(forSubtypeNode.name == "QMakeProject.ForEachInListStatement"
+            || forSubtypeNode.name == "QMakeProject.ForEverStatement");
 
-        // Get iterator variable name
-        auto variableNameMetaNode = forNode.children[1];
-        assert(variableNameMetaNode.name == "QMakeProject.ForIteratorVariableName");
-        assert(variableNameMetaNode.children.length == 1);
-        auto variableNameNode = variableNameMetaNode.children[0];
-        assert(variableNameNode.name == "QMakeProject.QualifiedIdentifier");
-        assert(variableNameNode.children.length == 0);
-        assert(variableNameNode.matches.length == 1);
-        string variableName = variableNameNode.matches[0];
-        trace("For iterator variable name: ", variableName);
-
-        // Eval string list to iterate on
-        string[] iterableList;
-        auto listMetaNode = forNode.children[3];
-        assert(listMetaNode.name == "QMakeProject.ForIterableList");
-        assert(listMetaNode.children.length == 1);
-        auto listNode = listMetaNode.children[0];
-        assert(listNode.name == "QMakeProject.FunctionFirstArgument" || listNode.name == "QMakeProject.List");
-        switch (listNode.name)
+        if (forSubtypeNode.name == "QMakeProject.ForEachInListStatement")
         {
-            case "QMakeProject.FunctionFirstArgument":
-                // FIXME: implement
-                /*string value = listNode.matches.join("");
-                auto evaluator = new ExpressionEvaluator(context, m_persistentStorage);
-                auto rpnExpression = convertToRPN(value);
-                auto result = evaluator.evalRPN(rpnExpression);*/
-                string[] result;
-                trace("List variable name: ", result);
+            assert(forSubtypeNode.children.length == 6);
+
+            // Get iterator variable name
+            auto variableNameMetaNode = forSubtypeNode.children[1];
+            assert(variableNameMetaNode.name == "QMakeProject.ForIteratorVariableName");
+            assert(variableNameMetaNode.children.length == 1);
+            auto variableNameNode = variableNameMetaNode.children[0];
+            assert(variableNameNode.name == "QMakeProject.QualifiedIdentifier");
+            assert(variableNameNode.children.length == 0);
+            assert(variableNameNode.matches.length == 1);
+            string variableName = variableNameNode.matches[0];
+            trace("For iterator variable name: ", variableName);
+
+            // Eval string list to iterate on
+            string[] iterableList;
+            auto listMetaNode = forSubtypeNode.children[3];
+            assert(listMetaNode.name == "QMakeProject.ForIterableList");
+            assert(listMetaNode.children.length == 1);
+            auto listNode = listMetaNode.children[0];
+            assert(listNode.name.startsWith("QMakeProject.FunctionArgument")
+                || listNode.name.startsWith("QMakeProject.List"));
+
+            if (listNode.name.startsWith("QMakeProject.FunctionArgument"))
+            {
+                string[] result = evalFunctionArgument(listNode);
+                assert(result.length == 1);
+                trace("List variable name: ", result[0]);
                 if (!m_contextStack.top().isVariableDefined(result[0]))
                     throw new Exception("Undefined list variable '" ~ result[0] ~ "', aborting");
                 iterableList = m_contextStack.top().getVariableRawValue(result[0]);
-                assert(iterableList.length >= 1);
+                // NOTE: list can be empty
+                //assert(iterableList.length >= 1);
                 trace("List to iterate on: ", iterableList);
-                break;
-            default:
+            }
+            else if (listNode.name.startsWith("QMakeProject.List"))
+            {
+                // FIXME: implement
+                bool b = true; if (b) assert(0);
+            }
+            else
+            {
                 throw new Exception("Unknown type of for-iterable list");
+            }
+
+            auto blockNode = forSubtypeNode.children[5];
+            assert(blockNode.name == "QMakeProject.Block");
+
+            if (!iterableList.empty)
+            {
+                trace("foreach(", variableName, ", ", iterableList);
+                foreach (listValue; iterableList)
+                {
+                    // Declare local counter variable
+                    m_contextStack.top().assignVariable(variableName, [listValue], VariableType.STRING);
+
+                    evalBlock(blockNode);
+                }
+                trace("foreach() done");
+
+                // Unset the already unneeded variable
+                m_contextStack.top().unsetVariable(variableName);
+            }
+            else
+                trace("skipping foreach() - list is empty");
         }
-
-        auto blockMetaNode = forNode.children[5];
-        assert(blockMetaNode.name == "QMakeProject.Block");
-
-        foreach (listValue; iterableList)
+        else if (forSubtypeNode.name == "QMakeProject.ForEverStatement")
         {
-            // Declare local counter variable
-            m_contextStack.top().assignVariable(variableName, [listValue], VariableType.STRING);
+            /*
+            ForStatement <- ForEachInListStatement / ForEverStatement
+            ForEachInListStatement <- "for" OPEN_PAR_WS ForIteratorVariableName COMMA_WS ForIterableList CLOSE_PAR_WS Block
+            ForIteratorVariableName <- QualifiedIdentifier
+            ForIterableList <- List(:space+, :space) / FunctionArgument(space / COMMA)
+            ForEverStatement <- "for" OPEN_PAR_WS "ever" CLOSE_PAR_WS Block
+            */
+            assert(forSubtypeNode.children.length == 3);
+            auto blockNode = forSubtypeNode.children[2];
+            assert(blockNode.name == "QMakeProject.Block");
+            //trace(blockNode);
 
-            evalBlock(blockMetaNode);
+            // FIXME: analyze forever loop for exit conditions (return/break/next test functions)
+
+            /*trace("while(true) begin");
+            while (true)
+            {
+                evalBlock(blockNode);
+            }
+            trace("while(true) end");*/
+
+            bool b = true; if (b) assert(0);
         }
-
-        // Unset the already unneeded variable
-        m_contextStack.top().unsetVariable(variableName);
+        else
+        {
+            throw new Exception("Unknown type of 'for' list");
+        }
 
         trace("");
     }
