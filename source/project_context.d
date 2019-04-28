@@ -37,6 +37,8 @@ import project_function;
 
 // -------------------------------------------------------------------------------------------------
 
+enum FlowControlStatement { None = -1, Return, Break, Next, Error, Count }
+
 public class ProExecutionContext
 {
 	private ProVariable[string] m_builtinVariables;
@@ -481,6 +483,8 @@ public class ProExecutionContext
             throw new NotImplementedException("test function " ~ "`" ~ name ~ "`" ~ " was not defined yet");
 	}
 
+    // ---------------------------------------------------------------------------------------------------------------------------
+
     void addReplaceFunctionDescription(in string name, in ProFunction.Action action)
     {
         /*
@@ -506,5 +510,44 @@ public class ProExecutionContext
             [VariableType.STRING],
             action
         );
+    }
+
+    // ---------------------------------------------------------------------------------------------------------------------------
+    // Replace function result stuff
+    private string[] m_functionResult;
+
+    void pushFunctionResult(in string[] value)
+    {
+        m_functionResult = value.dup;
+    }
+
+    bool hasFunctionResult() const
+    {
+        return !m_functionResult.empty;
+    }
+
+    string[] popFunctionResult()
+    {
+        string[] temp = m_functionResult.dup;
+        m_functionResult = [];
+        return temp;
+    }
+
+    // Program flow control
+    FlowControlStatement m_flowControlStatement = FlowControlStatement.None;
+    
+    bool hasFlowControlStatement() const
+    {
+        return m_flowControlStatement != FlowControlStatement.None;
+    }
+
+    auto getFlowControlStatement() const
+    {
+        return m_flowControlStatement;
+    }
+
+    void setFlowControlStatement(in FlowControlStatement fcs)
+    {
+        m_flowControlStatement = fcs;
     }
 }

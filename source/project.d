@@ -272,8 +272,6 @@ public class Project
                 {
                     trace("Invoking user-defined replace function ", "`", name, "`");
 
-                    const(string[]) result = [""];
-
                     m_contextStack.push(new ProExecutionContext());
 
                     // Declare function arguments like $${1} etc.
@@ -283,12 +281,6 @@ public class Project
                         trace("Declare function argument variable `$${", argName, "}` = `", arguments[i], "`");
                         m_contextStack.top().assignVariable(argName, [arguments[i]], VariableType.STRING);
                     }
-                    // NOTE: return() call is optional in vanilla qmake;
-                    //       so we need to add an implicit `return(true)` for test functions
-                    //       and `return("")` for replace ones
-                    //
-                    // FIXME: implement this stuff
-                    //
 
                     assert(functionBlock.name == "QMakeProject.Block");
                     assert(functionBlock.children.length == 1);
@@ -302,8 +294,9 @@ public class Project
                         throw new Exception("Unknown code block type");
                     
                     //
-                    // FIXME: merge all global variables from internal function context
+                    // FIXME: merge all global already defined variables from internal function context
                     //
+                    const(string[]) result = m_contextStack.top().popFunctionResult();
                     m_contextStack.pop();
 
                     trace("User-defined replace function result: ", result);
@@ -360,6 +353,7 @@ public class Project
                     m_contextStack.pop();
 
                     trace("User-defined test function result: ", result);
+                    bool b = true; if (b) assert(0);
                     return result;
                 }
                 m_contextStack.top().addTestFunctionDescription(name.dup, &testAction);
@@ -464,16 +458,16 @@ public class Project
             assert(blockNode.name == "QMakeProject.Block");
             //trace(blockNode);
 
-            // FIXME: analyze forever loop for exit conditions (return/break/next test functions)
+            // FIXME: analyze forever loop for exit conditions existance (return/break/next test functions);
+            //        if there is no such statements detected, show warning or error
 
-            /*trace("while(true) begin");
-            while (true)
+            trace("\n\n", "while(true) begin");
+            while (!m_contextStack.top().hasFlowControlStatement())
             {
                 evalBlock(blockNode);
             }
-            trace("while(true) end");*/
-
-            bool b = true; if (b) assert(0);
+            trace("loop finish reason: ", m_contextStack.top().getFlowControlStatement());
+            trace("while(true) end", "\n\n");
         }
         else
         {
@@ -504,8 +498,14 @@ public class Project
         assert(multilineBlockNode.children.length >= 1);
         trace("Multi-line block statement count: ", multilineBlockNode.children.length);
         trace("{");
-        for (int i; i < multilineBlockNode.children.length; i++)
+        for (int i = 0; i < multilineBlockNode.children.length; i++)
         {
+            if (m_contextStack.top().hasFlowControlStatement())
+            {
+                trace("flow control statement ", m_contextStack.top().getFlowControlStatement(), " found: stop eval block");
+                break;
+            }
+
             auto blockStatementNode = multilineBlockNode.children[i];
             trace("Eval statement [", i, "] of type ", blockStatementNode.children[0].name);
 
@@ -894,12 +894,14 @@ public class Project
                 // CacheTestFunctionParam2     <- ("set" / "add" / "sub")? :space* ("transient")? :space* ("super" / "stash")?
                 
                 // FIXME: implement
+                trace("FIXME: eval cache() test function stub...");
                 result.type = VariableType.BOOLEAN;
                 result.value = ["true"];
                 break;
             }
             case "QMakeProject.ContainsTestFunctionCall":
             {
+                trace("eval contains() test function call...");
                 // ContainsTestFunctionCall <- "contains" OPEN_PAR_WS QualifiedIdentifier (COMMA_WS EnquotedString) CLOSE_PAR_WS
                 string functionName = "contains";
 
@@ -941,15 +943,49 @@ public class Project
             }
             case "QMakeProject.ReturnFunctionCall":
             {
-                // ReturnFunctionCall <- "return" OPEN_PAR_WS (List(:space+, :space) / FunctionArgument(space / COMMA) / Statement)? CLOSE_PAR_WS
+                assert(functionNode.children.length == 2 || functionNode.children.length == 3);
+                if (functionNode.children.length == 3)
+                {
+                    auto expressionNode = functionNode.children[1];
+                    assert(expressionNode.name == "QMakeProject.ReturnFunctionArguments");
+                    string[] actualArguments = evalFunctionActualArguments(/*actualOperandCount*/ 1, expressionNode);
+                    m_contextStack.top().pushFunctionResult(actualArguments);
+                    trace("return() result: ", actualArguments);
+                }
+                m_contextStack.top().setFlowControlStatement(FlowControlStatement.Return);
+                
+                result.type = VariableType.BOOLEAN;
+                result.value = ["true"];
+                
+                trace("return() statement eval'd");
+                break;
+            }
+            case "QMakeProject.BreakFunctionCall":
+            {
+                // BreakFunctionCall <- "break" OPEN_PAR_WS CLOSE_PAR_WS
                 // FIXME: implement
+                throw new NotImplementedException("break()");
                 //break;
-                throw new NotImplementedException("RETURN");
+            }
+            case "QMakeProject.NextFunctionCall":
+            {
+                // NextFunctionCall <- "next" OPEN_PAR_WS CLOSE_PAR_WS
+                // FIXME: implement
+                throw new NotImplementedException("next()");
+                //break;
+            }
+            case "QMakeProject.ErrorFunctionCall":
+            {
+                // ErrorFunctionCall <- "error" OPEN_PAR_WS (List(:space+, :space) / FunctionArgument(FunctionArgumentStopRule) / Statement)? CLOSE_PAR_WS
+                // FIXME: implement
+                throw new NotImplementedException("error()");
+                //break;
             }
             case "QMakeProject.RequiresFunctionCall":
             {
                 // RequiresFunctionCall <- "requires" OPEN_PAR_WS BooleanExpression CLOSE_PAR_WS
                 // FIXME: implement
+                //throw new NotImplementedException("requires()");
                 break;
             }
             case "QMakeProject.FunctionCall":
@@ -959,6 +995,93 @@ public class Project
             }
             default: throw new NotImplementedException("Unsupported function call statement");
         }
+        return result;
+    }
+
+    private int evalFunctionActualArgumentCount(ref ParseTree functionArgumentListNode)
+    in
+    {
+        assert(functionArgumentListNode.name == "QMakeProject.FunctionArgumentList");
+        assert(functionArgumentListNode.children.length == 1);
+    }
+    do
+    {
+        int result = 0;
+
+        if (functionArgumentListNode.children[0].name.startsWith("QMakeProject.List!")) // comma or whitespace-separated list
+        {
+            auto listNode = functionArgumentListNode.children[0];
+            for (int i = 0; i < listNode.children.length; i++)
+            {
+                if (listNode.children[i].name.startsWith("QMakeProject.FunctionArgument"))
+                    result ++;
+            }
+        }
+        else if (functionArgumentListNode.children[0].name.startsWith("QMakeProject.FunctionArgument!"))    // single argument
+        {
+            result = 1;
+        }
+        else
+            throw new EvalLogicException("Unknown function argument type");
+        
+        return result;
+    }
+
+    private string[] evalFunctionActualArguments(in int actualOperandCount, ref ParseTree functionArgumentListNode)
+    in
+    {
+        assert(functionArgumentListNode.name == "QMakeProject.FunctionArgumentList"
+            || functionArgumentListNode.name == "QMakeProject.ReturnFunctionArguments");
+        assert(functionArgumentListNode.children.length == 1);
+    }
+    do
+    {
+        string[] result;
+
+        if (functionArgumentListNode.children[0].name.startsWith("QMakeProject.List!")) // comma or whitespace-separated list
+        {
+            auto listNode = functionArgumentListNode.children[0];
+
+            trace("Compile-time function argument count: ", evalFunctionArgumentListLength(listNode));
+            auto actualArgumentsTemp = evalFunctionArgumentList(listNode);
+            trace("Run-time function argument count: ", actualArgumentsTemp.length);
+            
+            assert(actualOperandCount == actualArgumentsTemp.length);
+            foreach (v; actualArgumentsTemp)
+            {
+                if (v.length == 1)
+                {
+                    trace("1-to-1 argument value mapping");
+                    result ~= [v[0]];
+                }
+                else if (!v.empty)
+                {
+                    trace("1-to-many argument value mapping - join(whitespace)");
+                    result ~= [v.join(" ")];
+                }
+            }
+            assert(actualOperandCount == result.length);
+        }
+        else if (functionArgumentListNode.children[0].name.startsWith("QMakeProject.FunctionArgument!"))    // single argument
+        {
+            trace("Compile-time function argument count: 1");
+            string[] expandArgumentValue = evalFunctionArgument(functionArgumentListNode.children[0]);
+            trace("Run-time function argument count: ", expandArgumentValue.length);
+
+            if (expandArgumentValue.length == 1)
+            {
+                trace("1-to-1 argument value mapping");
+                result = [expandArgumentValue[0]];
+            }
+            else if (!expandArgumentValue.empty)
+            {
+                trace("1-to-many argument value mapping - join(whitespace)");
+                result = [expandArgumentValue.join(" ")];
+            }
+        }
+        else
+            throw new EvalLogicException("Unknown function argument type");
+        
         return result;
     }
 
@@ -1012,23 +1135,7 @@ public class Project
         auto functionArgumentListNode = functionCallNode.children[2];
         if (functionArgumentListNode.name.startsWith("QMakeProject.FunctionArgumentList"))
         {
-            assert(functionArgumentListNode.name == "QMakeProject.FunctionArgumentList");
-            assert(functionArgumentListNode.children.length == 1);
-            if (functionArgumentListNode.children[0].name.startsWith("QMakeProject.List!")) // comma or whitespace-separated list
-            {
-                auto listNode = functionArgumentListNode.children[0];
-                for (int i = 0; i < listNode.children.length; i++)
-                {
-                    if (listNode.children[i].name.startsWith("QMakeProject.FunctionArgument"))
-                        actualOperandCount ++;
-                }
-            }
-            else if (functionArgumentListNode.children[0].name.startsWith("QMakeProject.FunctionArgument!"))    // single argument
-            {
-                actualOperandCount = 1;
-            }
-            else
-                throw new EvalLogicException("Unknown function argument type");
+            actualOperandCount = evalFunctionActualArgumentCount(functionArgumentListNode);
         }
         else if (functionArgumentListNode.name == "QMakeProject.CLOSE_PAR_WS")
         {
@@ -1044,16 +1151,7 @@ public class Project
         string[] actualArguments;
         if (actualOperandCount > 0)
         {
-            if (functionArgumentListNode.children[0].name.startsWith("QMakeProject.List!")) // comma or whitespace-separated list
-            {
-                auto listNode = functionArgumentListNode.children[0];
-                actualArguments = evalFunctionArgumentList(listNode);
-            }
-            else if (functionArgumentListNode.children[0].name.startsWith("QMakeProject.FunctionArgument!"))    // single argument
-            {
-                actualArguments = evalFunctionArgument(functionArgumentListNode.children[0]);
-            }
-            else throw new EvalLogicException("Unknown function argument type");
+            actualArguments = evalFunctionActualArguments(actualOperandCount, functionArgumentListNode);
         }
         trace("Actual function ", "`", functionName, "`", " arguments: ", actualArguments);
 
@@ -1073,22 +1171,31 @@ public class Project
         return result;
     }
 
-    private string[] evalFunctionArgumentList(ref ParseTree listNode)
+    private long evalFunctionArgumentListLength(ref ParseTree listNode)
     in
     {
         assert(listNode.name.startsWith("QMakeProject.List!")); // comma or whitespace-separated list
     }
     do
     {
-        string[] result;
+        return listNode.children.length;
+    }
+
+    private string[][] evalFunctionArgumentList(ref ParseTree listNode)
+    in
+    {
+        assert(listNode.name.startsWith("QMakeProject.List!")); // comma or whitespace-separated list
+    }
+    do
+    {
+        auto result = new string[][](evalFunctionArgumentListLength(listNode));
         for (int i = 0; i < listNode.children.length; i++)
         {
-            if (listNode.children[i].name.startsWith("QMakeProject.FunctionArgument!"))
-            {
-                string[] temp = evalFunctionArgument(listNode.children[i]);
-                if (!temp.empty)
-                    result ~= temp;
-            }
+            assert(listNode.children[i].name.startsWith("QMakeProject.FunctionArgument!"));
+
+            string[] temp = evalFunctionArgument(listNode.children[i]);
+            if (!temp.empty)
+                result[i] ~= temp;
         }
         return result;
     }
@@ -1493,6 +1600,14 @@ unittest
     auto context = new ProExecutionContext();
     auto storage = new PersistentPropertyStorage();
     auto pro = new Project(context, storage);
+
+    assert(pro.tryParseSnippet(
+ `
+    error( "Couldn't find the manual.pri file!" )
+    error("Hunspell dictionaries are missing! Please copy .dic and .aff" \
+                  "files to src/virtualkeyboard/3rdparty/hunspell/data directory.")
+`
+    ));
 
     assert(pro.tryParse("tests/variables.pro"));
     assert(pro.tryParse("tests/contains.pro"));
