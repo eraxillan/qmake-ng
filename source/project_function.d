@@ -290,32 +290,43 @@ static this()
 	temp["system"] = ProFunction("system", VariableType.STRING_LIST, false, 1, 2, [VariableType.STRING,
 			VariableType.STRING, VariableType.STRING],
 			(ref ProExecutionContext context, in string[] arguments) {
+		string[] result;
+
 		trace(arguments);
 		assert(arguments.length == 1 || arguments.length == 2 || arguments.length == 3);
 
 		string command = arguments[0];
 
-		/+
+		// Determine output result collecting mode
 		bool blob = false;
         bool lines = false;
         bool singleLine = true;
         if (arguments.length >= 2)
 		{
 			if (toLower(arguments[1]) == "false")
+			{
+				trace("system(): `single-line` mode disabled");
 				singleLine = false;
+			}
             else if (toLower(arguments[1]) == "blob")
+			{
+				trace("system(): `blob` mode enabled");
                 blob = true;
+			}
             else if (toLower(arguments[1]) == "lines")
+			{
+				trace("system(): `lines` mode enabled");
                 lines = true;
+			}
+			else
+				throw new NotSupportedException("Invalid system() replace function mode "
+					~ "`" ~ arguments[1] ~ "`");
         }
-//
-		string exitStatusVar = arguments[2];
 
 		import std.process : pipeProcess, pipeShell, wait, Redirect;
 
 		// Launch external process
 		// NOTE: assume that it writes to stdout and might write to stderr
-		command = "LC_ALL=C g++ -pipe -E -v -xc++ - 2>&1 </dev/null >/dev/null";
 		auto pipes = pipeShell(command, Redirect.stdout | Redirect.stderr);
 
 		// Wait for process completion
@@ -323,38 +334,34 @@ static this()
 		trace("External process finished with code `", exitCode, "`");
 
 		// Save exit status value in the specified variable (if any)
-		if (arguments.length >= 3)
+		if (arguments.length == 3)
 		{
 			immutable string variableName = arguments[2];
 			// FIXME: also check using regex whether such name is suitable as ID
 			assert(!variableName.empty);
 			// NOTE: whether this variable defined or not doesn't matter
 			context.assignVariable(variableName, [to!string(exitCode)], VariableType.STRING);
-			trace("Exit code was saved into project variable `", variableName, "`");
+			trace("Exit code ", "`", exitCode, "` was saved into project variable `", variableName, "`");
 		}
 
-		// Store lines of errors.
-		/*string[] errors;
-		foreach (line; pipes.stderr.byLine) errors ~= line.idup;
-		writeln("");
-		writeln(errors);*/
-		
-		lines = false;
+		// Store lines of errors
+		string[] errors;
+		foreach (line; pipes.stderr.byLine)
+			errors ~= line.idup;
+		if (!errors.empty)
+		{
+			writeln("system() replace function stderr output:");
+			writeln("----------------------------------------");
+			writeln(errors);
+			writeln("----------------------------------------");
+		}
+
 		if (lines)
 		{
-			/*
-            QTextStream stream(bytes);
-            while (!stream.atEnd())
-                ret += ProString(stream.readLine());
-			*/
-
 			// Store lines of output
-			string[] output;
-			foreach (line; pipes.stdout.byLine) output ~= line.idup;
-			writeln("");
-			foreach (line; output)
-				writeln(line);
-			writeln("");
+			trace("line-mode output:");
+			foreach (line; pipes.stdout.byLine)
+				result ~= line.idup;
         }
 		else
 		{
@@ -364,26 +371,33 @@ static this()
 			{
 				output ~= pipes.stdout.rawRead(buffer);
 			}
-			writeln("");
-			writeln(output);
-			writeln("");
+			if (blob)
+			{
+				trace("blob-mode output: ");
 
-            /*QString output = QString::fromLocal8Bit(bytes);
-            if (blob) {
-                ret += ProString(output);
-            } else {
-                output.replace(QLatin1Char('\t'), QLatin1Char(' '));
-                if (singleLine)
-                    output.replace(QLatin1Char('\n'), QLatin1Char(' '));
-                ret += split_value_list(QStringRef(&output));
-            }*/
+				result ~= output;
+			}
+			else
+			{
+				trace("raw output: ", output);
+
+				string prettyOutput = output.replace('\t', ' ');
+				if (singleLine)
+				{
+					trace("single-line mode output: ");
+					prettyOutput = prettyOutput.replace('\n', ' ');
+				}
+				else
+					trace("text-mode output: ");
+				
+				result ~= splitString(output, " ", true);
+			}
         }
-        +/
 
-		bool b = true;
-		if (b)
-			assert(0);
-		return [""];
+		writeln("----------------------------------------");
+		writeln(result);
+		writeln("----------------------------------------");
+		return result;
 	});
 
 	temp.rehash; // for faster lookups
