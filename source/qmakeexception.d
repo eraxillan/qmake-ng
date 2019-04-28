@@ -22,6 +22,33 @@
 
 module qmakeexception;
 
+
+/*********************
+ * Thrown if we reach code that is not supported.
+ */
+public class NotSupportedException : Exception
+{
+    /**
+    Initialize with a message and an error code.
+    */
+    this(string message) @trusted
+    {
+        super(message);
+    }
+
+    /** Convenience functions that throw an `NotSupportedException`. */
+    static void opCall(string msg)
+    {
+        throw new NotSupportedException(msg);
+    }
+
+    /// ditto
+    static void opCall()
+    {
+        throw new NotSupportedException(null);
+    }
+}
+
 /*********************
  * Thrown if we reach code that is not implemented yet.
  */
