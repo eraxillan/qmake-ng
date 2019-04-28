@@ -95,6 +95,7 @@ private enum QMakeProjectFunctionCall =
                         / ReturnFunctionCall
                         / BreakFunctionCall
                         / NextFunctionCall
+                        / ErrorFunctionCall
                         / RequiresFunctionCall
                         / FunctionCall
 
@@ -108,7 +109,7 @@ private enum QMakeProjectFunctionCall =
     FunctionCall <- FunctionId OPEN_PAR_WS FunctionArgumentList? CLOSE_PAR_WS
     CustomFunctionId <- / "defineReplace" / "defineTest"
                         / "eval" / "cache" / "contains" / "requires"
-                        / "return" / "break" / "next" 
+                        / "return" / "break" / "next" / "error"
     FunctionId   <- !CustomFunctionId
                     ("{" :space* QualifiedIdentifier :space* "}" / QualifiedIdentifier / EnquotedString)
 `;
@@ -117,7 +118,7 @@ private enum QMakeProjectFunctionArguments =
 `
     FunctionArgumentStopRule   <- space / COMMA
 
-    FunctionArgumentList       <- List(COMMA_WS, COMMA) / List(:space+, :space) / FunctionArgument(FunctionArgumentStopRule)
+    FunctionArgumentList       <- List(:COMMA_WS, :COMMA) / List(:space+, :space) / FunctionArgument(FunctionArgumentStopRule)
     List(delimRule, delimChar) <- FunctionArgument(FunctionArgumentStopRule) (delimRule (FunctionArgument(delimChar))?)+
 
     FunctionArgument(delim)           <- FunctionArgumentImpl(delim) (FunctionArgumentImpl(delim))*
@@ -254,13 +255,18 @@ private enum QMakeProjectBuiltinFunctions =
 
     # Program flow control statements: return, break, next (aka continue)
     # return(expression)
-    ReturnFunctionCall <- "return" OPEN_PAR_WS (List(:space+, :space) / FunctionArgument(FunctionArgumentStopRule) / Statement)? CLOSE_PAR_WS
+    ReturnFunctionCall <- "return" OPEN_PAR_WS ReturnFunctionArguments? CLOSE_PAR_WS
+    ReturnFunctionArguments <- List(:space+, :space) / FunctionArgument(FunctionArgumentStopRule)
 
     # break()
     BreakFunctionCall <- "break" OPEN_PAR_WS CLOSE_PAR_WS
 
     # next()
     NextFunctionCall <- "next" OPEN_PAR_WS CLOSE_PAR_WS
+
+    # error() / error("message")
+    # NOTE: multiline string must be merged in interpreter
+    ErrorFunctionCall <- "error" OPEN_PAR_WS (List(:space+, :space) / FunctionArgument(FunctionArgumentStopRule) / Statement)? CLOSE_PAR_WS
 
     # requires(condition)
     RequiresFunctionCall <- "requires" OPEN_PAR_WS BooleanExpression CLOSE_PAR_WS
