@@ -522,6 +522,8 @@ public class Project
     }
     do
     {
+        RvalueEvalResult result;
+
         auto assignmentTypeNode = statementNode.children[0];
         assert(assignmentTypeNode.name == "QMakeProject.StandardAssignment"
             || assignmentTypeNode.name == "QMakeProject.ReplaceAssignment"
@@ -539,10 +541,34 @@ public class Project
             || variableOperatorNode.name == "QMakeProject.ReplaceAssignmentOperator");
         string variableOperator = variableOperatorNode.matches[0];
 
-        // 1) Detect rvalue compile-time and run-time type (string or list)
-        // NOTE: default type is list
-        VariableType variableRuntimeType = VariableType.STRING_LIST;
-        string[] variableValue;
+        if (assignmentTypeNode.name == "QMakeProject.StandardAssignment")
+        {
+            result = evalVariableStandardAssignmentNode(assignmentTypeNode);
+        }
+        else if (assignmentTypeNode.name == "QMakeProject.ReplaceAssignment")
+        {
+            result = evalVariableReplaceAssignmentNode(variableName, assignmentTypeNode);
+        }
+        else
+        {
+            throw new NotSupportedException("Unknown assignment type " ~ assignmentTypeNode.name);
+        }
+
+        trace("Variable name: '" ~ variableName ~ "'");
+        trace("Variable assignment operator: '" ~ variableOperator ~ "'");
+        if (m_contextStack.top().isVariableDefined(variableName))
+            trace("Variable old raw value: ", m_contextStack.top().getVariableRawValue(variableName));
+        trace("Variable new raw value: ", result.value);
+        trace("Variable data type: ", result.type);
+
+        assignVariable(variableName, variableOperator, result.value, result.type);
+    }
+
+    private RvalueEvalResult evalVariableStandardAssignmentNode(ref ParseTree assignmentTypeNode)
+    {
+        RvalueEvalResult result;
+        result.type = VariableType.STRING_LIST;
+
         if (assignmentTypeNode.children.length >= 3)
         {
             auto rvalueExpr = assignmentTypeNode.children[2];
@@ -564,15 +590,15 @@ public class Project
                 }
                 // NOTE: no need in call `deduceRvalueType(rvalueCollection)`:
                 //       we already know that we got list
-                variableRuntimeType = VariableType.STRING_LIST;
-                variableValue = prettifyRvalue(rvalueCollection, variableRuntimeType);
+                result.type = VariableType.STRING_LIST;
+                result.value = prettifyRvalue(rvalueCollection, result.type);
             }
             else if (rvalueNode.name.startsWith("QMakeProject.RvalueChain"))
             {
                 trace("Parsing rvalue chain...");
                 RvalueEvalResult rvalueResult = evalRvalueChain(rvalueNode);
-                variableRuntimeType = rvalueResult.type;
-                variableValue = rvalueResult.value;
+                result.type = rvalueResult.type;
+                result.value = rvalueResult.value;
             }
             else
                 throw new NotImplementedException("Unknown rvalue node type " ~ rvalueNode.name);
@@ -582,14 +608,83 @@ public class Project
             warning("empty rvalue detected, please use clear(var) test function call instead");
         }
 
-        trace("Variable name: '" ~ variableName ~ "'");
-        trace("Variable assignment operator: '" ~ variableOperator ~ "'");
-        if (m_contextStack.top().isVariableDefined(variableName))
-            trace("Variable old raw value: ", m_contextStack.top().getVariableRawValue(variableName));
-        trace("Variable new raw value: ", variableValue);
-        trace("Variable data type: ", variableRuntimeType);
+        return result;
+    }
 
-        assignVariable(variableName, variableOperator, variableValue, variableRuntimeType);
+    private RvalueEvalResult evalVariableReplaceAssignmentNode(in string variableName, ref ParseTree assignmentTypeNode)
+    {
+        RvalueEvalResult result;
+        result.type = VariableType.STRING;
+
+        // DEFINES ~= s/QT_[DT].+/QT
+        // any values in the list that start with QT_D or QT_T are replaced with QT.
+
+        // e.g.
+        // ICONS_FOUND ~= s/.*\\\$\\\$\\{WINRT_MANIFEST\\.((logo|tile)_[^\}]+)\\}.*/\\1/g
+        // parameter ~= s/^-L//
+        // line ~= s/^[ \\t]*//  # remove leading spaces
+        // line ~= s/^LIBRARY_PATH=//  # remove leading LIBRARY_PATH=
+        // line ~= s,^libraries: ,,
+        // v ~= s/ .*//
+        //  # -MD becomes -MT, -MDd becomes -MTd
+        // QMAKE_CFLAGS ~= s,^-MD(d?)$,-MT\1,g
+        // QMAKE_CXXFLAGS ~= s,^-MD(d?)$,-MT\1,g
+        //  modules ~= s,-private$,_private,g
+        // qt_plugin_deps ~= s,-private$,_private,g
+        // # Insert the major version of Qt in the library name
+        // # unless it's a framework build.
+        // LIBRARY_NAME ~= s,^Qt,Qt$$QT_MAJOR_VERSION,
+        // # Re-insert the major version in the library name (cf qt5LibraryTarget above)
+        // MODULE_NAME ~= s,^Qt,Qt$$QT_MAJOR_VERSION,
+        // $$dir ~= s/$${exclusive_affix}/$${build_affix}/gi
+        // QMAKE_LINK ~= s/(\\S*g\\+\\+|\\S*gcc)/cs\\1/
+        // QMAKE_YACC_HEADER      ~= s/\\$base/${QMAKE_FILE_BASE}/g
+        // QMAKE_LINK_SHLIB_CMD ~= s/^$$re_escape($$QMAKE_LINK_SHLIB)$/$$QMAKE_LINK_C_SHLIB/
+        // rcc.commands ~= s/&&/$$escape_expand(\\n\\t)/g
+        // module_module ~= s,^Qt,Qt$$QT_MAJOR_VERSION,
+
+        // line ~= s/^[ \\t]*//
+        //        "s/^[ \\\\t]*//"
+
+        auto regexNode = assignmentTypeNode.children[2];
+        assert(regexNode.name == "QMakeProject.RegularExpression");
+        
+        assert(regexNode.matches.length == 1);
+        string regexStr = regexNode.matches[0];
+        assert(regexStr.length >= 4);
+        assert(regexStr.startsWith("s"));
+        trace("Regular expression (raw): ", regexStr);
+
+        string splitterChar = "" ~ regexStr[1];
+        trace("Regular expression splitter: ", "`", splitterChar, "`");
+
+        string[] regexParts = splitString(regexStr, splitterChar, false);
+        trace("Regular expession (splitted): ", regexParts);
+        assert(regexParts.length == 4);
+        assert(regexParts[0] == "s");
+
+        if (m_contextStack.top().isVariableDefined(variableName))
+        {
+            string[] variableValue = m_contextStack.top().getVariableRawValue(variableName);
+            assert(variableValue.length == 1);
+            string variableValueAsString = variableValue[0];
+
+            trace("Source: ", "`", variableValueAsString, "`");
+            trace("Regular expression: ", "`", regexParts[1], "`");
+            trace("Regular expression modifier: ", "`", regexParts[3], "`");
+            trace("Replace string: ", "`", regexParts[2], "`");
+
+            import std.regex : regex, replaceAll;
+            result.value = [replaceAll(variableValueAsString, regex(regexParts[1], regexParts[3]), regexParts[2])];
+
+            trace("Result: ", "`", result.value, "`");
+        }
+        else 
+        {
+            warning("Variable ", "`", variableName, "`", " value is empty: nothing to replace");
+        }
+
+        return result;
     }
 
     private void assignVariable(in string name, in string operator, in string[] value, in VariableType type)
@@ -609,8 +704,9 @@ public class Project
             m_contextStack.top().removeAssignVariable(name, value);
             break;
         case STR_TILDE_EQUALS:
-            // FIXME: implement
-            throw new NotImplementedException("Not implemented yet");
+            // FIXME: test
+            m_contextStack.top().assignVariable(name, value, type);
+            break;
         default:
             throw new Exception("Invalid assignment operator '" ~ operator ~ "'");
         }
