@@ -45,6 +45,7 @@ private const auto STR_ELSE_SINGLELINE = "else:";
 private const auto EXISTS_FUNCTION_STR = "exists";      // test function, argument 1
 private const auto CONTAINS_FUNCTION_STR = "contains";  // test function, argument 2
 private const auto QTCONFIG_FUNCTION_STR = "qtConfig";  // test function, argument 1
+private const auto ERROR_FUNCTION_STR = "error";        // test function, argument 1
 
 private const auto FIND_FUNCTION_STR = "find";          // replace function, argument 2
 private const auto REESCAPE_FUNCTION_STR = "re_escape"; // replace function, argument 1
@@ -633,11 +634,13 @@ private void enquoteAmbiguousFunctionArguments(in string functionName, in long a
 
         foreach (i; targetArgumentIndeces)
         {
+            string arg = strip(replaceArguments.arguments[i - 1]);
+
             // NOTE: function argument indeces are one-based, not zero-ones
-            if (!isEnquotedString(replaceArguments.arguments[i - 1]))
+            if (!isEnquotedString(arg))
             {
                 li.mods |= PreprocessorModifications.FunctionArgumentEnquoted;
-                replaceArguments.arguments[i - 1] = enquoteString(replaceArguments.arguments[i - 1]);
+                replaceArguments.arguments[i - 1] = enquoteString(arg);
             }
         }
 
@@ -678,6 +681,9 @@ private void fixAmbiguousFunctionCalls(ref LineInfo li)
 
     // Enquote `qtConfig` test function first argument
     enquoteAmbiguousFunctionArguments(QTCONFIG_FUNCTION_STR, 1, [1], li);
+
+    // Enquote `error` test function first argument
+    enquoteAmbiguousFunctionArguments(ERROR_FUNCTION_STR, 1, [1], li);
 
     // Replace functions
 
