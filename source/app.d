@@ -35,96 +35,7 @@ import project_variable;
 import common_utils;
 import persistent_property;
 import command_line_options;
-
-
-static bool getDefaultSpecName(ref string name)
-{
-    // FIXME: implement auto-detection for all platforms
-    name = "linux-g++";
-    return true;
-}
-
-struct QtVersionInfo
-{
-    string qtRootDir;
-    string qtVersionStr;
-    string qtKit;
-
-    this(string qtRootDir, string qtVersionStr, string qtKit)
-    {
-        this.qtRootDir = qtRootDir;
-        this.qtVersionStr = qtVersionStr;
-        this.qtKit = qtKit;
-    }
-}
-
-class QtVersion
-{
-    private static const string MKSPECS_DIR = "mkspecs";
-    private static const string FEATURES_DIR = "features";
-    
-    public static const string QMAKE_SPEC_PRE_FILE = "spec_pre.prf";
-    public static const string QMAKE_SPEC_POST_FILE = "spec_post.prf";
-
-    public static const string QMAKE_PRE_FILE = "default_pre.prf";
-    public static const string QMAKE_POST_FILE = "default_post.prf";
-
-    private QtVersionInfo m_qt;
-
-    this(QtVersionInfo qt)
-    {
-        m_qt = qt;
-    }
-    
-    string mkspecDirPath() const
-    {
-        return std.path.buildPath(m_qt.qtRootDir, m_qt.qtVersionStr, m_qt.qtKit, MKSPECS_DIR);
-    }
-
-    string featureDirPath() const
-    {
-        return std.path.buildPath(m_qt.qtRootDir, m_qt.qtVersionStr, m_qt.qtKit, MKSPECS_DIR, FEATURES_DIR);
-    }
-
-    string specPreFilePath() const
-    {
-        return std.path.buildPath(featureDirPath(), QMAKE_SPEC_PRE_FILE);
-    }
-
-    string specPostFilePath() const
-    {
-        return std.path.buildPath(featureDirPath(), QMAKE_SPEC_POST_FILE);
-    }
-
-    bool isValid() const
-    {
-        if (!std.file.exists(featureDirPath()) || !std.file.isDir(featureDirPath()))
-        {
-            error("feature directory '", featureDirPath(), "' was not found or not a directory");
-            return false;
-        }
-
-        if (!std.file.exists(mkspecDirPath()) || !std.file.isDir(mkspecDirPath()))
-        {
-            error("mkspec directory '", mkspecDirPath(), "' was not found or not a directory");
-            return false;
-        }
-
-        if (!std.file.exists(specPreFilePath()) || !std.file.isDir(specPreFilePath()))
-        {
-            error("'", specPreFilePath(), "' was not found or not a directory");
-            return false;
-        }
-
-        if (!std.file.exists(specPostFilePath()) || !std.file.isDir(specPostFilePath()))
-        {
-            error("'", specPostFilePath(), "' was not found or not a directory");
-            return false;
-        }
-
-        return true;
-    }
-}
+import qt;
 
 private static const string QMAKE_CONF_FILE = "qmake.conf";
 
@@ -460,8 +371,8 @@ int main(string[] argv)
     {
         warning("No spec file command line option found");
         
-        string defaultSpecName;
-        if (getDefaultSpecName(defaultSpecName))
+        string defaultSpecName = QtMakeSpecification.detectHostMakeSpec();
+        if (!defaultSpecName.empty)
         {
             warning("Using default spec: " ~ defaultSpecName);
             options.specFileName = defaultSpecName;
