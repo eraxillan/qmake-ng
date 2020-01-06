@@ -20,6 +20,8 @@
 **
 ****************************************************************************/
 
+module platform.macos;
+
 import std.experimental.logger;
 
 static import std.file;

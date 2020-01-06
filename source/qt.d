@@ -40,8 +40,8 @@ QtQmake[] detectQmakeInstallations()
     }
     else version (OSX)
     {
-    	import macos;
-    	result = macosDetectQmakeInstallations();
+        import platform.macos;
+        result = macosDetectQmakeInstallations();
     }
     else version (linux)
     {
