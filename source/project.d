@@ -88,7 +88,7 @@ public class Project
     public bool tryParseSnippet(in string snippet)
     {
         LineInfo[] li;
-        string preprocessedSnippet = preprocessLines(splitLines(snippet), li);
+        string preprocessedSnippet = preprocessLines(splitString(snippet, "\n", false), li);
 
         auto parseTree = QMakeProject(preprocessedSnippet);
         if (!parseTree.successful)
@@ -108,7 +108,7 @@ public class Project
 
         auto proFileContents = std.file.readText(fileName);
         LineInfo[] result;
-        proFileContents = preprocessLines(splitLines(proFileContents), result);
+        proFileContents = preprocessLines(splitString(proFileContents, "\n", false), result);
 
         auto parseTree = QMakeProject(proFileContents);
         if (!parseTree.successful)
@@ -131,7 +131,7 @@ public class Project
 
         auto proFileContents = std.file.readText(fileName);
         LineInfo[] result;
-        proFileContents = preprocessLines(splitLines(proFileContents), result);
+        proFileContents = preprocessLines(splitString(proFileContents, "\n", false), result);
 
         auto parseTree = QMakeProject(proFileContents);
         if (!parseTree.successful)
@@ -1809,7 +1809,7 @@ for(_, $$list(_)) { # just a way to break easily
 
             auto context = new ProExecutionContext();
             auto prop = new PersistentPropertyStorage();
-		    auto pro = new Project(context, prop);
+            auto pro = new Project(context, prop);
             if (pro.tryParse(d.name))
             {
                 successfulCount++;
