@@ -741,7 +741,6 @@ public class Project
                     auto conditionNode = statementNode.children[i].children[0];
                     assert(conditionNode.name == "QMakeProject.BooleanExpression");
 
-                    // FIXME: eval and use condition
                     if (evalScopeConditionNode(conditionNode))
                     {
                         trace("Scope else-if condition '", conditionNode.matches.join(" "),
@@ -1693,12 +1692,16 @@ public class Project
 
 unittest
 {
+    import std.stdio : writefln, readln, stdin;
+    import std.conv : to;
+    static import std.file, std.path;
+
     auto context = new ProExecutionContext();
     auto storage = new PersistentPropertyStorage();
     auto pro = new Project(context, storage);
 
     assert(pro.tryParseSnippet(
- `
+`
     error( "Couldn't find the manual.pri file!" )
     error("Hunspell dictionaries are missing! Please copy .dic and .aff" \
                   "files to src/virtualkeyboard/3rdparty/hunspell/data directory.")
@@ -1730,7 +1733,7 @@ unittest
     assert(pro.tryParse("tests/compositor_api.pri"));
     assert(pro.tryParse("tests/linux-clang-qmake.conf"));
 
-     assert(pro.tryParseSnippet(
+    assert(pro.tryParseSnippet(
 `
 for(_, $$list(_)) { # just a way to break easily
     isEmpty(FORCE_MINGW_QDOC_BUILD): FORCE_MINGW_QDOC_BUILD = $$(FORCE_MINGW_QDOC_BUILD)
@@ -1743,33 +1746,34 @@ for(_, $$list(_)) { # just a way to break easily
 `));
 
     // Qt projects
-    // FIXME: detect Qt path during run-time
-    assert(pro.tryParse("/opt/Qt/5.11.3/Src/qt3d/tests/auto/render/render.pro"));
-    assert(pro.tryParse("/opt/Qt/5.11.3/Src/qttools/mkspecs/features/qt_find_clang.prf"));
-    assert(pro.tryParse("/opt/Qt/5.11.3/Src/qtwebengine/mkspecs/features/configure.prf"));
-    assert(pro.tryParse("/opt/Qt/5.11.3/Src/qtwebengine/mkspecs/features/platform.prf"));
-    assert(pro.tryParse("/opt/Qt/5.11.3/Src/qtmultimedia/examples/multimedia/multimedia.pro"));
-    assert(pro.tryParse("/opt/Qt/5.11.3/Src/qtremoteobjects/tests/auto/integration_multiprocess/server/server.pro"));
-    assert(pro.tryParse("/opt/Qt/5.11.3/Src/qtbase/tests/auto/network/ssl/ssl.pro"));
-    assert(pro.tryParse("/opt/Qt/5.11.3/Src/qtbase/src/plugins/sqldrivers/configure.pri"));
-    assert(pro.tryParse("/opt/Qt/5.11.3/Src/qtbase/src/widgets/util/util.pri"));
-    assert(pro.tryParse("/opt/Qt/5.11.3/Src/qtbase/mkspecs/features/spec_post.prf"));
-    assert(pro.tryParse("/opt/Qt/5.11.3/Src/qtbase/mkspecs/features/winrt/package_manifest.prf"));
-    assert(pro.tryParse("/opt/Qt/5.11.3/Src/qtbase/mkspecs/features/qt_configure.prf"));
-    assert(pro.tryParse("/opt/Qt/5.11.3/Src/qtdeclarative/tests/auto/quick/pointerhandlers/pointerhandlers.pro"));
-    assert(pro.tryParse("/opt/Qt/5.11.3/Src/qtdeclarative/tests/auto/qml/qml.pro"));
+    writefln("Enter Qt source root directory path:");
+    string qtPath = stdin.readln().strip();
+    assert(qtPath !is null && !qtPath.empty && std.file.exists(qtPath) && std.file.isDir(qtPath), "Invalid Qt directory path");
 
-    int parseQtSourceProjects(string qtDir)
+    assert(pro.tryParse(buildPath(qtPath, "qt.pro")));
+    assert(pro.tryParse(buildPath(qtPath, "qtbase/mkspecs/features/qt_configure.prf")));
+    assert(pro.tryParse(buildPath(qtPath, "qt3d/tests/auto/render/render.pro")));
+    assert(pro.tryParse(buildPath(qtPath, "qtmultimedia/examples/multimedia/multimedia.pro")));
+    assert(pro.tryParse(buildPath(qtPath, "qtremoteobjects/tests/auto/integration_multiprocess/server/server.pro")));
+    assert(pro.tryParse(buildPath(qtPath, "qtbase/tests/auto/network/ssl/ssl.pro")));
+    assert(pro.tryParse(buildPath(qtPath, "qtbase/src/plugins/sqldrivers/configure.pri")));
+    assert(pro.tryParse(buildPath(qtPath, "qtbase/src/widgets/util/util.pri")));
+    assert(pro.tryParse(buildPath(qtPath, "qtbase/mkspecs/features/spec_post.prf")));
+    assert(pro.tryParse(buildPath(qtPath, "qtbase/mkspecs/features/winrt/package_manifest.prf")));
+    assert(pro.tryParse(buildPath(qtPath, "qtbase/mkspecs/features/qt_configure.prf")));
+    assert(pro.tryParse(buildPath(qtPath, "qtdeclarative/tests/auto/quick/pointerhandlers/pointerhandlers.pro")));
+    assert(pro.tryParse(buildPath(qtPath, "qtdeclarative/tests/auto/qml/qml.pro")));
+
+    string[] successfulProjects;
+    string[] failedProjects;
+    
+    bool parseQtSourceProjects(string qtDir)
     {
-        import std.stdio : writefln;
-        import std.conv : to;
-
         auto projectFiles = std.file.dirEntries(qtDir, std.file.SpanMode.depth).filter!(
-            f => f.name.endsWith(".pro") || f.name.endsWith(".pri") || f.name.endsWith(".prf") || f.name.endsWith(".conf")
+            f => f.name.endsWith(".pro") || f.name.endsWith(".pri") || f.name.endsWith(".prf")  || f.name.endsWith(".conf")
         );
     
         int successfulCount, failedCount;
-        string[] failedProjects;
         foreach (d; projectFiles)
         {
             if (d.name.indexOf("qtbase/qmake/doc/snippets/") != -1
@@ -1789,6 +1793,8 @@ for(_, $$list(_)) { # just a way to break easily
                 || d.name.indexOf("Sensors.conf") != -1
                 || d.name.indexOf("3rdparty/chromium") != -1
                 || d.name.indexOf("shared/deviceskin/") != -1
+                || d.name.indexOf("tests/testserver/") != -1
+                || d.name.indexOf("qtquickcontrols2/tests/auto/qquickmaterialstyleconf/") != -1
                 )
             {
                 trace("Skipping documentation snippet...");
@@ -1807,19 +1813,22 @@ for(_, $$list(_)) { # just a way to break easily
             if (pro.tryParse(d.name))
             {
                 successfulCount++;
+                successfulProjects ~= d.name;
             }
             else
             {
                 failedCount++;
                 failedProjects ~= d.name;
             }
+
+            writefln("Project: " ~ d.name);
         }
 
         immutable int totalCount = successfulCount + failedCount;
-        writefln("Total file count: " ~ to!string(totalCount));
-        writefln("Successfully parsed: " ~ to!string(successfulCount));
-        writefln("Failed to parse: " ~ to!string(failedCount) ~ " or "
-            ~ to!string(100 * failedCount / totalCount) ~ "%%");
+        writefln("[%s] Total file count: " ~ to!string(totalCount), qtDir);
+        writefln("[%s] Successfully parsed: " ~ to!string(successfulCount), qtDir);
+        writefln("[%s] Failed to parse: " ~ to!string(failedCount) ~ " or "
+            ~ to!string(100 * failedCount / totalCount) ~ "%%", qtDir);
         if (failedCount > 0)
         {
             writefln("");
@@ -1828,7 +1837,20 @@ for(_, $$list(_)) { # just a way to break easily
                 writefln(project);
         }
 
-        return (failedCount == 0) ? 0 : 1;
+        return ((successfulCount > 0) && (failedCount == 0)) ? true : false;
     }
-    assert(parseQtSourceProjects("/opt/Qt/5.11.3/Src") == 0);
+
+    assert(parseQtSourceProjects(buildPath(qtPath)));
+
+    if (failedProjects.length > 0)
+    {
+        writefln("");
+        writefln("Failed to parse projects:");
+        foreach (project; failedProjects)
+            writefln(project);
+    }
+    else
+    {
+        writefln("All %d projects were successfully parsed!", successfulProjects.length);
+    }
 }
