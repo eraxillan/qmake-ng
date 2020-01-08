@@ -347,49 +347,144 @@ private struct MultilineInfo
 }
 
 private bool mergeMultiline(in long lineNo, in string[] lines, out MultilineInfo result)
-// FIXME: in-out-do contracts
+in
 {
-    string currentLine = lines[cast(uint)lineNo];
+    //assert(isMultiline(lines[lineNo]));
+}
+out(r)
+{
+    if (r)
+        assert(!result.line.empty);
+}
+do
+{
+    string currentLine = lines[lineNo];
+    long currentLineIndentSize = detectIndentSize(currentLine);
+
     currentLine = currentLine.strip();
     currentLine = cutInlineComment(currentLine);
+    trace("Current line: |", currentLine, "|, indent: ", currentLineIndentSize);
 
     if (!isMultiline(currentLine))
     {
-        trace("not a multi-line, skipping");
+        trace("not a multi-line at all, skipping");
         return false;
     }
 
-    result.line = strip(currentLine[0 .. $ - 1]);
+    assert(isMultiline(currentLine));
+    result.line = currentLine[0 .. $ - 1];
+    assert(!isMultiline(result.line));
+
     auto j = lineNo + 1;
     if (j == lines.length)
     {
-        trace("the last line, nothing to merge");
-        return false;
+        trace("the last line, nothing to merge, just remove trailing backslash");
+
+        result.startIndex = lineNo;
+        result.endIndex = lineNo;
+        return true;
     }
-    
-    for (; j < lines.length; j++)
+
+    string nextLine = lines[j];
+    long nextLineIndentSize = detectIndentSize(nextLine);
+    nextLine = nextLine.strip();
+    nextLine = cutInlineComment(nextLine);
+    trace(" Next line 1: |", nextLine,    "|, indent: ", nextLineIndentSize);
+
+    if ((j + 1 == lines.length) || (!nextLine.empty && !isMultiline(nextLine)))
     {
-        currentLine = lines[cast(uint)j];
+        result.line ~= STR_WS ~ nextLine;
+        trace("just two multi-lines");
+        trace(result.line);
+
+        result.startIndex = lineNo;
+        result.endIndex = j;
+        return true;
+    }
+
+    // Python-like syntax detection: backslashes may be skipped
+    // if multi-line aligned by similar indent
+    long lastMultilineBlockLine = -1;
+    bool indentSizeChanged = false;
+    long k;
+    for (k = j + 1; k < lines.length; k++)
+    {
+        nextLine = lines[k];
+        long newNextLineIndentSize = detectIndentSize(nextLine);
+
+        if (nextLineIndentSize != newNextLineIndentSize)
+        {
+            trace("Indentation size changed line index: ", (k + 1));
+            indentSizeChanged = true;
+            break;
+        }
+
+        nextLine = nextLine.strip();
+        trace(" Next line 2: |", nextLine,    "|, indent: ", newNextLineIndentSize);
+    }
+    if (indentSizeChanged)
+    {
+        lastMultilineBlockLine = k;
+        trace(" Next line 3: |", nextLine, "|");
+        trace("Last multi-line heuristic index: ", (lastMultilineBlockLine + 1));
+    }
+
+    long lastMultiline = -1;
+    for (k = j + 1; k < lines.length; k++)
+    {
+        nextLine = lines[k];
+
+        bool commentFound;
+        nextLine = cutInlineComment(nextLine, commentFound);
+        nextLine = nextLine.strip();
+        // Just ignore empty/comment lines
+        if (commentFound || nextLine.empty)
+        {
+            trace("Skip empty/comment line...");
+            continue;
+        }
+
+        if (!isMultiline(nextLine))
+        {
+            lastMultiline = k;
+            break;
+        }
+    }
+    if (lastMultiline != -1)
+    {
+        // NOTE: k-th line is also multi-line part, stop-line is the next one
+        lastMultiline ++;
+        trace(" Next line 4: |", lines[lastMultiline], "|");
+        trace("Last multi-line strict index: ", lastMultiline + 1);
+    }
+
+    //assert(lastMultilineBlockLine == lastMultiline);
+    if (lastMultilineBlockLine > lastMultiline)
+    {
+        writeln("\nPARSER WARNING:\n");
+        writeln("absent backslash detected\n");
+        //lastMultiline = lastMultilineBlockLine;
+    }
+
+    // Merge multi-line
+    for (k = lineNo + 1; k < lastMultiline; k++)
+    {
+        currentLine = lines[k];
         currentLine = currentLine.strip();
 
         bool commentFound;
         currentLine = cutInlineComment(currentLine, commentFound);
-        
-        result.line ~= isMultiline(currentLine) ? STR_WS ~ strip(currentLine[0 .. $ - 1]) : STR_WS ~ currentLine;
 
-        // NOTE: comment line will be replaced with empty one by cutInlineComment() function call
-        if (!commentFound)
-        {
-            if (!isMultiline(currentLine) || currentLine.empty)
-                break;
-        }
+        if (!currentLine.empty)
+            result.line ~= isMultiline(currentLine) ? STR_WS ~ strip(currentLine[0 .. $ - 1]) : STR_WS ~ currentLine;
     }
 
     trace("startIndex: " ~ std.conv.to!string(lineNo));
-    trace("endIndex: " ~ std.conv.to!string(j));
+    trace("endIndex: " ~ std.conv.to!string(lastMultiline));
+    trace("result: |" ~ result.line ~ "|");
 
     result.startIndex = lineNo;
-    result.endIndex = j;
+    result.endIndex = lastMultiline - 1;
     return true;
 }
 
@@ -557,12 +652,13 @@ private void fixMultiline(ref LineInfo li, ref MultilineInfo mresult, ref long l
 {
     if (isMultiline(li.line))
     {
-        mergeMultiline(lineIndex, strLinesArray, mresult);
+        if (mergeMultiline(lineIndex, strLinesArray, mresult))
+        {
+            li.mods |= PreprocessorModifications.MultilineMerged;
+            li.line = mresult.line;
 
-        li.mods |= PreprocessorModifications.MultilineMerged;
-        li.line = mresult.line;
-
-        lineIndex = mresult.endIndex;
+            lineIndex = mresult.endIndex;
+        }
     }
 }
 

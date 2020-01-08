@@ -246,43 +246,22 @@ public string wildcardToRegex(in string pattern)
 	return result;
 }
 
-/**
-  * Check whether string contains expandable entities.
-  * Params:
-  *      str = string to search in
-  *      from = index to start from
-  * Returns: true if input contains expandable entities, false otherwise
-  */
-public bool isExpandable(in string str, in long from = 0)
+public long detectIndentSize(in string str)
 {
-	// Naive optimization
-	if ((str.length < 2) || (str.length - from - 1 < 2) || (str[from] != CHAR_SINGLE_EXPAND_MARKER))
-		return false;
+	if (str.strip().empty)
+		return 0;
 
-	immutable auto twoTokens = joinTokens(str, from, 2);
-	immutable auto threeTokens = joinTokens(str, from, 3);
-	assert(twoTokens.length >= 2);
-	assert(threeTokens.length >= 2);
-	assert(twoTokens[0] == CHAR_SINGLE_EXPAND_MARKER);
-	assert(threeTokens[0] == CHAR_SINGLE_EXPAND_MARKER);
+	long result = 0;
 
-	// generator expression: $VAR, ${VAR}
-	if (isAlphascore(twoTokens[1]) || (twoTokens == STR_GENERATOR_EXPAND_MARKER))
-		return true;
-    
-	// project variable: $$VAR, $${VAR}
-	if ((twoTokens == STR_EXPAND_MARKER) || (threeTokens == STR_VARIABLE_EXPAND_MARKER))
-		return true;
-    
-	// environment variable: $$(VAR)
-	if (threeTokens == STR_ENV_VARIABLE_EXPAND_MARKER)
-		return true;
-    
-	// persistent property: $$[VAR]
-	if (threeTokens == STR_PROPERTY_EXPAND_MARKER)
-		return true;
-	
-	return false;
+	for (long i = 0; i < str.length; i++)
+	{
+		if (!isWhitespaceToken("" ~ str[i]))
+			break;
+
+		result++;
+	}
+
+	return result;
 }
 
 unittest
