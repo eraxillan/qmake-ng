@@ -726,8 +726,8 @@ string preprocessLines(in string[] strLinesArray, out LineInfo[] resultLines)
 
         prettifyLine(li);
         fixMultiline(li, mresult, lineIndex, strLinesArray);
-        fixScope(li);
         fixAmbiguousFunctionCalls(li);
+        fixScope(li);
 
         if (li.mods & PreprocessorModifications.MultilineMerged)
             trace("Multi-line " ~ std.conv.to!string(mresult.startIndex + 1) ~
