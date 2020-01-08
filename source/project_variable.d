@@ -214,7 +214,7 @@ private string[] initQmakePlatformVariableRange()
 
 public immutable ProVariable[string] builtinVariables;
 
-static this()
+shared static this()
 {
     import std.exception : assumeUnique;
 

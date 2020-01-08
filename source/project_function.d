@@ -141,7 +141,7 @@ private static bool isActiveConfig(in string config, in string specName,
 	return false;
 }
 
-static this()
+shared static this()
 {
 	import std.exception : assumeUnique;
 
