@@ -1840,17 +1840,18 @@ for(_, $$list(_)) { # just a way to break easily
         return ((successfulCount > 0) && (failedCount == 0)) ? true : false;
     }
 
-    assert(parseQtSourceProjects(buildPath(qtPath)));
+    bool result = parseQtSourceProjects(buildPath(qtPath));
 
     if (failedProjects.length > 0)
     {
         writefln("");
-        writefln("Failed to parse projects:");
+        writefln("[FINAL] Failed to parse projects:");
         foreach (project; failedProjects)
             writefln(project);
     }
     else
     {
-        writefln("All %d projects were successfully parsed!", successfulProjects.length);
+        writefln("[FINAL] All %d projects were successfully parsed!", successfulProjects.length);
     }
+    assert(result);
 }
