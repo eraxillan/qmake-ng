@@ -38,6 +38,7 @@ import std.range;
 static import std.regex;
 
 import common_const;
+import common_utils;
 
 private const auto STR_ELSE = "else";
 private const auto STR_ELSE_SINGLELINE = "else:";
@@ -46,6 +47,7 @@ private const auto EXISTS_FUNCTION_STR = "exists";      // test function, argume
 private const auto CONTAINS_FUNCTION_STR = "contains";  // test function, argument 2
 private const auto QTCONFIG_FUNCTION_STR = "qtConfig";  // test function, argument 1
 private const auto ERROR_FUNCTION_STR = "error";        // test function, argument 1
+private const auto SYSTEM_FUNCTION_STR = "system";      // test/replace function, argument 1
 
 private const auto FIND_FUNCTION_STR = "find";          // replace function, argument 2
 private const auto REESCAPE_FUNCTION_STR = "re_escape"; // replace function, argument 1
@@ -670,6 +672,7 @@ private void fixAmbiguousFunctionCalls(ref LineInfo li)
     // replace(string, old_string, new_string)
     // qtConfig(opengl(es1|es2)?)
     // contains(var, regex)
+    // system(/OUT:$$MYSCRIPT_VOIM_LIB_PATH)
 
     // Test functions
 
@@ -695,6 +698,9 @@ private void fixAmbiguousFunctionCalls(ref LineInfo li)
 
     // Enquote `replace` replace function second and third arguments
     enquoteAmbiguousFunctionArguments(REPLACE_FUNCTION_STR, 3, [2, 3], li);
+
+    // Enquote `system` replace/test function first argument
+    enquoteAmbiguousFunctionArguments(SYSTEM_FUNCTION_STR, 1, [1], li);
 }
 
 //---------------------------------------------------------------------------------------------------------------------
