@@ -1782,7 +1782,7 @@ for(_, $$list(_)) { # just a way to break easily
     string[] successfulProjects;
     string[] failedProjects;
     
-    bool parseQtSourceProjects(string qtDir, ref ProExecutionContext context, ref PersistentPropertyStorage storage)
+    bool parseQtSourceProjects(string qtDir, ref Project qmakeProject)
     {
         auto projectFiles = std.file.dirEntries(qtDir, std.file.SpanMode.depth).filter!(
             f => f.name.endsWith(".pro") || f.name.endsWith(".pri") || f.name.endsWith(".prf")  || f.name.endsWith(".conf")
@@ -1822,8 +1822,7 @@ for(_, $$list(_)) { # just a way to break easily
                 continue;
             }
 
-            auto pro = new Project(context, storage);
-            if (pro.tryParse(d.name))
+            if (qmakeProject.tryParse(d.name))
             {
                 successfulCount++;
                 successfulProjects ~= d.name;
@@ -1853,7 +1852,7 @@ for(_, $$list(_)) { # just a way to break easily
         return ((successfulCount > 0) && (failedCount == 0)) ? true : false;
     }
 
-    bool result = parseQtSourceProjects(buildPath(qtPath), context, storage);
+    bool result = parseQtSourceProjects(buildPath(qtPath), pro);
 
     if (failedProjects.length > 0)
     {
