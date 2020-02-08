@@ -104,12 +104,6 @@ public struct ProVariable
 
 // --------------------------------------------------------------------------------------------------------------------------------------------------
 
-private string[] initQmakeSpecVariableValue()
-{
-    // FIXME: platform autodetect
-    return ["/opt/Qt/5.11.3/gcc_64/mkspecs/linux-g++"];
-}
-
 private string[] initConfigVariableValue()
 {
     // FIXME: platform autodetect
@@ -131,7 +125,7 @@ private string[] initConfigVariableRange()
         "rtti", "rtti_off", "stl", "stl_off", "thread",
         "c++11", "c++14",
         "lex", "yacc",
-        "create_prl", "link_prl", "incremental",
+        "create_prl", "link_prl", "incremental", "global_init_link_order", "lib_version_first", "sdk",
         "qt", "x11", "testcase", "testcase_targets", "insignificant_test",
         "windows", "console", "shared", "dll", "static", "staticlib",
         "linux", "unix", "posix", "gcc",
@@ -301,7 +295,10 @@ shared static this()
 	temp1["_PRO_FILE_"] = ProVariable("_PRO_FILE_", VariableType.STRING, [], []);
 	temp1["_PRO_FILE_PWD_"] = ProVariable("_PRO_FILE_PWD_", VariableType.STRING, [], []);
 	
-    temp1["QMAKESPEC"] = ProVariable("QMAKE_SPEC", VariableType.STRING_LIST, [], initQmakeSpecVariableValue());
+    // NOTE: QMAKESPEC variable will be initialized later, when Qt version will be detected
+    temp1["QMAKESPEC"] = ProVariable("QMAKE_SPEC", VariableType.STRING_LIST, [], []);
+    // QMAKE_NG_EXTENSION
+    temp1["QMAKESPEC"] = ProVariable("QMAKE_SPEC", VariableType.STRING_LIST, [], []);
     temp1["MAKEFILE_GENERATOR"] = ProVariable("MAKEFILE_GENERATOR", VariableType.STRING, [], []);
     temp1["TARGET_PLATFORM"] = ProVariable("TARGET_PLATFORM", VariableType.STRING, [], []);
 

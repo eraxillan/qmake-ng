@@ -32,6 +32,7 @@ import qmakeexception;
 import project;
 import project_context;
 import project_variable;
+import common_const;
 import common_utils;
 import persistent_property;
 import command_line_options;
@@ -107,28 +108,29 @@ struct PlatformData
             +/
             targetArch = "x86_64";
         }
+        else version (OSX)
+        {
+            hostOs = "Darwin";
+            hostName = Socket.hostName;
+            hostVersion = getProcessOutput("uname -r"); // e.g. "17.7.0"
+            hostVersionString = getProcessOutput("uname -v"); // e.g. "Darwin Kernel Version 17.7.0: Sun Dec  1 19:19:56 PST 2019; root:xnu-4570.71.63~1/RELEASE_X86_64"
+            hostArch = getProcessOutput("uname -m"); // e.g. "x86_64"
+            targetArch = hostArch;
+        }
         else version (linux)
         {
-            // FIXME: implement and remove stub
-            /+
-            struct utsname name;
-            if (uname(&name) != -1) {
-                vars[ProKey("QMAKE_HOST.os")] << ProString(name.sysname);
-                vars[ProKey("QMAKE_HOST.name")] << ProString(QString::fromLocal8Bit(name.nodename));
-                vars[ProKey("QMAKE_HOST.version")] << ProString(name.release);
-                vars[ProKey("QMAKE_HOST.version_string")] << ProString(name.version);
-                vars[ProKey("QMAKE_HOST.arch")] << ProString(name.machine);
-            }
-            +/
             hostOs = "Linux";
             hostName = Socket.hostName;
-            hostVersion = "4.15.0-34-generic";
-            hostVersionString = "#37~16.04.1-Ubuntu SMP Tue Aug 28 10:44:06 UTC 2018";
-            hostArch = "x86_64";
+            hostVersion = getProcessOutput("uname -r"); // e.g. "4.15.0-34-generic";
+            hostVersionString = getProcessOutput("uname -v"); // e.g. "#37~16.04.1-Ubuntu SMP Tue Aug 28 10:44:06 UTC 2018";
+            hostArch = getProcessOutput("uname -m"); // e.g. "x86_64"
+            targetArch = hostArch;
         }
         else
+        {
             // FIXME: implement support of other qmake-supported platforms
             throw new NotImplementedException("Only Windows and Linux platforms supported now!");
+        }
     }
 }
 
@@ -185,7 +187,7 @@ private static bool loadQmakeSpec(ref ProExecutionContext context, ref Persisten
     assert(context.getVariableRawValue("DIR_SEPARATOR")[0] == "/");
 
     // 1) Eval pre-feature
-    if (!loadQmakeFeature(context, persistentStorage, qt, QtVersion.QMAKE_SPEC_PRE_FILE))
+    if (!loadQmakeFeature(context, persistentStorage, qt, QMAKE_SPEC_PRE_FILE))
     {
         throw new Exception("Spec pre-feature eval failed");
     }
@@ -222,7 +224,7 @@ private static bool loadQmakeSpec(ref ProExecutionContext context, ref Persisten
     info("qmake mkspec file '" ~ mkspecFilePath ~ "' was successfully parsed");
 
     // 3) Eval post-feature
-    if (!loadQmakeFeature(context, persistentStorage, qt, QtVersion.QMAKE_SPEC_POST_FILE))
+    if (!loadQmakeFeature(context, persistentStorage, qt, QMAKE_SPEC_POST_FILE))
     {
         throw new Exception("Spec post-feature eval failed");
         //return false;
@@ -350,38 +352,57 @@ int main(string[] argv)
 
     string oldpwd = qmake_getpwd();
 
+    // Fill the Qt version information
+    // NOTE: release version of qmake-ng will be copied to Qt binary dir, so Qt path can be easily determined;
+    //       in debug mode we haven't such opportunity and must detect it automatically or ask user for input
+    debug
+    {
+        immutable(QtVersionInfo) qtInfo = chooseQtVersion();
+    }
+    else
+    {
+        immutable(string) applicationDir = std.path.dirName(std.file.thisExePath());
+        assert(!applicationDir.empty && std.file.exists(applicationDir) && std.file.isDir(applicationDir));
+        writefln("Qt binary dir = " ~ applicationDir);
+        immutable(QtVersionInfo) qtInfo = getQtVersion(applicationDir);
+    }
+
+    auto qt = new immutable(QtVersion)(qtInfo);
+    auto context = new ProExecutionContext();
+
     // Parse command line options
     QmakeOptions options;
-    immutable int ret = parseCommandlineOptions(argv, options);
+    immutable int ret = parseCommandlineOptions(argv, qtInfo, options);
     if (ret != CmdLineFlags.QMAKE_CMDLINE_SUCCESS)
     {
         return ((ret & CmdLineFlags.QMAKE_CMDLINE_ERROR) != 0) ? 1 : 0;
     }
 
-    auto persistentStorage = new PersistentPropertyStorage();
+    // Validate mkspec
+    if (options.specFileName.empty || !std.file.exists(options.specFileName))
+    {
+        warning("No mkspec command line option found");
+        
+        string defaultSpecName = QtMakeSpecification.detectHostMakeSpec();
+        if (!defaultSpecName.empty)
+        {
+            warning("Using default host mkspec: " ~ defaultSpecName);
+            warning("Using default target mkspec: " ~ defaultSpecName);
+            options.specFileName = defaultSpecName;
+        }
+        else
+        {
+            error("Invalid default mkspec name '{}'", defaultSpecName);
+            return 1;
+        }
+    }
+
+    auto persistentStorage = new PersistentPropertyStorage(qtInfo, options.specFileName);
     if (options.propertyAction == QmakePropertyAction.query
      || options.propertyAction == QmakePropertyAction.set
      || options.propertyAction == QmakePropertyAction.unset)
     {
         return execPropertyAction(options.propertyAction, options.properties, persistentStorage) ? 0 : 101;
-    }
-
-    // Validate mkspec
-    if (options.specFileName.empty || !std.file.exists(options.specFileName))
-    {
-        warning("No spec file command line option found");
-        
-        string defaultSpecName = QtMakeSpecification.detectHostMakeSpec();
-        if (!defaultSpecName.empty)
-        {
-            warning("Using default spec: " ~ defaultSpecName);
-            options.specFileName = defaultSpecName;
-        }
-        else
-        {
-            error("Invalid default spec name '{}'", defaultSpecName);
-            return 1;
-        }
     }
 
     // Validate mode
@@ -400,16 +421,14 @@ int main(string[] argv)
 
     // FIXME: process command-line variable assignments
 
-    // FIXME: my custom code //////////////////////////////////////////
-    immutable(QtVersionInfo) qtInfo = QtVersionInfo("/opt/Qt", "5.11.3", "gcc_64");
-    const(QtVersion) qt = new const QtVersion(qtInfo);
+    setupQtEnvironmentVariables(qtInfo);
+    setupQtProjectVariables(context, qtInfo, options.specFileName);
 
-    auto context = new ProExecutionContext();
     loadQmakeDefaults(context, argv.remove(0), "" /*FIXME: qtConfFileName*/);
     assert(context.getVariableRawValue("DIR_SEPARATOR")[0] == "/");
+
     loadQmakeSpec(context, persistentStorage, qt, options.specFileName);
     assert(context.getVariableRawValue("MAKEFILE_GENERATOR")[0] == "UNIX");
-    ///////////////////////////////////////////////////////////////////
 
     int exitVal;
     foreach (projectFileName; options.projectFileNames)
@@ -441,7 +460,7 @@ int main(string[] argv)
             //Option::prepareProject(fn);
 
             // Eval default_pre
-            if (!loadQmakeFeature(context, persistentStorage, qt, QtVersion.QMAKE_PRE_FILE))
+            if (!loadQmakeFeature(context, persistentStorage, qt, QMAKE_PRE_FILE))
             {
                 throw new Exception("Pre-feature eval failed");
             }

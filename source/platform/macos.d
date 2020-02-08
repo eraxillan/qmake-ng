@@ -51,8 +51,8 @@ QtQmake[] macosDetectQmakeInstallations()
     }
 
     // Output example for macOS:
-    // /Users/eraxillan/Qt/5.12.3/clang_64/bin/qmake
-    // /Users/eraxillan/Qt/5.12.3/ios/bin/qmake
+    // /Users/<user>/Qt/5.12.3/clang_64/bin/qmake
+    // /Users/<user>/Qt/5.12.3/ios/bin/qmake
     string[] mdfindOutputLines = splitString(mdfindOutput.output, "\n", true);
     foreach (qmakePath; mdfindOutputLines)
     {
@@ -63,7 +63,7 @@ QtQmake[] macosDetectQmakeInstallations()
         
         // Example output:
         // QMake version 3.1
-        // Using Qt version 5.12.3 in /Users/eraxillan/Qt/5.12.3/clang_64/lib
+        // Using Qt version 5.12.3 in /Users/<user>/Qt/5.12.3/clang_64/lib
         if (qmakeOutput.status != 0)
         {
             writefln("Failed to execute 'qmake -version' command");

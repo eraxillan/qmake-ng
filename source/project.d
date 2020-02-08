@@ -117,7 +117,12 @@ public class Project
             trace("Parsing project file '" ~ fileName ~ "' FAILED");
         }
         else
+        {
             trace("Project file '" ~ fileName ~ "' successfully parsed");
+            trace("");
+            trace("");
+            trace("");
+        }
 
         return parseTree.successful;
     }
@@ -142,6 +147,9 @@ public class Project
         }
 
         trace("Project file '" ~ fileName ~ "' successfully parsed");
+        trace("");
+        trace("");
+        trace("");
 
         trace("Trying to evaluate project file '" ~ fileName ~ "'...");
 
@@ -159,6 +167,9 @@ public class Project
         //dump();
 
         trace("Project file '" ~ fileName ~ "' successfully evaluated");
+        trace("");
+        trace("");
+        trace("");
         return true;
     }
 
@@ -268,7 +279,7 @@ public class Project
                 trace("Declare user-defined replace function ", "`", name, "`");
 
                 auto functionBlock = concreteDeclNode.children[3];
-                const(string[]) replaceAction(ref ProExecutionContext /*context*/, in string[] arguments)
+                const(string[]) replaceAction(ref ProExecutionContext /*context*/, ref PersistentPropertyStorage persistentStorage, in string[] arguments)
                 {
                     trace("Invoking user-defined replace function ", "`", name, "`");
 
@@ -314,7 +325,7 @@ public class Project
                 trace("Declare user-defined test function ", "`", name, "`");
 
                 auto functionBlock = concreteDeclNode.children[3];
-                const(string[]) testAction(ref ProExecutionContext /*context*/, in string[] arguments)
+                const(string[]) testAction(ref ProExecutionContext /*context*/, ref PersistentPropertyStorage persistentStorage, in string[] arguments)
                 {
                     trace("Invoking user-defined test function ", "`", name, "`");
 
@@ -1023,7 +1034,7 @@ public class Project
                     throw new Exception("Unsupported function '" ~ functionName ~ "'");
                 
                 // Invoke function
-                const(string[]) resultAsList = functionDescription.m_action(m_contextStack.top(), [variableName, expression]);
+                const(string[]) resultAsList = functionDescription.m_action(m_contextStack.top(), m_persistentStorage, [variableName, expression]);
                 if (functionDescription.m_returnType == VariableType.STRING_LIST)
                 {
                     trace("Function ", "`", functionName, "`", " returns list: ", resultAsList);
@@ -1251,7 +1262,7 @@ public class Project
         trace("Actual function ", "`", functionName, "`", " arguments: ", actualArguments);
 
         // Invoke function
-        const(string[]) resultAsList = functionDescription.m_action(m_contextStack.top(), actualArguments);
+        const(string[]) resultAsList = functionDescription.m_action(m_contextStack.top(), m_persistentStorage, actualArguments);
         if (functionDescription.m_returnType == VariableType.STRING_LIST)
         {
             trace("Function ", "`", functionName, "`", " returns list: ", resultAsList);
@@ -1738,7 +1749,7 @@ unittest
 for(_, $$list(_)) { # just a way to break easily
     isEmpty(FORCE_MINGW_QDOC_BUILD): FORCE_MINGW_QDOC_BUILD = $$(FORCE_MINGW_QDOC_BUILD)
     equals(QMAKE_HOST.os, Windows):gcc:isEmpty(FORCE_MINGW_QDOC_BUILD) {
-            log("QDoc build is disabled on MinGW in Qt 5.11.0, because of a missing feature in the release infrastructure.(\\n)")
+            log("QDoc build is disabled on MinGW in Qt, because of a missing feature in the release infrastructure.(\\n)")
             log("You can enable it by setting FORCE_MINGW_QDOC_BUILD")
             break()
     }

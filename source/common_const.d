@@ -24,10 +24,6 @@ module common_const;
 
 const string QMAKE_VERSION_STR = "3.1";
 
-// FIXME: detect Qt on run-time
-const string QT_VERSION_STR = "5.11.3";
-const string QT_LIB_DIR = "/opt/Qt/5.11.3/gcc_64/lib";
-
 public const auto STR_EMPTY = "";
 
 public const auto CHAR_WS = ' ';
@@ -85,3 +81,12 @@ public const auto STR_TRUE = "true";
 public const auto STR_FALSE = "false";
 
 public const auto STR_HOSTBUILD = "host_build";
+
+public const auto MKSPECS_DIR = "mkspecs";
+public const auto FEATURES_DIR = "features";
+    
+public const auto QMAKE_SPEC_PRE_FILE = "spec_pre.prf";
+public const auto QMAKE_SPEC_POST_FILE = "spec_post.prf";
+
+public const auto QMAKE_PRE_FILE = "default_pre.prf";
+public const auto QMAKE_POST_FILE = "default_post.prf";

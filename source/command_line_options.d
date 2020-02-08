@@ -36,6 +36,7 @@ import project_variable;
 import common_const;
 import common_utils;
 import persistent_property;
+import qt;
 
 public enum CmdLineFlags
 {
@@ -85,7 +86,7 @@ struct QmakeOptions
     string[] properties;
 }
 
-public int parseCommandlineOptions(in string[] argv, out QmakeOptions options)
+public int parseCommandlineOptions(in string[] argv, in QtVersionInfo qtInfo, out QmakeOptions options)
 {
      // Original Qt qmake compatibility:
     // dlang getopt do not support long options with single dash
@@ -218,7 +219,7 @@ public int parseCommandlineOptions(in string[] argv, out QmakeOptions options)
     // Show version and exit
     if (options.showVersion)
     {
-        printVersionInfo();
+        printVersionInfo(qtInfo);
         return CmdLineFlags.QMAKE_CMDLINE_BAIL;
     }
 
@@ -252,13 +253,13 @@ public int parseCommandlineOptions(in string[] argv, out QmakeOptions options)
     return 0;
 }
 
-private void printVersionInfo()
+private void printVersionInfo(in QtVersionInfo qtInfo)
 {
     writefln(
 `QMake version %s
 Using Qt version %s in %s
 `
-    , QMAKE_VERSION_STR, QT_VERSION_STR, QT_LIB_DIR
+    , QMAKE_VERSION_STR, qtInfo.qtVersionStr, qtInfo.qtLibraryDir
     );
 }
 

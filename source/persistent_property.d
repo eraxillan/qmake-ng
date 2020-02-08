@@ -36,140 +36,145 @@ import std.regex;
 import std.process;
 import common_const;
 import qmakeexception;
+import qt;
 
 class PersistentPropertyStorage
 {
     private string[string] m_values;
 
-    this()
+    @disable this();
+
+    this(immutable QtVersionInfo qtInfo, in string mkSpec)
     {
-        reload();
+        reload(qtInfo, mkSpec);
     }
 
-    public void reload()
+    public void reload(immutable QtVersionInfo qtInfo, in string mkSpec)
     {
         m_values["QT_SYSROOT"] = "";
 
-        m_values["QT_INSTALL_PREFIX"] = "/opt/Qt/5.11.3/gcc_64";
-        m_values["QT_INSTALL_PREFIX/raw"] = "/opt/Qt/5.11.3/gcc_64";
-        m_values["QT_INSTALL_PREFIX/get"] = "/opt/Qt/5.11.3/gcc_64";
-        m_values["QT_INSTALL_PREFIX/src"] = "/opt/Qt/5.11.3/gcc_64";
-        m_values["QT_INSTALL_PREFIX/dev"] = "/opt/Qt/5.11.3/gcc_64";
+        m_values["QT_INSTALL_PREFIX"] = qtInfo.qtPlatformDir;
+        m_values["QT_INSTALL_PREFIX/raw"] = qtInfo.qtPlatformDir;
+        m_values["QT_INSTALL_PREFIX/get"] = qtInfo.qtPlatformDir;
+        m_values["QT_INSTALL_PREFIX/src"] = qtInfo.qtPlatformDir;
+        m_values["QT_INSTALL_PREFIX/dev"] = qtInfo.qtPlatformDir;
         
-        m_values["QT_INSTALL_ARCHDATA"] = "/opt/Qt/5.11.3/gcc_64";
-        m_values["QT_INSTALL_ARCHDATA/raw"] = "/opt/Qt/5.11.3/gcc_64";
-        m_values["QT_INSTALL_ARCHDATA/get"] = "/opt/Qt/5.11.3/gcc_64";
-        m_values["QT_INSTALL_ARCHDATA/src"] = "/opt/Qt/5.11.3/gcc_64";
-        m_values["QT_INSTALL_ARCHDATA/dev"] = "/opt/Qt/5.11.3/gcc_64";
+        m_values["QT_INSTALL_ARCHDATA"] = qtInfo.qtPlatformDir;
+        m_values["QT_INSTALL_ARCHDATA/raw"] = qtInfo.qtPlatformDir;
+        m_values["QT_INSTALL_ARCHDATA/get"] = qtInfo.qtPlatformDir;
+        m_values["QT_INSTALL_ARCHDATA/src"] = qtInfo.qtPlatformDir;
+        m_values["QT_INSTALL_ARCHDATA/dev"] = qtInfo.qtPlatformDir;
         
-        m_values["QT_INSTALL_DATA"] = "/opt/Qt/5.11.3/gcc_64";
-        m_values["QT_INSTALL_DATA/raw"] = "/opt/Qt/5.11.3/gcc_64";
-        m_values["QT_INSTALL_DATA/get"] = "/opt/Qt/5.11.3/gcc_64";
-        m_values["QT_INSTALL_DATA/src"] = "/opt/Qt/5.11.3/gcc_64";
-        m_values["QT_INSTALL_DATA/dev"] = "/opt/Qt/5.11.3/gcc_64";
+        m_values["QT_INSTALL_DATA"] = qtInfo.qtPlatformDir;
+        m_values["QT_INSTALL_DATA/raw"] = qtInfo.qtPlatformDir;
+        m_values["QT_INSTALL_DATA/get"] = qtInfo.qtPlatformDir;
+        m_values["QT_INSTALL_DATA/src"] = qtInfo.qtPlatformDir;
+        m_values["QT_INSTALL_DATA/dev"] = qtInfo.qtPlatformDir;
         
-        m_values["QT_INSTALL_DOCS"] = "/opt/Qt/Docs/Qt-5.11.3";
-        m_values["QT_INSTALL_DOCS/raw"] = "/opt/Qt/Docs/Qt-5.11.3";
-        m_values["QT_INSTALL_DOCS/get"] = "/opt/Qt/Docs/Qt-5.11.3";
-        m_values["QT_INSTALL_DOCS/src"] = "/opt/Qt/Docs/Qt-5.11.3";
-        m_values["QT_INSTALL_DOCS/dev"] = "/opt/Qt/Docs/Qt-5.11.3";
+        m_values["QT_INSTALL_DOCS"] = qtInfo.qtDocsDir;
+        m_values["QT_INSTALL_DOCS/raw"] = qtInfo.qtDocsDir;
+        m_values["QT_INSTALL_DOCS/get"] = qtInfo.qtDocsDir;
+        m_values["QT_INSTALL_DOCS/src"] = qtInfo.qtDocsDir;
+        m_values["QT_INSTALL_DOCS/dev"] = qtInfo.qtDocsDir;
         
-        m_values["QT_INSTALL_HEADERS"] = "/opt/Qt/5.11.3/gcc_64/include";
-        m_values["QT_INSTALL_HEADERS/raw"] = "/opt/Qt/5.11.3/gcc_64/include";
-        m_values["QT_INSTALL_HEADERS/get"] = "/opt/Qt/5.11.3/gcc_64/include";
-        m_values["QT_INSTALL_HEADERS/src"] = "/opt/Qt/5.11.3/gcc_64/include";
-        m_values["QT_INSTALL_HEADERS/dev"] = "/opt/Qt/5.11.3/gcc_64/include";
+        m_values["QT_INSTALL_HEADERS"] = qtInfo.qtIncludeDir;
+        m_values["QT_INSTALL_HEADERS/raw"] = qtInfo.qtIncludeDir;
+        m_values["QT_INSTALL_HEADERS/get"] = qtInfo.qtIncludeDir;
+        m_values["QT_INSTALL_HEADERS/src"] = qtInfo.qtIncludeDir;
+        m_values["QT_INSTALL_HEADERS/dev"] = qtInfo.qtIncludeDir;
         
-        m_values["QT_INSTALL_LIBS"] = "/opt/Qt/5.11.3/gcc_64/lib";
-        m_values["QT_INSTALL_LIBS/raw"] = "/opt/Qt/5.11.3/gcc_64/lib";
-        m_values["QT_INSTALL_LIBS/get"] = "/opt/Qt/5.11.3/gcc_64/lib";
-        m_values["QT_INSTALL_LIBS/src"] = "/opt/Qt/5.11.3/gcc_64/lib";
-        m_values["QT_INSTALL_LIBS/dev"] = "/opt/Qt/5.11.3/gcc_64/lib";
+        m_values["QT_INSTALL_LIBS"] = qtInfo.qtLibraryDir;
+        m_values["QT_INSTALL_LIBS/raw"] = qtInfo.qtLibraryDir;
+        m_values["QT_INSTALL_LIBS/get"] = qtInfo.qtLibraryDir;
+        m_values["QT_INSTALL_LIBS/src"] = qtInfo.qtLibraryDir;
+        m_values["QT_INSTALL_LIBS/dev"] = qtInfo.qtLibraryDir;
         
-        m_values["QT_INSTALL_LIBEXECS"] = "/opt/Qt/5.11.3/gcc_64/libexec";
-        m_values["QT_INSTALL_LIBEXECS/raw"] = "/opt/Qt/5.11.3/gcc_64/libexec";
-        m_values["QT_INSTALL_LIBEXECS/get"] = "/opt/Qt/5.11.3/gcc_64/libexec";
-        m_values["QT_INSTALL_LIBEXECS/src"] = "/opt/Qt/5.11.3/gcc_64/libexec";
-        m_values["QT_INSTALL_LIBEXECS/dev"] = "/opt/Qt/5.11.3/gcc_64/libexec";
+        m_values["QT_INSTALL_LIBEXECS"] = qtInfo.qtLibexecDir;
+        m_values["QT_INSTALL_LIBEXECS/raw"] = qtInfo.qtLibexecDir;
+        m_values["QT_INSTALL_LIBEXECS/get"] = qtInfo.qtLibexecDir;
+        m_values["QT_INSTALL_LIBEXECS/src"] = qtInfo.qtLibexecDir;
+        m_values["QT_INSTALL_LIBEXECS/dev"] = qtInfo.qtLibexecDir;
         
-        m_values["QT_INSTALL_BINS"] = "/opt/Qt/5.11.3/gcc_64/bin";
-        m_values["QT_INSTALL_BINS/raw"] = "/opt/Qt/5.11.3/gcc_64/bin";
-        m_values["QT_INSTALL_BINS/get"] = "/opt/Qt/5.11.3/gcc_64/bin";
-        m_values["QT_INSTALL_BINS/src"] = "/opt/Qt/5.11.3/gcc_64/bin";
-        m_values["QT_INSTALL_BINS/dev"] = "/opt/Qt/5.11.3/gcc_64/bin";
+        m_values["QT_INSTALL_BINS"] = qtInfo.qtBinaryDir;
+        m_values["QT_INSTALL_BINS/raw"] = qtInfo.qtBinaryDir;
+        m_values["QT_INSTALL_BINS/get"] = qtInfo.qtBinaryDir;
+        m_values["QT_INSTALL_BINS/src"] = qtInfo.qtBinaryDir;
+        m_values["QT_INSTALL_BINS/dev"] = qtInfo.qtBinaryDir;
         
-        m_values["QT_INSTALL_TESTS"] = "/opt/Qt/5.11.3/gcc_64/tests";
-        m_values["QT_INSTALL_TESTS/raw"] = "/opt/Qt/5.11.3/gcc_64/tests";
-        m_values["QT_INSTALL_TESTS/get"] = "/opt/Qt/5.11.3/gcc_64/tests";
-        m_values["QT_INSTALL_TESTS/src"] = "/opt/Qt/5.11.3/gcc_64/tests";
-        m_values["QT_INSTALL_TESTS/dev"] = "/opt/Qt/5.11.3/gcc_64/tests";
+        m_values["QT_INSTALL_TESTS"] = qtInfo.qtTestsDir;
+        m_values["QT_INSTALL_TESTS/raw"] = qtInfo.qtTestsDir;
+        m_values["QT_INSTALL_TESTS/get"] = qtInfo.qtTestsDir;
+        m_values["QT_INSTALL_TESTS/src"] = qtInfo.qtTestsDir;
+        m_values["QT_INSTALL_TESTS/dev"] = qtInfo.qtTestsDir;
         
-        m_values["QT_INSTALL_PLUGINS"] = "/opt/Qt/5.11.3/gcc_64/plugins";
-        m_values["QT_INSTALL_PLUGINS/raw"] = "/opt/Qt/5.11.3/gcc_64/plugins";
-        m_values["QT_INSTALL_PLUGINS/get"] = "/opt/Qt/5.11.3/gcc_64/plugins";
-        m_values["QT_INSTALL_PLUGINS/src"] = "/opt/Qt/5.11.3/gcc_64/plugins";
-        m_values["QT_INSTALL_PLUGINS/dev"] = "/opt/Qt/5.11.3/gcc_64/plugins";
+        m_values["QT_INSTALL_PLUGINS"] = qtInfo.qtPluginsDir;
+        m_values["QT_INSTALL_PLUGINS/raw"] = qtInfo.qtPluginsDir;
+        m_values["QT_INSTALL_PLUGINS/get"] = qtInfo.qtPluginsDir;
+        m_values["QT_INSTALL_PLUGINS/src"] = qtInfo.qtPluginsDir;
+        m_values["QT_INSTALL_PLUGINS/dev"] = qtInfo.qtPluginsDir;
         
-        m_values["QT_INSTALL_IMPORTS"] = "/opt/Qt/5.11.3/gcc_64/imports";
-        m_values["QT_INSTALL_IMPORTS/raw"] = "/opt/Qt/5.11.3/gcc_64/imports";
-        m_values["QT_INSTALL_IMPORTS/get"] = "/opt/Qt/5.11.3/gcc_64/imports";
-        m_values["QT_INSTALL_IMPORTS/src"] = "/opt/Qt/5.11.3/gcc_64/imports";
-        m_values["QT_INSTALL_IMPORTS/dev"] = "/opt/Qt/5.11.3/gcc_64/imports";
+        m_values["QT_INSTALL_IMPORTS"] = qtInfo.qtImportsDir;
+        m_values["QT_INSTALL_IMPORTS/raw"] = qtInfo.qtImportsDir;
+        m_values["QT_INSTALL_IMPORTS/get"] = qtInfo.qtImportsDir;
+        m_values["QT_INSTALL_IMPORTS/src"] = qtInfo.qtImportsDir;
+        m_values["QT_INSTALL_IMPORTS/dev"] = qtInfo.qtImportsDir;
 
-        m_values["QT_INSTALL_QML"] = "/opt/Qt/5.11.3/gcc_64/qml";
-        m_values["QT_INSTALL_QML/raw"] = "/opt/Qt/5.11.3/gcc_64/qml";
-        m_values["QT_INSTALL_QML/get"] = "/opt/Qt/5.11.3/gcc_64/qml";
-        m_values["QT_INSTALL_QML/src"] = "/opt/Qt/5.11.3/gcc_64/qml";
-        m_values["QT_INSTALL_QML/dev"] = "/opt/Qt/5.11.3/gcc_64/qml";
+        m_values["QT_INSTALL_QML"] = qtInfo.qtQmlDir;
+        m_values["QT_INSTALL_QML/raw"] = qtInfo.qtQmlDir;
+        m_values["QT_INSTALL_QML/get"] = qtInfo.qtQmlDir;
+        m_values["QT_INSTALL_QML/src"] = qtInfo.qtQmlDir;
+        m_values["QT_INSTALL_QML/dev"] = qtInfo.qtQmlDir;
 
-        m_values["QT_INSTALL_TRANSLATIONS"] = "/opt/Qt/5.11.3/gcc_64/translations";
-        m_values["QT_INSTALL_TRANSLATIONS/raw"] = "/opt/Qt/5.11.3/gcc_64/translations";
-        m_values["QT_INSTALL_TRANSLATIONS/get"] = "/opt/Qt/5.11.3/gcc_64/translations";
-        m_values["QT_INSTALL_TRANSLATIONS/src"] = "/opt/Qt/5.11.3/gcc_64/translations";
-        m_values["QT_INSTALL_TRANSLATIONS/dev"] = "/opt/Qt/5.11.3/gcc_64/translations";
+        m_values["QT_INSTALL_TRANSLATIONS"] = qtInfo.qtTranslationsDir;
+        m_values["QT_INSTALL_TRANSLATIONS/raw"] = qtInfo.qtTranslationsDir;
+        m_values["QT_INSTALL_TRANSLATIONS/get"] = qtInfo.qtTranslationsDir;
+        m_values["QT_INSTALL_TRANSLATIONS/src"] = qtInfo.qtTranslationsDir;
+        m_values["QT_INSTALL_TRANSLATIONS/dev"] = qtInfo.qtTranslationsDir;
 
-        m_values["QT_INSTALL_CONFIGURATION"] = "/opt/Qt/5.11.3/gcc_64";
-        m_values["QT_INSTALL_CONFIGURATION/raw"] = "/opt/Qt/5.11.3/gcc_64";
-        m_values["QT_INSTALL_CONFIGURATION/get"] = "/opt/Qt/5.11.3/gcc_64";
-        m_values["QT_INSTALL_CONFIGURATION/src"] = "/opt/Qt/5.11.3/gcc_64";
-        m_values["QT_INSTALL_CONFIGURATION/dev"] = "/opt/Qt/5.11.3/gcc_64";
+        m_values["QT_INSTALL_CONFIGURATION"] = qtInfo.qtPlatformDir;
+        m_values["QT_INSTALL_CONFIGURATION/raw"] = qtInfo.qtPlatformDir;
+        m_values["QT_INSTALL_CONFIGURATION/get"] = qtInfo.qtPlatformDir;
+        m_values["QT_INSTALL_CONFIGURATION/src"] = qtInfo.qtPlatformDir;
+        m_values["QT_INSTALL_CONFIGURATION/dev"] = qtInfo.qtPlatformDir;
 
-        m_values["QT_INSTALL_EXAMPLES"] = "/opt/Qt/Examples/Qt-5.11.3";
-        m_values["QT_INSTALL_EXAMPLES/raw"] = "/opt/Qt/Examples/Qt-5.11.3";
-        m_values["QT_INSTALL_EXAMPLES/get"] = "/opt/Qt/Examples/Qt-5.11.3";
-        m_values["QT_INSTALL_EXAMPLES/src"] = "/opt/Qt/Examples/Qt-5.11.3";
-        m_values["QT_INSTALL_EXAMPLES/dev"] = "/opt/Qt/Examples/Qt-5.11.3";
+        m_values["QT_INSTALL_EXAMPLES"] = qtInfo.qtExamplesDir;
+        m_values["QT_INSTALL_EXAMPLES/raw"] = qtInfo.qtExamplesDir;
+        m_values["QT_INSTALL_EXAMPLES/get"] = qtInfo.qtExamplesDir;
+        m_values["QT_INSTALL_EXAMPLES/src"] = qtInfo.qtExamplesDir;
+        m_values["QT_INSTALL_EXAMPLES/dev"] = qtInfo.qtExamplesDir;
 
-        m_values["QT_INSTALL_DEMOS"] = "/opt/Qt/Examples/Qt-5.11.3";
-        m_values["QT_INSTALL_DEMOS/raw"] = "/opt/Qt/Examples/Qt-5.11.3";
-        m_values["QT_INSTALL_DEMOS/get"] = "/opt/Qt/Examples/Qt-5.11.3";
-        m_values["QT_INSTALL_DEMOS/src"] = "/opt/Qt/Examples/Qt-5.11.3";
-        m_values["QT_INSTALL_DEMOS/dev"] = "/opt/Qt/Examples/Qt-5.11.3";
+        m_values["QT_INSTALL_DEMOS"] = qtInfo.qtExamplesDir;
+        m_values["QT_INSTALL_DEMOS/raw"] = qtInfo.qtExamplesDir;
+        m_values["QT_INSTALL_DEMOS/get"] = qtInfo.qtExamplesDir;
+        m_values["QT_INSTALL_DEMOS/src"] = qtInfo.qtExamplesDir;
+        m_values["QT_INSTALL_DEMOS/dev"] = qtInfo.qtExamplesDir;
         
-        m_values["QT_HOST_PREFIX"] = "/opt/Qt/5.11.3/gcc_64";
-        m_values["QT_HOST_PREFIX/get"] = "/opt/Qt/5.11.3/gcc_64";
-        m_values["QT_HOST_PREFIX/src"] = "/opt/Qt/5.11.3/gcc_64";
+        m_values["QT_HOST_PREFIX"] = qtInfo.qtPlatformDir;
+        m_values["QT_HOST_PREFIX/get"] = qtInfo.qtPlatformDir;
+        m_values["QT_HOST_PREFIX/src"] = qtInfo.qtPlatformDir;
 
-        m_values["QT_HOST_DATA"] = "/opt/Qt/5.11.3/gcc_64";
-        m_values["QT_HOST_DATA/get"] = "/opt/Qt/5.11.3/gcc_64";
-        m_values["QT_HOST_DATA/src"] = "/opt/Qt/5.11.3/gcc_64";
+        m_values["QT_HOST_DATA"] = qtInfo.qtPlatformDir;
+        m_values["QT_HOST_DATA/get"] = qtInfo.qtPlatformDir;
+        m_values["QT_HOST_DATA/src"] = qtInfo.qtPlatformDir;
 
-        m_values["QT_HOST_BINS"] = "/opt/Qt/5.11.3/gcc_64/bin";
-        m_values["QT_HOST_BINS/get"] = "/opt/Qt/5.11.3/gcc_64/bin";
-        m_values["QT_HOST_BINS/src"] = "/opt/Qt/5.11.3/gcc_64/bin";
+        m_values["QT_HOST_BINS"] = qtInfo.qtBinaryDir;
+        m_values["QT_HOST_BINS/get"] = qtInfo.qtBinaryDir;
+        m_values["QT_HOST_BINS/src"] = qtInfo.qtBinaryDir;
 
-        m_values["QT_HOST_LIBS"] = "/opt/Qt/5.11.3/gcc_64/lib";
-        m_values["QT_HOST_LIBS/get"] = "/opt/Qt/5.11.3/gcc_64/lib";
-        m_values["QT_HOST_LIBS/src"] = "/opt/Qt/5.11.3/gcc_64/lib";
+        m_values["QT_HOST_LIBS"] = qtInfo.qtLibraryDir;
+        m_values["QT_HOST_LIBS/get"] = qtInfo.qtLibraryDir;
+        m_values["QT_HOST_LIBS/src"] = qtInfo.qtLibraryDir;
 
-        m_values["QMAKE_SPEC"] = "linux-g++";
-        m_values["QMAKE_XSPEC"] = "linux-g++";
-        m_values["QMAKE_VERSION"] = "3.1";
-        m_values["QT_VERSION"] = "5.11.3";
+        m_values["QMAKE_SPEC"] = mkSpec;
+        m_values["QMAKE_XSPEC"] = mkSpec;
+        m_values["QMAKE_VERSION"] = QMAKE_VERSION_STR;
+        m_values["QT_VERSION"] = qtInfo.qtVersionStr;
 
         // Internal for mkspec/feature eval
         m_values["QMAKEMODULES"] = "";
-        m_values["QMAKE_MKSPECS"] = "/opt/Qt/5.11.3/gcc_64/mkspecs";
+        m_values["QMAKE_MKSPECS"] = qtInfo.qtMkspecsDir;
+
+        m_values["CROSS_COMPILE"] = "";
     }
 
     public string value(in string name)
