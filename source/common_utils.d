@@ -107,9 +107,12 @@ public void setupDatetimeLocale()
 
 	auto value = environment.get("LC_TIME");
 	if (value is null)
-		throw new Exception("LC_TIME is not defined");
-	
-	setlocale(LC_TIME, value.ptr);
+	{
+		warning("LC_TIME is not defined: use en_US.UTF-8 by default");
+		setlocale(LC_TIME, "en_US.UTF-8");
+	}
+	else
+		setlocale(LC_TIME, value.ptr);
 }
 
 public auto getDateTimeString()
