@@ -30,8 +30,6 @@ import common_utils;
 
 QtQmake[] detectQmakeInstallations()
 {
-    import std.process;
-
     QtQmake[] result;
 
     version (Windows)
@@ -98,7 +96,7 @@ struct QtMakeSpecification
     }
 
     // NOTE: there is no sense to detect target makespec, because there are too many variants:
-    //       e.g. macOS host can build for iOS, Android and other targets
+    //       e.g. macOS host can build program for iOS, Android and other targets
     //
     // Android: "android-g++"
     // iOS:     "macx-ios-clang"
@@ -145,21 +143,41 @@ class QtVersion
     }
     
     string mkspecDirPath() const
+    out (result)
+    {
+        assert(std.file.exists(result) && std.file.isDir(result));
+    }
+    do
     {
         return std.path.buildPath(m_qt.qtRootDir, m_qt.qtVersionStr, m_qt.qtKit, MKSPECS_DIR);
     }
 
     string featureDirPath() const
+    out (result)
+    {
+        assert(std.file.exists(result) && std.file.isDir(result));
+    }
+    do
     {
         return std.path.buildPath(m_qt.qtRootDir, m_qt.qtVersionStr, m_qt.qtKit, MKSPECS_DIR, FEATURES_DIR);
     }
 
     string specPreFilePath() const
+    out (result)
+    {
+        assert(std.file.exists(result) && std.file.isFile(result));
+    }
+    do
     {
         return std.path.buildPath(featureDirPath(), QMAKE_SPEC_PRE_FILE);
     }
 
     string specPostFilePath() const
+    out (result)
+    {
+        assert(std.file.exists(result) && std.file.isFile(result));
+    }
+    do
     {
         return std.path.buildPath(featureDirPath(), QMAKE_SPEC_POST_FILE);
     }
