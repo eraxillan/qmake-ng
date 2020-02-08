@@ -37,6 +37,7 @@ import std.regex;
 import qmakeexception;
 import common_const;
 import common_utils;
+import logger;
 import project_variable;
 import project_context;
 import persistent_property;
@@ -503,11 +504,13 @@ shared static this()
 		assert(arguments.length >= 1);
 		if (arguments.length > 1)
 			error("Optional 'include' test functions arguments are not implemented yet");
+
 		string projectFileName = arguments[0];
 		string projectDirectory = context.getVariableRawValue("PWD")[0];
 		if (!isAbsolute(projectFileName))
 			projectFileName = buildNormalizedPath(absolutePath(projectFileName, projectDirectory));
 		trace("absolute project path: '", projectFileName, "'");
+		NgLogger.get().traceIncludeBegin(projectFileName);
 		if (!exists(projectFileName) || !isFile(projectFileName))
 		{
 			//error("project file '", projectFileName, "' was not found, so return FALSE");
@@ -523,6 +526,7 @@ shared static this()
 			return ["false"];
 		}
 		info("qmake project file '" ~ projectFileName ~ "' was successfully parsed and included");
+		NgLogger.get().traceIncludeEnd(projectFileName);
 		trace(""); trace(""); trace("");
 		return ["true"];
 	});
@@ -544,6 +548,7 @@ shared static this()
 		projectFileName = buildNormalizedPath(featureDirectory, projectFileName);
 		projectFileName = std.path.setExtension(projectFileName, "prf");
 		trace("absolute feature file path: '", projectFileName, "'");
+		NgLogger.get().traceLoadBegin(projectFileName);
 		if (!std.file.exists(projectFileName) || !std.file.isFile(projectFileName))
 		{
 			error("feature file '", projectFileName,
@@ -560,6 +565,7 @@ shared static this()
 			return ["false"];
 		}
 		info("qmake project file '" ~ projectFileName ~ "' was successfully parsed and included");
+		NgLogger.get().traceLoadEnd(projectFileName);
 		trace(""); trace(""); trace("");
 		return ["true"];
 	});

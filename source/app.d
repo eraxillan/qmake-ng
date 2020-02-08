@@ -34,6 +34,7 @@ import project_context;
 import project_variable;
 import common_const;
 import common_utils;
+import logger;
 import persistent_property;
 import command_line_options;
 import qt;
@@ -169,12 +170,16 @@ private static bool loadQmakeFeature(ref ProExecutionContext context, ref Persis
         return false;
     }
 
+    NgLogger.get().traceLoadBegin(featureFileName);
+
     auto featureProject = new Project(context, persistentStorage);
     if (!featureProject.eval(featureFileName))
     {
         error("evaluating feature file '", featureFileName, "' failed");
         return false;
     }
+
+    NgLogger.get().traceLoadEnd(featureFileName);
 
     info("feature file '", featureFileName, "' successfully evaluated");
     return true;
@@ -215,6 +220,8 @@ private static bool loadQmakeSpec(ref ProExecutionContext context, ref Persisten
         return false;
     }
 
+    NgLogger.get().traceMkspecLoadBegin(mkspecFilePath);
+
     auto mkspecProject = new Project(context, persistentStorage);
     if (!mkspecProject.eval(mkspecFilePath))
     {
@@ -230,6 +237,8 @@ private static bool loadQmakeSpec(ref ProExecutionContext context, ref Persisten
         //return false;
     }
     assert(context.getVariableRawValue("DIR_SEPARATOR")[0] == "/");
+
+    NgLogger.get().traceMkspecLoadEnd(mkspecFilePath);
 
     return false;
 }
@@ -466,6 +475,8 @@ int main(string[] argv)
             }
             //assert(context.getVariableRawValue("DIR_SEPARATOR")[0] == "/");
 
+            NgLogger.get().traceProjectLoadBegin(fn);
+
             auto qmakeProject = new Project(context, persistentStorage);
             if (!qmakeProject.eval(fn))
             {
@@ -473,6 +484,9 @@ int main(string[] argv)
                 exitVal = 3;
                 continue;
             }
+            
+            NgLogger.get().traceProjectLoadEnd(fn);
+
             if (options.doPreprocess)
             {
                 qmakeProject.dump();
