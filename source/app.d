@@ -169,14 +169,14 @@ private static bool loadQmakeFeature(ref ProExecutionContext context, ref Persis
         return false;
     }
 
-    auto featurePro = new Project(context, persistentStorage);
-    if (!featurePro.eval(featureFileName))
+    auto featureProject = new Project(context, persistentStorage);
+    if (!featureProject.eval(featureFileName))
     {
         error("evaluating feature file '", featureFileName, "' failed");
         return false;
     }
 
-    info("feature file '", featureFileName, "' successfully eval'd");
+    info("feature file '", featureFileName, "' successfully evaluated");
     return true;
 }
 
@@ -215,8 +215,8 @@ private static bool loadQmakeSpec(ref ProExecutionContext context, ref Persisten
         return false;
     }
 
-    auto pro = new Project(context, persistentStorage);
-    if (!pro.eval(mkspecFilePath))
+    auto mkspecProject = new Project(context, persistentStorage);
+    if (!mkspecProject.eval(mkspecFilePath))
     {
         throw new Exception("spec parse failed");
         //return false;
@@ -466,8 +466,8 @@ int main(string[] argv)
             }
             //assert(context.getVariableRawValue("DIR_SEPARATOR")[0] == "/");
 
-            auto project = new Project(context, persistentStorage);
-            if (!project.eval(fn))
+            auto qmakeProject = new Project(context, persistentStorage);
+            if (!qmakeProject.eval(fn))
             {
                 stderr.writefln("Error processing project file: %s", projectFileName /*QDir::toNativeSeparators(*projectFileName).toLatin1().constData()*/);
                 exitVal = 3;
@@ -475,7 +475,7 @@ int main(string[] argv)
             }
             if (options.doPreprocess)
             {
-                project.dump();
+                qmakeProject.dump();
 
                 // No need to create makefile
                 continue;
