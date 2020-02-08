@@ -110,8 +110,16 @@ private enum QMakeProjectFunctionCall =
     CustomFunctionId <- / "defineReplace" / "defineTest"
                         / "eval" / "cache" / "contains" / "requires"
                         / "return" / "break" / "next" / "error"
-    FunctionId   <- !CustomFunctionId
-                    ("{" :space* QualifiedIdentifier :space* "}" / QualifiedIdentifier / EnquotedString)
+    FunctionId     <- !CustomFunctionId FunctionIdImpl
+    FunctionIdImpl <- FunctionIdAtom FunctionIdAtom*
+    
+    # Function identifier;
+    # it can be not only pure ID like "include(file)", but also a complex expand statement, like:
+    # \$\$"$$call"(\$\$content)
+    # qtConfOutput_$${call}($$opfx, $$eval($${fpfx}.available))
+    FunctionIdAtom             <- PureFunctionIdentifier / ExpandedFunctionIdentifier
+    PureFunctionIdentifier     <- Identifier / "{" Identifier "}" / (doublequote Identifier doublequote)
+    ExpandedFunctionIdentifier <- ExpandStatement / (doublequote ExpandStatement doublequote)
 `;
 
 private enum QMakeProjectFunctionArguments =
@@ -193,6 +201,7 @@ private enum QMakeProjectBooleanExpression =
     
     IfTestFunctionCall <- "if" OPEN_PAR_WS BooleanExpression CLOSE_PAR_WS
     BooleanAtom        <- / ReplaceFunctionCall
+                          / (!ReplaceFunctionCall ExpandStatement)
                           / TestFunctionCall
                           / QualifiedIdentifier
                           / BooleanConst
@@ -235,7 +244,7 @@ private enum QMakeProjectBuiltinFunctions =
 
     # eval(string)
     EvalTestFunctionCall <- "eval" OPEN_PAR_WS EvalArg CLOSE_PAR_WS
-    EvalArg <- (QualifiedIdentifier :space* "=" :space* Statement) / Statement
+    EvalArg <- FunctionDeclaration / List(:space+, :space) / FunctionArgument(FunctionArgumentStopRule)
 
     # cache(variablename, [set|add|sub] [transient] [super|stash], [source variablename])
     #
@@ -266,7 +275,8 @@ private enum QMakeProjectBuiltinFunctions =
 
     # error() / error("message")
     # NOTE: multiline string must be merged in interpreter
-    ErrorFunctionCall <- "error" OPEN_PAR_WS (List(:space+, :space) / FunctionArgument(FunctionArgumentStopRule) / Statement)? CLOSE_PAR_WS
+    ErrorFunctionCall <- "error" OPEN_PAR_WS ErrorMessage? CLOSE_PAR_WS
+    ErrorMessage      <- List(:space+, :space) / FunctionArgument(FunctionArgumentStopRule)
 
     # requires(condition)
     RequiresFunctionCall <- "requires" OPEN_PAR_WS BooleanExpression CLOSE_PAR_WS
