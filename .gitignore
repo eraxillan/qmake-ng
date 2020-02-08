@@ -1,4 +1,5 @@
 .dub
+dub.selections.json
 docs.json
 __dummy.html
 docs/
@@ -12,3 +13,13 @@ qmake-ng-test-*
 *.o
 *.obj
 *.lst
+
+# Binaries
+qmake-ng
+qmake-ng.settings
+
+# macOS
+.DS_Store
+
+# VSCode
+.vscode/
