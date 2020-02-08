@@ -134,6 +134,7 @@ do
         "Invalid Qt platform");
 
     QtVersionInfo result;
+
     result.qtRootDir = qtRootDir;
     result.qtPlatformDir = qtPlatformDir;
     result.qtMkspecsDir = qtMkspecsDir;
@@ -152,6 +153,57 @@ do
 
     result.qtVersionStr = qtVersionStr;
     result.qtPlatformStr = qtPlatformStr;
+
+    return result;
+}
+
+QtVersionInfo chooseQtSourceVersion()
+{
+    string qtSourceDir;
+
+    auto qtSourceDirs = detectQtSourceRepositories();
+    if (qtSourceDirs.length == 1)
+    {
+        writefln("Auto-detected Qt source directory path: %s", std.path.dirName(qtSourceDirs[0]));
+        writefln("Enter 'yes' to accept detected dir or your custom path instead:");
+        qtSourceDir = stdin.readln().strip();
+        if (qtSourceDir == "yes")
+            qtSourceDir = std.path.dirName(qtSourceDirs[0]);
+        else
+            qtSourceDir = stdin.readln().strip();
+    }
+    else if (qtSourceDirs.length > 1)
+    {
+        writefln("More than one Qt source directory detected:");
+        for (int i = 1; i <= qtSourceDirs.length; i++)
+        {
+            writefln("[%d] %s", i, std.path.dirName(qtSourceDirs[i - 1]));
+        }
+        writefln("Enter number of Qt source directory or your custom path instead:");
+        qtSourceDir = stdin.readln().strip();
+        if (isNumeric(qtSourceDir, 10))
+        {
+            int index = std.conv.to!int(qtSourceDir, 10);
+            assert(index >= 1 && index <= qtSourceDirs.length);
+            qtSourceDir = std.path.dirName(qtSourceDirs[index - 1]);
+        }
+    }
+    else
+    {
+        writefln("Enter Qt source root directory path (either git repository or Src directory from binary package):");
+        qtSourceDir = stdin.readln().strip();
+    }
+
+    assert(qtSourceDir !is null && !qtSourceDir.empty
+        && std.file.exists(qtSourceDir) && std.file.isDir(qtSourceDir), "Invalid Qt binary directory path");
+    writefln("Qt source dir = " ~ qtSourceDir);
+
+    QtVersionInfo result;
+
+    result.qtRootDir = qtSourceDir;
+
+    // NOTE: current unit test only parse projects, not eval,
+    //       so other fields can be left empty
 
     return result;
 }
@@ -191,16 +243,41 @@ QtVersionInfo chooseQtVersion()
     }
     else
     {
-        writefln("Enter Qt source root directory path (either git repo or Src directory from binary package):");
+        writefln("Enter Qt binary directory path (containing original qmake):");
         qtBinaryDir = stdin.readln().strip();
     }
 
     assert(qtBinaryDir !is null && !qtBinaryDir.empty
-        && std.file.exists(qtBinaryDir) && std.file.isDir(qtBinaryDir), "Invalid Qt directory path");
+        && std.file.exists(qtBinaryDir) && std.file.isDir(qtBinaryDir), "Invalid Qt binary directory path");
     assert(std.file.exists(std.path.buildPath(qtBinaryDir, "qmake")));
     writefln("Qt binary dir = " ~ qtBinaryDir);
 
     return getQtVersion(qtBinaryDir);
+}
+
+string[] detectQtSourceRepositories()
+{
+    string[] result;
+
+    version (Windows)
+    {
+        static assert(0, "FIXME: implement");
+    }
+    else version (OSX)
+    {
+        import platform.macos;
+        result = macosDetectQtSourceRepositories();
+    }
+    else version (linux)
+    {
+        static assert(0, "FIXME: implement");
+    }
+    else
+    {
+        static assert(0, "Unsupported platform");
+    }
+
+    return result;
 }
 
 QtQmake[] detectQmakeInstallations()

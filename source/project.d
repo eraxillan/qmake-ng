@@ -1706,10 +1706,18 @@ unittest
     import std.stdio : writefln, readln, stdin;
     import std.conv : to;
     static import std.file, std.path;
+    import qt;
+
+    immutable(QtVersionInfo) qtInfo = chooseQtSourceVersion();
+    immutable(string) mkspec = QtMakeSpecification.detectHostMakeSpec();
+    assert(!mkspec.empty);
 
     auto context = new ProExecutionContext();
-    auto storage = new PersistentPropertyStorage();
+    auto storage = new PersistentPropertyStorage(qtInfo, mkspec);
     auto pro = new Project(context, storage);
+
+    string qtPath = qtInfo.qtRootDir;
+    assert(!qtPath.empty && std.file.exists(qtPath) && std.file.isDir(qtPath), "Invalid Qt source directory path");
 
     assert(pro.tryParseSnippet(
 `
@@ -1757,10 +1765,6 @@ for(_, $$list(_)) { # just a way to break easily
 `));
 
     // Qt projects
-    writefln("Enter Qt source root directory path:");
-    string qtPath = stdin.readln().strip();
-    assert(qtPath !is null && !qtPath.empty && std.file.exists(qtPath) && std.file.isDir(qtPath), "Invalid Qt directory path");
-
     assert(pro.tryParse(buildPath(qtPath, "qt.pro")));
     assert(pro.tryParse(buildPath(qtPath, "qtbase/mkspecs/features/qt_configure.prf")));
     assert(pro.tryParse(buildPath(qtPath, "qt3d/tests/auto/render/render.pro")));
@@ -1778,7 +1782,7 @@ for(_, $$list(_)) { # just a way to break easily
     string[] successfulProjects;
     string[] failedProjects;
     
-    bool parseQtSourceProjects(string qtDir)
+    bool parseQtSourceProjects(string qtDir, ref ProExecutionContext context, ref PersistentPropertyStorage storage)
     {
         auto projectFiles = std.file.dirEntries(qtDir, std.file.SpanMode.depth).filter!(
             f => f.name.endsWith(".pro") || f.name.endsWith(".pri") || f.name.endsWith(".prf")  || f.name.endsWith(".conf")
@@ -1818,9 +1822,7 @@ for(_, $$list(_)) { # just a way to break easily
                 continue;
             }
 
-            auto context = new ProExecutionContext();
-            auto prop = new PersistentPropertyStorage();
-            auto pro = new Project(context, prop);
+            auto pro = new Project(context, storage);
             if (pro.tryParse(d.name))
             {
                 successfulCount++;
@@ -1851,7 +1853,7 @@ for(_, $$list(_)) { # just a way to break easily
         return ((successfulCount > 0) && (failedCount == 0)) ? true : false;
     }
 
-    bool result = parseQtSourceProjects(buildPath(qtPath));
+    bool result = parseQtSourceProjects(buildPath(qtPath), context, storage);
 
     if (failedProjects.length > 0)
     {

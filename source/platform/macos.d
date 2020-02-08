@@ -36,6 +36,27 @@ import common_utils;
 import qt;
 
 
+string[] macosDetectQtSourceRepositories()
+{
+    string[] result;
+
+    // Raw command: mdfind 'kMDItemFSName == "LICENSE.QT-LICENSE-AGREEMENT-4.0"' | grep -v /qtbase/
+    auto mdfindOutput = executeShell(
+        "mdfind 'kMDItemFSName == \"LICENSE.QT-LICENSE-AGREEMENT-4.0\"' | grep -v /qtbase/"
+    );
+    if (mdfindOutput.status != 0)
+    {
+        warning("No Qt source code repository instance found");
+        return result;
+    }
+
+    // Output example for macOS:
+    // /Users/<user>/Projects/qt5/LICENSE.QT-LICENSE-AGREEMENT-4.0
+    result = splitString(mdfindOutput.output, "\n", true);
+
+    return result;
+}
+
 QtQmake[] macosDetectQmakeInstallations()
 {
     QtQmake[] result;
