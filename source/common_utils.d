@@ -267,6 +267,21 @@ public long detectIndentSize(in string str)
 	return result;
 }
 
+public string getProcessOutput(in string command)
+{
+	import std.process : executeShell;
+
+    auto outputData = executeShell(command);
+
+    if (outputData.status != 0)
+    {
+        error("Command '%s' failed with code %d", command, outputData.status);
+        return "";
+    }
+
+    return outputData.output.strip();
+}
+
 unittest
 {
 	// left
