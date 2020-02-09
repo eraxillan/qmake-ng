@@ -302,7 +302,7 @@ shared static this()
     // NOTE: QMAKESPEC variable will be initialized later, when Qt version will be detected
     temp1["QMAKESPEC"] = ProVariable("QMAKE_SPEC", VariableType.STRING_LIST, [], []);
     // QMAKE_NG_EXTENSION
-    temp1["QMAKESPEC"] = ProVariable("QMAKE_SPEC", VariableType.STRING_LIST, [], []);
+    temp1["QMAKESPEC_FEATURES"] = ProVariable("QMAKESPEC_FEATURES", VariableType.STRING_LIST, [], []);
     temp1["MAKEFILE_GENERATOR"] = ProVariable("MAKEFILE_GENERATOR", VariableType.STRING, [], []);
     temp1["TARGET_PLATFORM"] = ProVariable("TARGET_PLATFORM", VariableType.STRING, [], []);
 
