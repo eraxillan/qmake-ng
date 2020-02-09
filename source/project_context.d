@@ -39,17 +39,29 @@ import project_function;
 
 enum FlowControlStatement { None = -1, Return, Break, Next, Error, Count }
 
-public class ProExecutionContext
-{
-	private ProVariable[string] m_builtinVariables;
-	private ProVariable[string] m_userVariables;
+alias ProjectContextStack = QStack!ProExecutionContext;
 
-    private ProFunction[string] m_builtinReplaceFunctions;
-    private ProFunction[string] m_builtinTestFunctions;
-    private ProFunction[string] m_userReplaceFunctions;
-    private ProFunction[string] m_userTestFunctions;
-	
-	private ProVariable[string] cloneBuiltinVariables() const
+class ProExecutionContext
+{
+private:
+    /// Variables
+	ProVariable[string] m_builtinVariables;
+	ProVariable[string] m_userVariables;
+
+    /// Functions
+    ProFunction[string] m_builtinReplaceFunctions;
+    ProFunction[string] m_builtinTestFunctions;
+    ProFunction[string] m_userReplaceFunctions;
+    ProFunction[string] m_userTestFunctions;
+
+    /// Replace function result storage
+    string[] m_functionResult;
+
+    /// Current "program" flow control
+    FlowControlStatement m_flowControlStatement = FlowControlStatement.None;
+
+private:
+	ProVariable[string] cloneBuiltinVariables() const
 	{
 		ProVariable[string] result;
 		foreach (name; builtinVariables.keys)
@@ -57,7 +69,7 @@ public class ProExecutionContext
 		return result;
 	}
 
-    private ProFunction[string] cloneBuiltinReplaceFunctions() const
+    ProFunction[string] cloneBuiltinReplaceFunctions() const
     {
 		ProFunction[string] result;
 		foreach (name; builtinReplaceFunctions.keys)
@@ -65,7 +77,7 @@ public class ProExecutionContext
 		return result;
 	}
 
-    private ProFunction[string] cloneBuiltinTestFunctions() const
+    ProFunction[string] cloneBuiltinTestFunctions() const
     {
 		ProFunction[string] result;
 		foreach (name; builtinTestFunctions.keys)
@@ -73,6 +85,171 @@ public class ProExecutionContext
 		return result;
 	}
 
+    bool isBuiltinVariable(in string name) const
+    in
+    {
+        assert(!name.empty, "project variable name cannot be empty");
+    }
+    do
+    {
+        return (name in m_builtinVariables) !is null;
+    }
+
+    bool isUserDefinedVariable(in string name) const
+    in
+    {
+        assert(!name.empty, "project variable name cannot be empty");
+    }
+    do
+    {
+        return (name in m_userVariables) !is null;
+    }
+
+    void getVariableDescription(in string name, ref ProVariable var)
+    in
+    {
+        assert(!name.empty, "project variable name cannot be empty");
+    }
+    do
+    {       
+        if (isBuiltinVariable(name))
+            var = m_builtinVariables[name];
+        else if (isUserDefinedVariable(name))
+            var = m_userVariables[name];
+        else
+            throw new Exception("Undefined variable '" ~ name ~ "'");
+    }
+
+    bool addUserVariableDescription(in string name, in VariableType type = VariableType.STRING_LIST)
+    in
+    {
+        assert(!name.empty, "project variable name cannot be empty");
+    }
+    do
+    {
+        if (isBuiltinVariable(name) || isUserDefinedVariable(name))
+        {
+            throw new Exception("variable '" ~ name ~ "' was already defined");
+            //warning("variable '" ~ name ~ "' was already defined");
+            //return false;
+        }
+
+        // FIXME: add other fields
+        m_userVariables[name] = ProVariable(name, type, [], []);
+        return true;
+    }
+
+    void setVariableValue(in string name, in string[] value)
+    in
+    {
+        assert(!name.empty, "project variable name cannot be empty");
+    }
+    do
+    {
+        string[] clearValue;
+        foreach (v; value)
+        {
+            if (!v.empty)
+                clearValue ~= v;
+        }
+
+        if (isBuiltinVariable(name))
+        {
+            trace("Set built-in variable ", "`", name, "`", " value to ", clearValue);
+            m_builtinVariables[name].value = clearValue.dup;
+        }
+        else if (isUserDefinedVariable(name))
+        {
+            trace("Set user-defined variable ", "`", name, "`", " value to ", clearValue);
+            m_userVariables[name].value = clearValue.dup;
+        }
+        else
+            throw new Exception("Undefined variable '" ~ name ~ "'");
+    }
+
+    void validateAssignmentOperands(in string name, in string[] value)
+    in
+    {
+        assert(!name.empty, "project variable name cannot be empty");
+    }
+    do
+    {
+        ProVariable variableDescription;
+        getVariableDescription(name, variableDescription);
+        switch (variableDescription.type)
+        {
+            case VariableType.RESTRICTED_STRING: {
+                if (value.length != 1)
+                    throw new Exception("variable '" ~ name ~ " assignment value must be a single string token, not a list");
+
+                // FIXME: implement
+//                if (!variableDescription.canBeEmpty && !value[0].length)
+//                    throw new Exception("variable '" ~ name ~ "' can not have empty value");
+
+                if (variableDescription.valueRange.countUntil(value[0]) < 0)
+                    throw new Exception("variable '" ~ name ~ "' assignment value must be one of the strings: " ~ to!string(variableDescription.valueRange));
+
+                break;
+            }
+            case VariableType.RESTRICTED_STRING_LIST: {
+                // FIXME: implement
+//                if (!variableDescription.canBeEmpty && value.empty)
+//                    throw new Exception("variable " + name + " can not have empty value");
+
+                for (int i = 0; i < value.length; i++)
+                {
+                    if (variableDescription.valueRange.countUntil(value[i]) < 0)
+                        throw new Exception(name ~ " assignment rvalue must be one of the strings: " ~ to!string(variableDescription.valueRange));
+                }
+
+                break;
+            }
+            case VariableType.STRING: {
+                // FIXME: implement
+                // NOTE: currently all rvalues in PEG grammar stored as list for convenience
+                //if (!typeUtils.isString(value) && !typeUtils.isArray(value))
+                //    throw new Exception(name + " assignment value type mismatch: '" + typeUtils.typeOf(value) + "' but string expected");
+
+                break;
+            }
+            case VariableType.STRING_LIST: {
+                break;
+            }
+            case VariableType.OBJECT_LIST: {
+                // FIXME: implement
+                break;
+            }
+            default: {
+                throw new Exception("Unsupported variable type " ~ to!string(variableDescription.type));
+            }
+        }
+    }
+
+    // ---------------------------------------------------------------------------------------------------------------------------
+
+    bool isBuiltinReplaceFunction(in string name)
+    {
+        return ((name in m_builtinReplaceFunctions) !is null);
+    }
+
+    bool isUserReplaceFunction(in string name)
+    {
+        return ((name in m_userReplaceFunctions) !is null);
+    }
+
+    bool isBuiltinTestFunction(in string name)
+    {
+        return ((name in m_builtinTestFunctions) !is null);
+    }
+
+    bool isUserTestFunction(in string name)
+    {
+        return ((name in m_userTestFunctions) !is null);
+    }
+
+    // ---------------------------------------------------------------------------------------------------------------------------
+
+public:
     this()
 	{
 		m_builtinVariables = cloneBuiltinVariables();
@@ -80,7 +257,7 @@ public class ProExecutionContext
         m_builtinTestFunctions = cloneBuiltinTestFunctions();
     }
 
-    public void reset()
+    void reset()
 	{
         m_builtinVariables = cloneBuiltinVariables();
         m_builtinReplaceFunctions = cloneBuiltinReplaceFunctions();
@@ -91,37 +268,17 @@ public class ProExecutionContext
         m_userTestFunctions.clear;
     }
 
-    private bool isBuiltinVariable(in string name) const
-	in
-	{
-		assert(!name.empty, "project variable name cannot be empty");
-	}
-	do
-	{
-        return (name in m_builtinVariables) !is null;
-    }
-
-    private bool isUserDefinedVariable(in string name) const
-	in
-	{
-		assert(!name.empty, "project variable name cannot be empty");
-	}
-	do
-	{
-        return (name in m_userVariables) !is null;
-    }
-
-    public string[] getBuiltinVariableNames() const
+    string[] getBuiltinVariableNames() const
     {
         return m_builtinVariables.keys.sort.release();
     }
 
-    public string[] getUserDefinedVariableNames() const
+    string[] getUserDefinedVariableNames() const
     {
         return m_userVariables.keys.sort.release();
     }
 
-    public void setupPaths(in string projectFileName)
+    void setupPaths(in string projectFileName)
     {
         string dir = dirName(projectFileName);
         assignVariable("PWD", [dir], VariableType.STRING);
@@ -132,7 +289,7 @@ public class ProExecutionContext
 
     // FIXME: workaround needed until cache file `.qmake.stash` support code will be implemented
     // Also, those values are valid for Linux+gcc platform only
-    public void setupCacheVariables()
+    void setupCacheVariables()
     {
         /*assignVariable("QMAKE_CXX.INCDIRS",
             [
@@ -162,46 +319,12 @@ public class ProExecutionContext
             VariableType.STRING_LIST);*/
     }
 
-    public bool isVariableDefined(in string name) const
+    bool isVariableDefined(in string name) const
     {
         return isBuiltinVariable(name) || isUserDefinedVariable(name);
     }
 
-    private void getVariableDescription(in string name, ref ProVariable var)
-	in
-	{
-		assert(!name.empty, "project variable name cannot be empty");
-	}
-	do
-	{		
-		if (isBuiltinVariable(name))
-            var = m_builtinVariables[name];
-        else if (isUserDefinedVariable(name))
-            var = m_userVariables[name];
-        else
-            throw new Exception("Undefined variable '" ~ name ~ "'");
-    }
-
-    private bool addUserVariableDescription(in string name, in VariableType type = VariableType.STRING_LIST)
-	in
-	{
-		assert(!name.empty, "project variable name cannot be empty");
-	}
-	do
-	{
-        if (isBuiltinVariable(name) || isUserDefinedVariable(name))
-		{
-			throw new Exception("variable '" ~ name ~ "' was already defined");
-			//warning("variable '" ~ name ~ "' was already defined");
-            //return false;
-		}
-
-		// FIXME: add other fields
-        m_userVariables[name] = ProVariable(name, type, [], []);
-		return true;
-    }
-
-    public VariableType getVariableType(in string name) /+const+/
+    VariableType getVariableType(in string name) /+const+/
     in
 	{
 		assert(!name.empty, "project variable name cannot be empty");
@@ -215,7 +338,7 @@ public class ProExecutionContext
     }
 
 	// FIXME: add const
-    public string[] getVariableRawValue(in string name) /+const+/
+    string[] getVariableRawValue(in string name) /+const+/
 	in
 	{
 		assert(!name.empty, "project variable name cannot be empty");
@@ -227,36 +350,8 @@ public class ProExecutionContext
 		getVariableDescription(name, variableDescription);
         return variableDescription.value;
     }
-	
-	private void setVariableValue(in string name, in string[] value)
-	in
-	{
-		assert(!name.empty, "project variable name cannot be empty");
-	}
-	do
-	{
-        string[] clearValue;
-        foreach (v; value)
-        {
-            if (!v.empty)
-                clearValue ~= v;
-        }
 
-        if (isBuiltinVariable(name))
-        {
-            trace("Set built-in variable ", "`", name, "`", " value to ", clearValue);
-            m_builtinVariables[name].value = clearValue.dup;
-        }
-        else if (isUserDefinedVariable(name))
-        {
-            trace("Set user-defined variable ", "`", name, "`", " value to ", clearValue);
-            m_userVariables[name].value = clearValue.dup;
-        }
-        else
-            throw new Exception("Undefined variable '" ~ name ~ "'");
-    }
-
-    public void unsetVariable(in string name)
+    void unsetVariable(in string name)
     in
 	{
 		assert(!name.empty, "project variable name cannot be empty");
@@ -272,7 +367,7 @@ public class ProExecutionContext
     }
 
     // var = value
-    public void assignVariable(in string name, in string[] value, in VariableType variableType)
+    void assignVariable(in string name, in string[] value, in VariableType variableType)
 	in
 	{
 		assert(!name.empty, "project variable name cannot be empty");
@@ -287,7 +382,7 @@ public class ProExecutionContext
     }
 
     // var += value
-    public void appendAssignVariable(in string name, in string[] value)
+    void appendAssignVariable(in string name, in string[] value)
 	in
 	{
 		assert(!name.empty, "project variable name cannot be empty");
@@ -302,7 +397,7 @@ public class ProExecutionContext
     }
 
     // var *= value
-    public void appendUniqueAssignVariable(in string name, in string[] value)
+    void appendUniqueAssignVariable(in string name, in string[] value)
 	in
 	{
 		assert(!name.empty, "project variable name cannot be empty");
@@ -324,7 +419,7 @@ public class ProExecutionContext
     }
 
     // var -= value
-    public void removeAssignVariable(in string name, in string[] value)
+    void removeAssignVariable(in string name, in string[] value)
 	in
 	{
 		assert(!name.empty, "project variable name cannot be empty");
@@ -346,88 +441,6 @@ public class ProExecutionContext
         }
 		setVariableValue(name, currentValue);
     }
-
-    private void validateAssignmentOperands(in string name, in string[] value)
-	in
-	{
-		assert(!name.empty, "project variable name cannot be empty");
-	}
-	do
-	{
-        ProVariable variableDescription;
-		getVariableDescription(name, variableDescription);
-        switch (variableDescription.type)
-		{
-            case VariableType.RESTRICTED_STRING: {
-                if (value.length != 1)
-                    throw new Exception("variable '" ~ name ~ " assignment value must be a single string token, not a list");
-
-				// FIXME: implement
-//                if (!variableDescription.canBeEmpty && !value[0].length)
-//                    throw new Exception("variable '" ~ name ~ "' can not have empty value");
-
-                if (variableDescription.valueRange.countUntil(value[0]) < 0)
-                    throw new Exception("variable '" ~ name ~ "' assignment value must be one of the strings: " ~ to!string(variableDescription.valueRange));
-
-                break;
-            }
-            case VariableType.RESTRICTED_STRING_LIST: {
-				// FIXME: implement
-//                if (!variableDescription.canBeEmpty && value.empty)
-//                    throw new Exception("variable " + name + " can not have empty value");
-
-                for (int i = 0; i < value.length; i++)
-				{
-                    if (variableDescription.valueRange.countUntil(value[i]) < 0)
-                        throw new Exception(name ~ " assignment rvalue must be one of the strings: " ~ to!string(variableDescription.valueRange));
-                }
-
-                break;
-            }
-            case VariableType.STRING: {
-				// FIXME: implement
-                // NOTE: currently all rvalues in PEG grammar stored as list for convenience
-                //if (!typeUtils.isString(value) && !typeUtils.isArray(value))
-                //    throw new Exception(name + " assignment value type mismatch: '" + typeUtils.typeOf(value) + "' but string expected");
-
-                break;
-            }
-            case VariableType.STRING_LIST: {
-                break;
-            }
-            case VariableType.OBJECT_LIST: {
-                // FIXME: implement
-                break;
-            }
-            default: {
-                throw new Exception("Unsupported variable type " ~ to!string(variableDescription.type));
-            }
-        }
-    }
-
-    // ---------------------------------------------------------------------------------------------------------------------------
-
-    private bool isBuiltinReplaceFunction(in string name)
-    {
-        return ((name in m_builtinReplaceFunctions) !is null);
-    }
-
-    private bool isUserReplaceFunction(in string name)
-    {
-        return ((name in m_userReplaceFunctions) !is null);
-    }
-
-    private bool isBuiltinTestFunction(in string name)
-    {
-        return ((name in m_builtinTestFunctions) !is null);
-    }
-
-    private bool isUserTestFunction(in string name)
-    {
-        return ((name in m_userTestFunctions) !is null);
-    }
-
-    // ---------------------------------------------------------------------------------------------------------------------------
 
 	bool hasReplaceFunctionDescription(in string name)
 	in
@@ -513,8 +526,6 @@ public class ProExecutionContext
     }
 
     // ---------------------------------------------------------------------------------------------------------------------------
-    // Replace function result stuff
-    private string[] m_functionResult;
 
     void pushFunctionResult(in string[] value)
     {
@@ -532,9 +543,6 @@ public class ProExecutionContext
         m_functionResult = [];
         return temp;
     }
-
-    // Program flow control
-    FlowControlStatement m_flowControlStatement = FlowControlStatement.None;
     
     bool hasFlowControlStatement() const
     {
