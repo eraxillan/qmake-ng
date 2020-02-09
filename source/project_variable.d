@@ -119,21 +119,70 @@ private string[] initConfigVariableRange()
 {
     // FIXME: CONFIG variable can be extended with user-defined values! this list is uncomplete
     return [
-        "release", "debug", "debug_and_release", "debug_and_release_target", "qml_debug",
-        "qmake_use", "build_all", "autogen_precompile_source", "ordered", "precompile_header", "depend_includepath",
-        "warn_on", "warn_off", "exceptions", "exceptions_off",
-        "rtti", "rtti_off", "stl", "stl_off", "thread",
-        "c++11", "c++14",
-        "lex", "yacc",
-        "create_prl", "link_prl", "incremental", "global_init_link_order", "lib_version_first", "sdk",
-        "qt", "x11", "testcase", "testcase_targets", "insignificant_test",
-        "windows", "console", "shared", "dll", "static", "staticlib",
-        "linux", "unix", "posix", "gcc",
+        // build_pass feature
+        "no_autoqmake",
+        // cmake
+        "create_cmake",
+        // TODO: group remaining values
+        "have_target", "breakpad", "force_debug_info", "no_debug_info", "separate_debug_info", "debug_info",
+        "incredibuild_xge", "silent",
+        "exclusive_builds", "android_app", "no_plugin_name_prefix",
+        "skip_target_version_ext", "force_import_plugins", "link_ltcg",
+        "relative_qt_rpath", "force_independent", "qt_build_extra",
+        "qt_clear_installs", "force_bootstrap", "builtin_testdata",
+        "prefix_build", "host_build", "cross_compile", 
+        "utf8_source", "prepare_docs", "qt_docs_targets",
+        "no_private_qt_headers_warning", "QTDIR_build", "qt_example_installs", "testcase_exceptions",
+        "explicitlib", "testcase_no_bundle", "git_build",
+        "stack_protector_strong", "hide_symbols", "bsymbolic_functions",
+        "mention_config_log", "qt_conf_tests_allowed", "warning_clean",
+        "generated_privates", "module_frameworks", 
+        "force_qt", "qt_no_install_library", "qmake_cache", "target_qt",
+        "compiler_supports_fpmath", "qt_android_deps", "no_linker_version_script", "create_pc",
+        "create_libtool", "split_incpath", "qt_install_headers", "need_fwd_pri",
+        "no_launch_target", "qlalr", "no_plist", "copy_dir_files", "file_copies",
+        "msvc_cross", "qt_framework",
+        "compile_examples", "f16c", "rdrnd", "shani",
         "plugin", "import_plugins", "import_qpa_plugin",
         "designer", "no_lflags_merge", "file_copies",
         "flat", "embed_manifest_dll", "embed_manifest_exe",
         "app_bundle", "lib_bundle",
-        "largefile", "separate_debug_info", "copy_dir_files"
+        "largefile", "copy_dir_files",
+        // Build mode
+        "release", "debug", "debug_and_release", "debug_and_release_target", "qml_debug",
+        "qmake_use", "build_all", "autogen_precompile_source", "ordered", "precompile_header", "depend_includepath",
+        "warn_on", "warn_off", "exceptions", "exceptions_off",
+        "rtti", "rtti_off", "stl", "stl_off", "thread",
+        // C standard
+        "c99", "c11",
+        // C++ standard
+        "c++11", "c++14", "c++17", "c++1z", "strict_c++",
+        "lex", "yacc",
+        "create_prl", "link_prl", "incremental", "global_init_link_order", "lib_version_first", "sdk",
+        "qt", "x11", "testcase", "testcase_targets", "insignificant_test",
+        "windows", "console", "shared", "dll", "static", "staticlib",
+        // CPU features
+        "sse", "sse2", "aesni", "sse3", "ssse3", "sse4_1", "sse4_2", "avx", "avx2", "avx512f", "avx512bw",
+        "avx512cd", "avx512dq", "avx512er", "avx512ifma", "avx512pf", "avx512vbmi", "avx512vl", "x86SimdAlways",
+        // compilers
+        "gcc", "clang", "llvm",
+        // generic platforms
+        "linux", "unix", "posix",
+        // X11
+        "x11lib", "x11inc",
+        // macOS
+        "macos", "osx", "macx", "mac", "darwin",
+        "clang_pch_style", "bitcode", "reduce_exports", "shallow_bundle", "no_qt_rpath",
+        "native_precompiled_headers", "objective_c", "no_objective_c", "asset_catalogs",
+        "rez", "app_extension_api_only", "no_app_extension_api_only", "simulator_and_device",
+        "sliced_bundle", "absolute_library_soname","xcode_dynamic_library_suffix", "xcodebuild",
+        "no_default_goal_deps", "any_bundle", "macx-xcode",
+        // iOS/WatchOS/tvOS
+        "uikit",
+        // Windows Runtime
+        "winrt",
+        // Android
+        "android"
     ];
 }
 
