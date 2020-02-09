@@ -30,6 +30,8 @@ public const auto CHAR_WS = ' ';
 public const auto STR_WS = " ";
 
 public const auto STR_HASH = "#";
+public const auto STR_DOLLAR = "$";
+public const auto STR_WHITESPACE = "\t";
 public const auto STR_BACKSLASH = "\\";
 
 public const auto CHAR_UNDERSCORE = '_';

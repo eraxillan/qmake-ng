@@ -284,12 +284,16 @@ shared static this()
 	temp1["INCLUDEPATH"] = ProVariable("INCLUDEPATH", VariableType.STRING_LIST, [], []);
 	temp1["INSTALLS"] = ProVariable("INSTALLS", VariableType.OBJECT_LIST, [], []);
 	temp1["LIBS"] = ProVariable("LIBS", VariableType.STRING_LIST, [], []);
-	temp1["LITERAL_HASH"] = ProVariable("LITERAL_HASH", VariableType.STRING, [], [STR_HASH]);
+
 	temp1["MOC_DIR"] = ProVariable("MOC_DIR", VariableType.STRING, [], []);
 	temp1["OBJECTS"] = ProVariable("OBJECTS", VariableType.STRING_LIST, [], []);
 	temp1["OBJECTS_DIR"] = ProVariable("OBJECTS_DIR", VariableType.STRING, [], []);
 	temp1["PRECOMPILED_HEADER"] = ProVariable("PRECOMPILED_HEADER", VariableType.STRING, [], []);
-	
+
+    temp1["LITERAL_HASH"] = ProVariable("LITERAL_HASH", VariableType.STRING, [], [STR_HASH]);
+    temp1["LITERAL_DOLLAR"] = ProVariable("LITERAL_DOLLAR", VariableType.STRING, [], [STR_DOLLAR]);
+    temp1["LITERAL_WHITESPACE"] = ProVariable("LITERAL_WHITESPACE", VariableType.STRING, [], [STR_WHITESPACE]);
+
 	temp1["PWD"] = ProVariable("PWD", VariableType.STRING, [], []);
 	temp1["OUT_PWD"] = ProVariable("OUT_PWD", VariableType.STRING, [], []);
 	temp1["_PRO_FILE_"] = ProVariable("_PRO_FILE_", VariableType.STRING, [], []);
