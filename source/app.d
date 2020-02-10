@@ -164,7 +164,7 @@ private static bool loadQmakeFeature(ref ProExecutionContext context, ref Persis
     in QtVersion qt, in string name)
 {
     string featureFileName = std.path.buildPath(qt.featureDirPath(), name);
-    if (!std.file.exists(featureFileName) || !std.file.isFile(featureFileName))
+    if (!isValidFilePath(featureFileName))
     {
         error("feature file '", featureFileName, "' was not found or not a file");
         return false;
@@ -207,14 +207,14 @@ private static bool loadQmakeSpec(ref ProExecutionContext context, ref Persisten
 
     // 2) Eval mkspec
     string mkspecDirPath = std.path.buildPath(qt.mkspecDirPath(), name);
-    if (!std.file.isDir(mkspecDirPath))
+    if (!isValidDirectoryPath(mkspecDirPath))
     {
         error("mkspec directory '", mkspecDirPath, "' was not found");
         return false;
     }
 
     string mkspecFilePath = std.path.buildPath(mkspecDirPath, QMAKE_CONF_FILE);
-    if (!std.file.isFile(mkspecFilePath))
+    if (!isValidFilePath(mkspecFilePath))
     {
         error("mkspec file '", mkspecFilePath, "' was not found");
         return false;
@@ -371,7 +371,7 @@ int main(string[] argv)
     else
     {
         immutable(string) applicationDir = std.path.dirName(std.file.thisExePath());
-        assert(!applicationDir.empty && std.file.exists(applicationDir) && std.file.isDir(applicationDir));
+        assert(isValidDirectoryPath(applicationDir));
         writefln("Qt binary dir = " ~ applicationDir);
         immutable(QtVersionInfo) qtInfo = getQtVersion(applicationDir);
     }

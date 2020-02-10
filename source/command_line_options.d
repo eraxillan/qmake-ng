@@ -239,7 +239,7 @@ public int parseCommandlineOptions(in string[] argv, in QtVersionInfo qtInfo, ou
         if (arg.startsWith("--"))
             continue;
         
-        if (std.file.exists(arg) && std.file.isFile(arg))
+        if (isValidFilePath(arg))
             options.projectFileNames ~= arg;
         else
             options.assignmentStatements ~= arg;

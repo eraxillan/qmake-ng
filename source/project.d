@@ -1717,7 +1717,7 @@ unittest
     auto pro = new Project(context, storage);
 
     string qtPath = qtInfo.qtRootDir;
-    assert(!qtPath.empty && std.file.exists(qtPath) && std.file.isDir(qtPath), "Invalid Qt source directory path");
+    assert(isValidDirectoryPath(qtPath), "Invalid Qt source directory path");
 
     assert(pro.tryParseSnippet(
 `

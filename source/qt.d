@@ -48,8 +48,8 @@ void setupQtProjectVariables(ref ProExecutionContext context, in QtVersionInfo q
 {
     const(string) qtMkspecsDir = std.path.buildPath(qtInfo.qtPlatformDir, MKSPECS_DIR, mkSpec);
     const(string) qtFeaturesDir = std.path.buildPath(qtInfo.qtPlatformDir, MKSPECS_DIR, FEATURES_DIR);
-    assert(std.file.exists(qtMkspecsDir) && std.file.isDir(qtMkspecsDir));
-    assert(std.file.exists(qtFeaturesDir) && std.file.isDir(qtFeaturesDir));
+    assert(isValidDirectoryPath(qtMkspecsDir));
+    assert(isValidDirectoryPath(qtFeaturesDir));
 
     context.assignVariable("QMAKESPEC", [qtMkspecsDir], VariableType.STRING_LIST);
     // QMAKE_NG_EXTENSION
@@ -59,27 +59,22 @@ void setupQtProjectVariables(ref ProExecutionContext context, in QtVersionInfo q
 QtVersionInfo getQtVersion(in string qtBinaryDir)
 out (result)
 {
-    assert(std.file.exists(result.qtRootDir) && std.file.isDir(result.qtRootDir));
-    assert(std.file.exists(result.qtPlatformDir) && std.file.isDir(result.qtPlatformDir));
-    assert(std.file.exists(result.qtMkspecsDir) && std.file.isDir(result.qtMkspecsDir));
-    assert(std.file.exists(result.qtBinaryDir) && std.file.isDir(result.qtBinaryDir));
-    assert(std.file.exists(result.qtLibraryDir) && std.file.isDir(result.qtLibraryDir));
-    assert(std.file.exists(result.qtIncludeDir) && std.file.isDir(result.qtIncludeDir));
+    assert(isValidDirectoryPath(result.qtRootDir));
+    assert(isValidDirectoryPath(result.qtPlatformDir));
+    assert(isValidDirectoryPath(result.qtMkspecsDir));
+    assert(isValidDirectoryPath(result.qtBinaryDir));
+    assert(isValidDirectoryPath(result.qtLibraryDir));
+    assert(isValidDirectoryPath(result.qtIncludeDir));
     // NOTE: libexec, tests, imports dirs can be absent
-    // assert(std.file.exists(result.qtLibexecDir) && std.file.isDir(result.qtLibexecDir));
-    // assert(std.file.exists(result.qtTestsDir) && std.file.isDir(result.qtTestsDir));
-    assert(std.file.exists(result.qtPluginsDir) && std.file.isDir(result.qtPluginsDir));
-    // assert(std.file.exists(result.qtImportsDir) && std.file.isDir(result.qtImportsDir));
-    assert(std.file.exists(result.qtQmlDir) && std.file.isDir(result.qtQmlDir));
-    assert(std.file.exists(result.qtTranslationsDir) && std.file.isDir(result.qtTranslationsDir));
+    // assert(isValidDirectoryPath(result.qtLibexecDir));
+    // assert(isValidDirectoryPath(result.qtTestsDir));
+    assert(isValidDirectoryPath(result.qtPluginsDir));
+    // assert(isValidDirectoryPath(result.qtImportsDir));
+    assert(isValidDirectoryPath(result.qtQmlDir));
+    assert(isValidDirectoryPath(result.qtTranslationsDir));
 
-    assert(std.file.exists(result.qtDocsDir) && std.file.isDir(result.qtDocsDir));
-    assert(std.file.exists(result.qtExamplesDir) && std.file.isDir(result.qtExamplesDir));
-
-    /*assert(std.file.exists(result.) && std.file.isDir(result.));
-    assert(std.file.exists(result.) && std.file.isDir(result.));
-    assert(std.file.exists(result.) && std.file.isDir(result.));
-    assert(std.file.exists(result.) && std.file.isDir(result.));*/
+    assert(isValidDirectoryPath(result.qtDocsDir));
+    assert(isValidDirectoryPath(result.qtExamplesDir));
 }
 do
 {
@@ -122,16 +117,11 @@ do
     writefln("Qt version = " ~ qtVersionStr);
     writefln("Qt platform = " ~ qtPlatformStr);
 
-    assert(!qtLibraryDir.empty && std.file.exists(qtLibraryDir) && std.file.isDir(qtLibraryDir),
-        "Invalid Qt library directory path");
-    assert(!qtPlatformDir.empty && std.file.exists(qtPlatformDir) && std.file.isDir(qtPlatformDir),
-        "Invalid Qt platform directory path");
-    assert(!qtRootDir.empty && std.file.exists(qtRootDir) && std.file.isDir(qtRootDir),
-        "Invalid Qt root directory path");
-    assert(splitString(qtVersionStr, ".", true).length == 3,
-        "Invalid Qt version");
-    assert(!qtPlatformStr.empty,
-        "Invalid Qt platform");
+    assert(isValidDirectoryPath(qtLibraryDir), "Invalid Qt library directory path");
+    assert(isValidDirectoryPath(qtPlatformDir), "Invalid Qt platform directory path");
+    assert(isValidDirectoryPath(qtRootDir), "Invalid Qt root directory path");
+    assert(splitString(qtVersionStr, ".", true).length == 3, "Invalid Qt version");
+    assert(!qtPlatformStr.empty, "Invalid Qt platform");
 
     QtVersionInfo result;
 
@@ -194,8 +184,8 @@ QtVersionInfo chooseQtSourceVersion()
         qtSourceDir = stdin.readln().strip();
     }
 
-    assert(qtSourceDir !is null && !qtSourceDir.empty
-        && std.file.exists(qtSourceDir) && std.file.isDir(qtSourceDir), "Invalid Qt binary directory path");
+    assert(qtSourceDir !is null);
+    assert(isValidDirectoryPath(qtSourceDir), "Invalid Qt binary directory path");
     writefln("Qt source dir = " ~ qtSourceDir);
 
     QtVersionInfo result;
@@ -247,10 +237,9 @@ QtVersionInfo chooseQtVersion()
         qtBinaryDir = stdin.readln().strip();
     }
 
-    assert(qtBinaryDir !is null && !qtBinaryDir.empty
-        && std.file.exists(qtBinaryDir) && std.file.isDir(qtBinaryDir), "Invalid Qt binary directory path");
-    assert(std.file.exists(std.path.buildPath(qtBinaryDir, "qmake")));
-    writefln("Qt binary dir = " ~ qtBinaryDir);
+    assert(qtBinaryDir !is null);
+    assert(isValidDirectoryPath(qtBinaryDir), "Invalid Qt binary directory path");
+    assert(isValidFilePath(std.path.buildPath(qtBinaryDir, "qmake")));
 
     return getQtVersion(qtBinaryDir);
 }
@@ -399,7 +388,7 @@ class QtVersion
     string mkspecDirPath() const
     out (result)
     {
-        assert(std.file.exists(result) && std.file.isDir(result));
+        assert(isValidDirectoryPath(result));
     }
     do
     {
@@ -409,7 +398,7 @@ class QtVersion
     string featureDirPath() const
     out (result)
     {
-        assert(std.file.exists(result) && std.file.isDir(result));
+        assert(isValidDirectoryPath(result));
     }
     do
     {
@@ -419,7 +408,7 @@ class QtVersion
     string specPreFilePath() const
     out (result)
     {
-        assert(std.file.exists(result) && std.file.isFile(result));
+        assert(isValidFilePath(result));
     }
     do
     {
@@ -429,7 +418,7 @@ class QtVersion
     string specPostFilePath() const
     out (result)
     {
-        assert(std.file.exists(result) && std.file.isFile(result));
+        assert(isValidFilePath(result));
     }
     do
     {
@@ -438,25 +427,25 @@ class QtVersion
 
     bool isValid() const
     {
-        if (!std.file.exists(featureDirPath()) || !std.file.isDir(featureDirPath()))
+        if (!isValidDirectoryPath(featureDirPath()))
         {
             error("feature directory '", featureDirPath(), "' was not found or not a directory");
             return false;
         }
 
-        if (!std.file.exists(mkspecDirPath()) || !std.file.isDir(mkspecDirPath()))
+        if (!isValidDirectoryPath(mkspecDirPath()))
         {
             error("mkspec directory '", mkspecDirPath(), "' was not found or not a directory");
             return false;
         }
 
-        if (!std.file.exists(specPreFilePath()) || !std.file.isDir(specPreFilePath()))
+        if (!isValidDirectoryPath(specPreFilePath()))
         {
             error("'", specPreFilePath(), "' was not found or not a directory");
             return false;
         }
 
-        if (!std.file.exists(specPostFilePath()) || !std.file.isDir(specPostFilePath()))
+        if (!isValidDirectoryPath(specPostFilePath()))
         {
             error("'", specPostFilePath(), "' was not found or not a directory");
             return false;

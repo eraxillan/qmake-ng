@@ -511,7 +511,7 @@ shared static this()
 			projectFileName = buildNormalizedPath(absolutePath(projectFileName, projectDirectory));
 		trace("absolute project path: '", projectFileName, "'");
 		NgLogger.get().traceIncludeBegin(projectFileName);
-		if (!exists(projectFileName) || !isFile(projectFileName))
+		if (!isValidFilePath(projectFileName))
 		{
 			//error("project file '", projectFileName, "' was not found, so return FALSE");
 			//return false;
@@ -543,13 +543,13 @@ shared static this()
 		string[] featureDirectoryRaw = context.getVariableRawValue("QMAKESPEC_FEATURES");
 		assert(!featureDirectoryRaw.empty && featureDirectoryRaw.length == 1);
 		string featureDirectory = featureDirectoryRaw[0];
-		assert(std.file.exists(featureDirectory) && std.file.isDir(featureDirectory));
+		assert(isValidDirectoryPath(featureDirectory));
 
 		projectFileName = buildNormalizedPath(featureDirectory, projectFileName);
 		projectFileName = std.path.setExtension(projectFileName, "prf");
 		trace("absolute feature file path: '", projectFileName, "'");
 		NgLogger.get().traceLoadBegin(projectFileName);
-		if (!std.file.exists(projectFileName) || !std.file.isFile(projectFileName))
+		if (!isValidFilePath(projectFileName))
 		{
 			error("feature file '", projectFileName,
 				"' was not found or not a file, so return FALSE");

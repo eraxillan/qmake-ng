@@ -282,6 +282,18 @@ public string getProcessOutput(in string command)
     return outputData.output.strip();
 }
 
+bool isValidFilePath(const string path)
+{
+    static import std.file;
+    return (!path.empty && std.file.exists(path) && std.file.isFile(path));
+}
+
+bool isValidDirectoryPath(const string path)
+{
+    static import std.file;
+    return (!path.empty && std.file.exists(path) && std.file.isDir(path));
+}
+
 unittest
 {
 	// left
