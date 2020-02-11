@@ -181,7 +181,10 @@ private static bool loadQmakeFeature(ref ProExecutionContext context, ref Persis
 
     NgLogger.get().traceLoadEnd(featureFileName);
 
-    info("feature file '", featureFileName, "' successfully evaluated");
+    info("\n===============================================================================================");
+    info("Feature project file '" ~ featureFileName ~ "' was successfully evaluated");
+    info("\n===============================================================================================");
+
     return true;
 }
 
@@ -228,7 +231,10 @@ private static bool loadQmakeSpec(ref ProExecutionContext context, ref Persisten
         throw new Exception("spec parse failed");
         //return false;
     }
-    info("qmake mkspec file '" ~ mkspecFilePath ~ "' was successfully parsed");
+
+    info("\n===============================================================================================");
+    info("mkspec file '" ~ mkspecFilePath ~ "' was successfully evaluated");
+    info("\n===============================================================================================");
 
     // 3) Eval post-feature
     if (!loadQmakeFeature(context, persistentStorage, qt, QMAKE_SPEC_POST_FILE))

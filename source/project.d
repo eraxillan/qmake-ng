@@ -63,22 +63,22 @@ public class Project
 
     public void dump() /*const*/
     {
-        // FIXME: distinguish unset variables from empty ones!!!
-
         trace("\n\nqmake built-in variable values:");
         foreach (variableName; m_contextStack.top().getBuiltinVariableNames())
         {
-            string[] variableValue = m_contextStack.top().getVariableRawValue(variableName);
-            if (!variableValue.empty)
+            if (!m_contextStack.top().isVariableValueEmpty(variableName))
+            {
+                string[] variableValue = m_contextStack.top().getVariableRawValue(variableName);
                 trace(variableName, " = ", variableValue);
+            }
         }
         
         trace("\n\nqmake user-defined variable values:");
         foreach (variableName; m_contextStack.top().getUserDefinedVariableNames())
         {
-            string[] variableValue = m_contextStack.top().getVariableRawValue(variableName);
-            if (!variableValue.empty)
+            if (!m_contextStack.top().isVariableValueEmpty(variableName))
             {
+                string[] variableValue = m_contextStack.top().getVariableRawValue(variableName);
                 trace(variableName, " = ", variableValue);
             }
         }
@@ -93,11 +93,18 @@ public class Project
         auto parseTree = QMakeProject(preprocessedSnippet);
         if (!parseTree.successful)
         {
-            trace(parseTree);
-//            trace("Parsing project file '" ~ fileName ~ "' FAILED");
+            error("\n===============================================================================================");
+            error(parseTree);
+            error("\n===============================================================================================");
+            error("Parsing snippet FAILED!");
+            error("\n===============================================================================================");
         }
-//        else
-//            trace("Project file '" ~ fileName ~ "' successfully parsed");
+        else
+        {
+            info("\n===============================================================================================");
+            info("Snippet was successfully parsed");
+            info("\n===============================================================================================");
+        }
 
         return parseTree.successful;
     }
@@ -113,15 +120,17 @@ public class Project
         auto parseTree = QMakeProject(proFileContents);
         if (!parseTree.successful)
         {
-            trace(parseTree);
-            trace("Parsing project file '" ~ fileName ~ "' FAILED");
+            error("\n===============================================================================================");
+            error(parseTree);
+            error("\n===============================================================================================");
+            error("Parsing project file '" ~ fileName ~ "' FAILED!");
+            error("\n===============================================================================================");
         }
         else
         {
-            trace("Project file '" ~ fileName ~ "' successfully parsed");
-            trace("");
-            trace("");
-            trace("");
+            info("\n===============================================================================================");
+            info("Project file '" ~ fileName ~ "' was successfully parsed");
+            info("\n===============================================================================================");
         }
 
         return parseTree.successful;
@@ -131,6 +140,13 @@ public class Project
     {
         trace("Trying to parse project file '" ~ fileName ~ "'...");
 
+        // Save parent project path variables
+        string currentProjectFileName;
+        if (!m_contextStack.top().isVariableValueEmpty("_PRO_FILE_"))
+        {
+            currentProjectFileName = m_contextStack.top().getVariableRawValue("_PRO_FILE_")[0];
+            assert(isValidFilePath(currentProjectFileName));
+        }
         // NOTE: use the previously eval'd state, because we can need already defined variables
         m_contextStack.top().setupPaths(fileName);
 
@@ -141,15 +157,22 @@ public class Project
         auto parseTree = QMakeProject(proFileContents);
         if (!parseTree.successful)
         {
-            trace(parseTree);
-            trace("Parsing project file '" ~ fileName ~ "' FAILED:");
+            error("\n===============================================================================================");
+            error(parseTree);
+            error("\n===============================================================================================");
+            error("Parsing project file '" ~ fileName ~ "' FAILED!");
+            error("\n===============================================================================================");
+
+            // Restore parent project path variables
+            if (!currentProjectFileName.empty)
+                m_contextStack.top().setupPaths(currentProjectFileName);
+
             return false;
         }
 
-        trace("Project file '" ~ fileName ~ "' successfully parsed");
-        trace("");
-        trace("");
-        trace("");
+        info("\n===============================================================================================");
+        info("Project file '" ~ fileName ~ "' was successfully parsed");
+        info("\n===============================================================================================");
 
         trace("Trying to evaluate project file '" ~ fileName ~ "'...");
 
@@ -166,10 +189,14 @@ public class Project
         // Output all built-in and user-defined variables
         //dump();
 
-        trace("Project file '" ~ fileName ~ "' successfully evaluated");
-        trace("");
-        trace("");
-        trace("");
+        info("\n===============================================================================================");
+        info("Project file '" ~ fileName ~ "' was successfully evaluated");
+        info("\n===============================================================================================");
+
+        // Restore parent project path variables
+        if (!currentProjectFileName.empty)
+            m_contextStack.top().setupPaths(currentProjectFileName);
+
         return true;
     }
 

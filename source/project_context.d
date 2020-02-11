@@ -31,6 +31,7 @@ import std.path;
 import std.string;
 import common_const;
 import common_utils;
+import logger;
 import qmakeexception;
 import project_variable;
 import project_function;
@@ -157,6 +158,8 @@ private:
         {
             trace("Set built-in variable ", "`", name, "`", " value to ", clearValue);
             m_builtinVariables[name].value = clearValue.dup;
+
+            NgLogger.get().traceProjectVariableAssignment(name, value);
         }
         else if (isUserDefinedVariable(name))
         {
@@ -322,6 +325,15 @@ public:
     bool isVariableDefined(in string name) const
     {
         return isBuiltinVariable(name) || isUserDefinedVariable(name);
+    }
+
+    bool isVariableValueEmpty(in string name) /+const+/
+    {
+        if (!isVariableDefined(name))
+            return true;
+
+        string[] valueList = getVariableRawValue(name);
+        return valueList.empty || (valueList.length == 1 && valueList[0].empty);
     }
 
     VariableType getVariableType(in string name) /+const+/

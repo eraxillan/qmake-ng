@@ -33,7 +33,9 @@ class NgLogger
 {
 private:
     string m_includeLogFilePath;
+    string m_variableLogFilePath;
     File m_includeLogFile;
+    File m_variableLogFile;
 
     string m_ws = "|-";
 
@@ -41,6 +43,7 @@ private:
     {
         immutable(string) applicationDir = std.path.dirName(std.file.thisExePath());
         m_includeLogFilePath = std.path.buildPath(applicationDir, "project_load_graph.log");
+        m_variableLogFilePath = std.path.buildPath(applicationDir, "project_variable.log");
 
         try
         {
@@ -57,6 +60,25 @@ private:
 
                 default:
                     writeln("[NgLogger] Unable to open '%s': unknown error with code '%d'", m_includeLogFilePath, ex.errno);
+                    break;
+            }
+        }
+
+        try
+        {
+            m_variableLogFile = File(m_variableLogFilePath, "w");
+        }
+        catch (ErrnoException ex)
+        {
+            switch (ex.errno)
+            {
+                case EPERM:
+                case EACCES:
+                    writeln("[NgLogger] Unable to open '%s': permission denied", m_variableLogFilePath);
+                    break;
+
+                default:
+                    writeln("[NgLogger] Unable to open '%s': unknown error with code '%d'", m_variableLogFilePath, ex.errno);
                     break;
             }
         }
@@ -149,5 +171,10 @@ public:
     {
         decreaseIndentation();
         m_includeLogFile.writeln(m_ws ~ "load project end: " ~ fileName);
+    }
+
+    void traceProjectVariableAssignment(const string name, const string[] value)
+    {
+        m_variableLogFile.writeln(name ~ " = " ~ value.join(" : "));
     }
 }

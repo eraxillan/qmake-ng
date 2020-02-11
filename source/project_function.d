@@ -521,13 +521,19 @@ shared static this()
 		auto pro = new Project(context, persistentStorage);
 		if (!pro.eval(projectFileName))
 		{
-			error("qmake project file '", projectFileName, "' evaluation failed, include failed");
-			trace(""); trace(""); trace("");
+			error("\n===============================================================================================");
+			error("[include] Subproject file '" ~ projectFileName ~ "' evaluation failed!");
+			error("\n===============================================================================================");
+
 			return ["false"];
 		}
-		info("qmake project file '" ~ projectFileName ~ "' was successfully parsed and included");
+
+		info("\n===============================================================================================");
+		info("[include] Subproject file '" ~ projectFileName ~ "' was successfully evaluated");
+		info("\n===============================================================================================");
+
 		NgLogger.get().traceIncludeEnd(projectFileName);
-		trace(""); trace(""); trace("");
+
 		return ["true"];
 	});
 
@@ -560,13 +566,19 @@ shared static this()
 		auto pro = new Project(context, persistentStorage);
 		if (!pro.eval(projectFileName))
 		{
-			error("qmake project file '", projectFileName, "' evaluation failed, include failed");
-			trace(""); trace(""); trace("");
+			error("\n===============================================================================================");
+			error("[load] Feature project file '" ~ projectFileName ~ "' evaluation failed!");
+			error("\n===============================================================================================");
+
 			return ["false"];
 		}
-		info("qmake project file '" ~ projectFileName ~ "' was successfully parsed and included");
+		
+		info("\n===============================================================================================");
+		info("[load] Feature project file '" ~ projectFileName ~ "' was successfully evaluated");
+		info("\n===============================================================================================");
+		
 		NgLogger.get().traceLoadEnd(projectFileName);
-		trace(""); trace(""); trace("");
+		
 		return ["true"];
 	});
 
