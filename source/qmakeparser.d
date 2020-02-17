@@ -214,8 +214,8 @@ This module was automatically generated from the following grammar:
     CacheTestFunctionCallParams <- QualifiedIdentifier? (COMMA_WS CacheTestFunctionParam2)? (COMMA_WS FunctionArgument(FunctionArgumentStopRule))?
     CacheTestFunctionParam2     <- ("set" / "add" / "sub")? :space* ("transient")? :space* ("super" / "stash")?
     
-    # contains(variablename, value)
-    ContainsTestFunctionCall <- "contains" OPEN_PAR_WS QualifiedIdentifier (COMMA_WS EnquotedString) CLOSE_PAR_WS
+    # contains(variablename, value1 [, value2])
+    ContainsTestFunctionCall <- "contains" OPEN_PAR_WS QualifiedIdentifier (COMMA_WS EnquotedString) (COMMA_WS EnquotedString)? CLOSE_PAR_WS
 
     # Program flow control statements: return, break, next (aka continue)
     # return(expression)
@@ -3638,7 +3638,7 @@ struct GenericQMakeProject(TParseTree)
     {
         if(__ctfe)
         {
-            return         pegged.peg.defined!(pegged.peg.and!(pegged.peg.literal!("contains"), OPEN_PAR_WS, QualifiedIdentifier, pegged.peg.and!(COMMA_WS, EnquotedString), CLOSE_PAR_WS), "QMakeProject.ContainsTestFunctionCall")(p);
+            return         pegged.peg.defined!(pegged.peg.and!(pegged.peg.literal!("contains"), OPEN_PAR_WS, QualifiedIdentifier, pegged.peg.and!(COMMA_WS, EnquotedString), pegged.peg.option!(pegged.peg.and!(COMMA_WS, EnquotedString)), CLOSE_PAR_WS), "QMakeProject.ContainsTestFunctionCall")(p);
         }
         else
         {
@@ -3646,7 +3646,7 @@ struct GenericQMakeProject(TParseTree)
                 return *m;
             else
             {
-                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.and!(pegged.peg.literal!("contains"), OPEN_PAR_WS, QualifiedIdentifier, pegged.peg.and!(COMMA_WS, EnquotedString), CLOSE_PAR_WS), "QMakeProject.ContainsTestFunctionCall"), "ContainsTestFunctionCall")(p);
+                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.and!(pegged.peg.literal!("contains"), OPEN_PAR_WS, QualifiedIdentifier, pegged.peg.and!(COMMA_WS, EnquotedString), pegged.peg.option!(pegged.peg.and!(COMMA_WS, EnquotedString)), CLOSE_PAR_WS), "QMakeProject.ContainsTestFunctionCall"), "ContainsTestFunctionCall")(p);
                 memo[tuple(`ContainsTestFunctionCall`, p.end)] = result;
                 return result;
             }
@@ -3657,12 +3657,12 @@ struct GenericQMakeProject(TParseTree)
     {
         if(__ctfe)
         {
-            return         pegged.peg.defined!(pegged.peg.and!(pegged.peg.literal!("contains"), OPEN_PAR_WS, QualifiedIdentifier, pegged.peg.and!(COMMA_WS, EnquotedString), CLOSE_PAR_WS), "QMakeProject.ContainsTestFunctionCall")(TParseTree("", false,[], s));
+            return         pegged.peg.defined!(pegged.peg.and!(pegged.peg.literal!("contains"), OPEN_PAR_WS, QualifiedIdentifier, pegged.peg.and!(COMMA_WS, EnquotedString), pegged.peg.option!(pegged.peg.and!(COMMA_WS, EnquotedString)), CLOSE_PAR_WS), "QMakeProject.ContainsTestFunctionCall")(TParseTree("", false,[], s));
         }
         else
         {
             forgetMemo();
-            return hooked!(pegged.peg.defined!(pegged.peg.and!(pegged.peg.literal!("contains"), OPEN_PAR_WS, QualifiedIdentifier, pegged.peg.and!(COMMA_WS, EnquotedString), CLOSE_PAR_WS), "QMakeProject.ContainsTestFunctionCall"), "ContainsTestFunctionCall")(TParseTree("", false,[], s));
+            return hooked!(pegged.peg.defined!(pegged.peg.and!(pegged.peg.literal!("contains"), OPEN_PAR_WS, QualifiedIdentifier, pegged.peg.and!(COMMA_WS, EnquotedString), pegged.peg.option!(pegged.peg.and!(COMMA_WS, EnquotedString)), CLOSE_PAR_WS), "QMakeProject.ContainsTestFunctionCall"), "ContainsTestFunctionCall")(TParseTree("", false,[], s));
         }
     }
     static string ContainsTestFunctionCall(GetName g)

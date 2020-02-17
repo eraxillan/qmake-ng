@@ -259,8 +259,8 @@ private enum QMakeProjectBuiltinFunctions =
     CacheTestFunctionCallParams <- QualifiedIdentifier? (COMMA_WS CacheTestFunctionParam2)? (COMMA_WS FunctionArgument(FunctionArgumentStopRule))?
     CacheTestFunctionParam2     <- ("set" / "add" / "sub")? :space* ("transient")? :space* ("super" / "stash")?
     
-    # contains(variablename, value)
-    ContainsTestFunctionCall <- "contains" OPEN_PAR_WS QualifiedIdentifier (COMMA_WS EnquotedString) CLOSE_PAR_WS
+    # contains(variablename, value1 [, value2])
+    ContainsTestFunctionCall <- "contains" OPEN_PAR_WS QualifiedIdentifier (COMMA_WS EnquotedString) (COMMA_WS EnquotedString)? CLOSE_PAR_WS
 
     # Program flow control statements: return, break, next (aka continue)
     # return(expression)
