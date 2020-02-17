@@ -1805,6 +1805,7 @@ for(_, $$list(_)) { # just a way to break easily
     assert(pro.tryParse(buildPath(qtPath, "qtbase/mkspecs/features/qt_configure.prf")));
     assert(pro.tryParse(buildPath(qtPath, "qtdeclarative/tests/auto/quick/pointerhandlers/pointerhandlers.pro")));
     assert(pro.tryParse(buildPath(qtPath, "qtdeclarative/tests/auto/qml/qml.pro")));
+    assert(pro.tryParse(buildPath(qtPath, "qtremoteobjects/src/repparser/repparser.pro")));
 
     string[] successfulProjects;
     string[] failedProjects;
