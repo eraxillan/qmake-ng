@@ -175,6 +175,19 @@ public:
 
     void traceProjectVariableAssignment(const string name, const string[] value)
     {
-        m_variableLogFile.writeln(name ~ " = " ~ value.join(" : "));
+        if (name == "PWD")
+            m_variableLogFile.writeln("\n===============================================================================================");
+
+        {
+            if (value.empty)
+                m_variableLogFile.writeln(name ~ " = " ~ "<empty>");
+            else if (value.length == 1)
+                m_variableLogFile.writeln(name ~ " = " ~ "'" ~ value[0] ~ "'");
+            else
+                m_variableLogFile.writeln(name ~ " = ", value);
+        }
+
+        if (name == "_PRO_FILE_PWD_")
+            m_variableLogFile.writeln("\n");
     }
 }
