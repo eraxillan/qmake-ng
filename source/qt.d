@@ -35,7 +35,7 @@ import project_variable;
 
 public:
 
-void setupQtEnvironmentVariables(in QtVersionInfo qtInfo)
+void setupQtEnvironmentVariables(const QtVersionInfo qtInfo)
 {
     import std.process: environment;
 
@@ -46,7 +46,7 @@ void setupQtEnvironmentVariables(in QtVersionInfo qtInfo)
     environment["DYLD_LIBRARY_PATH"] = qtInfo.qtLibraryDir;
 }
 
-void setupQtProjectVariables(ref ProExecutionContext context, in QtVersionInfo qtInfo, in string mkSpec)
+void setupQtProjectVariables(ref ProExecutionContext context, const QtVersionInfo qtInfo, const string mkSpec)
 {
     const(string) qtMkspecsDir = std.path.buildPath(qtInfo.qtPlatformDir, MKSPECS_DIR, mkSpec);
     const(string) qtFeaturesDir = std.path.buildPath(qtInfo.qtPlatformDir, MKSPECS_DIR, FEATURES_DIR);
@@ -58,7 +58,7 @@ void setupQtProjectVariables(ref ProExecutionContext context, in QtVersionInfo q
     context.assignVariable("QMAKESPEC_FEATURES", [qtFeaturesDir], VariableType.STRING_LIST);
 }
 
-QtVersionInfo getQtVersion(in string qtBinaryDir)
+QtVersionInfo getQtVersion(const string qtBinaryDir)
 out (result)
 {
     assert(isValidDirectoryPath(result.qtRootDir));
@@ -308,7 +308,7 @@ struct QtMakeSpecification
     // Disables default construction: makespecs must be specified
     @disable this();
 
-    this(in string hostMakespec, in string targetMakeSpec)
+    this(const string hostMakespec, const string targetMakeSpec)
     {
         this.hostMakespec = hostMakespec;
         this.targetMakeSpec = targetMakeSpec;

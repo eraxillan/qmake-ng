@@ -43,7 +43,7 @@ import common_utils;
 public class EscapeSequence
 {
 private:
-	alias ReplacementAction = string function(in string str, in int from, in int to);
+	alias ReplacementAction = string function(const string str, const int from, const int to);
 	immutable ReplacementAction[string] m_convertMap;
 
 public:
@@ -52,19 +52,19 @@ public:
 		import std.exception : assumeUnique;
 
 		ReplacementAction[string] convertMap; // mutable buffer
-        convertMap["\\\\"] = (in string str, in int from, in int length) {
+        convertMap["\\\\"] = (const string str, const int from, const int length) {
             trace("'\\' escape sequence");
             return "\\";
         };
-        convertMap["\\\""] = (in string str, in int from, in int length) {
+        convertMap["\\\""] = (const string str, const int from, const int length) {
             trace("'\" escape sequence");
             return "\"";
         };
-        convertMap["\\\'"] = (in string str, in int from, in int length) {
+        convertMap["\\\'"] = (const string str, const int from, const int length) {
             trace("'\'' escape sequence");
             return "\'";
         };
-        convertMap["\\x"] = (in string str, in int from, in int length) {
+        convertMap["\\x"] = (const string str, const int from, const int length) {
             trace("'\\xABCD' or '\\xAB' escape sequence");
             string result = "";
             string charCodeStr = joinTokens(str, from + 2, length);
@@ -80,40 +80,40 @@ public:
             }
             return result;
         };
-        convertMap["\\?"] = (in string str, in int from, in int length) {
+        convertMap["\\?"] = (const string str, const int from, const int length) {
             trace("'\?' escape sequence");
             return "\?";
         };
-        convertMap["\\a"] = (in string str, in int from, in int length) {
+        convertMap["\\a"] = (const string str, const int from, const int length) {
             trace("'\\a' escape sequence");
             return "\a";
         };
-        convertMap["\\b"] = (in string str, in int from, in int length) {
+        convertMap["\\b"] = (const string str, const int from, const int length) {
             trace("'\\b' escape sequence");
             return "\b";
         };
-        convertMap["\\f"] = (in string str, in int from, in int length) {
+        convertMap["\\f"] = (const string str, const int from, const int length) {
             trace("'\\f' escape sequence");
             return "\f";
         };
-        convertMap["\\n"] = (in string str, in int from, in int length) {
+        convertMap["\\n"] = (const string str, const int from, const int length) {
             trace("'\\n' escape sequence");
             return "\n";
         };
-        convertMap["\\r"] = (in string str, in int from, in int length) {
+        convertMap["\\r"] = (const string str, const int from, const int length) {
             trace("'\\r' escape sequence");
             return "\r";
         };
-        convertMap["\\t"] = (in string str, in int from, in int length) {
+        convertMap["\\t"] = (const string str, const int from, const int length) {
             trace("'\\t' escape sequence");
             return "\t";
         };
-        convertMap["\\v"] = (in string str, in int from, in int length) {
+        convertMap["\\v"] = (const string str, const int from, const int length) {
             trace("'\\v' escape sequence");
             return "\v";
         };
 
-        convertMap["\\$"] = (in string str, in int from, in int length) {
+        convertMap["\\$"] = (const string str, const int from, const int length) {
             trace("'\\$' escape sequence");
             return "$";
         };
@@ -123,7 +123,7 @@ public:
 		/+
         for (int i = 0; i < 777; i++)
 		{
-            convertMap["\\" ~ to!string(i).leftJustify(3, '0')] = (in string str, in int from, in int length) {
+            convertMap["\\" ~ to!string(i).leftJustify(3, '0')] = (const string str, const int from, const int length) {
                 auto charCode_8_3 = parse!int(to!string(i), 8);
                 return String.fromCharCode(charCode_8_3);
             };
@@ -139,14 +139,14 @@ public:
 		bool result = false;
 		int length = 0;
 
-		this(in bool _result, in int _length)
+		this(const bool _result, const int _length)
 		{
 			result = _result;
 			length = _length;
 		}
 	}
 	
-    Result isEscapeSequence(in string str, in int indexFrom)
+    Result isEscapeSequence(const string str, const int indexFrom)
 	{
         // NOTE: any escape sequence must start with exactly one backslash
         if ("" ~ str[indexFrom] != STR_BACKSLASH)
@@ -182,7 +182,7 @@ public:
         return Result(false, 0);
     }
 
-    string getEscapeSequence(in string str, in int indexFrom, in int length)
+    string getEscapeSequence(const string str, const int indexFrom, const int length)
 	{
 		auto key = str[indexFrom .. indexFrom + length];
         assert(key.length == 2 || key.length == 4);

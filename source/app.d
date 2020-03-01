@@ -62,7 +62,7 @@ struct PlatformData
     
     string targetArch;
 
-    void initialize(string[] argv, in string qtConfFilePath)
+    void initialize(string[] argv, const string qtConfFilePath)
     {
         import std.socket : Socket;
         import core.cpuid : coresPerCPU;
@@ -163,7 +163,7 @@ static void loadQmakeDefaults(ref ProExecutionContext context, string[] argv, st
 }
 
 static bool loadQmakeFeature(ref ProExecutionContext context, ref PersistentPropertyStorage persistentStorage,
-    in QtVersion qt, in string name)
+    const QtVersion qt, const string name)
 {
     string featureFileName = std.path.buildPath(qt.featureDirPath(), name);
     if (!isValidFilePath(featureFileName))
@@ -192,7 +192,7 @@ static bool loadQmakeFeature(ref ProExecutionContext context, ref PersistentProp
 
 // FIXME: change return type to void and enbrace usages in try-catch
 static bool loadQmakeSpec(ref ProExecutionContext context, ref PersistentPropertyStorage persistentStorage,
-    in QtVersion qt, in string name)
+    const QtVersion qt, const string name)
 {
     assert(context.getVariableRawValue("DIR_SEPARATOR")[0] == "/");
 
@@ -251,7 +251,7 @@ static bool loadQmakeSpec(ref ProExecutionContext context, ref PersistentPropert
     return false;
 }
 
-bool execPropertyAction(in QmakePropertyAction action, in string[] properties,
+bool execPropertyAction(const QmakePropertyAction action, const string[] properties,
     ref PersistentPropertyStorage storage)
 {
     bool ret = true;
@@ -346,7 +346,7 @@ string qmake_getpwd()
         pwd = std.file.getcwd();
     return pwd;
 }
-bool qmake_setpwd(in string p)
+bool qmake_setpwd(const string p)
 {
     /*if (QDir::setCurrent(p)) {
         pwd = QDir::currentPath();

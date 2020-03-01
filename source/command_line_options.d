@@ -88,7 +88,7 @@ struct QmakeOptions
     string[] properties;
 }
 
-int parseCommandlineOptions(in string[] argv, in QtVersionInfo qtInfo, out QmakeOptions options)
+int parseCommandlineOptions(const string[] argv, const QtVersionInfo qtInfo, out QmakeOptions options)
 {
      // Original Qt qmake compatibility:
     // dlang getopt do not support long options with single dash
@@ -257,7 +257,7 @@ int parseCommandlineOptions(in string[] argv, in QtVersionInfo qtInfo, out Qmake
 
 private:
 
-void printVersionInfo(in QtVersionInfo qtInfo)
+void printVersionInfo(const QtVersionInfo qtInfo)
 {
     writefln(
 `QMake version %s

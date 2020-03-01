@@ -49,8 +49,8 @@ enum ProFunctionType { Invalid = -1, Replace = 0, Test, Count }
 
 struct ProFunction
 {
-	this(in string name, in VariableType returnType, in bool isVariadic, in int requiredArgumentCount,
-			in int optionalArgumentCount, VariableType[] argumentTypes, in Action action)
+	this(const string name, const VariableType returnType, const bool isVariadic, const int requiredArgumentCount,
+			const int optionalArgumentCount, VariableType[] argumentTypes, const Action action)
 	{
 		m_name = name;
 		m_returnType = returnType;
@@ -71,8 +71,7 @@ struct ProFunction
 
 	// Run-time function info
 	string[] m_arguments;
-	//alias Action = const(string[]) function(ref ProExecutionContext context, in string[] arguments);
-	alias Action = const(string[]) delegate(ref ProExecutionContext context, ref PersistentPropertyStorage persistentStorage, in string[] arguments);
+	alias Action = const(string[]) delegate(ref ProExecutionContext context, ref PersistentPropertyStorage persistentStorage, const string[] arguments);
 	Action m_action;
 
 	ProFunction dup() const @property
@@ -92,13 +91,13 @@ immutable ProFunction[string] builtinReplaceFunctions;
 // Helpers
 private:
 
-static string[] returnBoolString(in bool b)
+static string[] returnBoolString(const bool b)
 {
 	return b ? [STR_TRUE] : [STR_FALSE];
 }
 
-static bool isActiveConfig(in string config, in string specName,
-		in string[] configVarValues, in bool useRegex = false)
+static bool isActiveConfig(const string config, const string specName,
+		const string[] configVarValues, const bool useRegex = false)
 {
 	// Magic types for easy flipping
 	if (config == STR_TRUE)
@@ -155,14 +154,14 @@ shared static this()
 	// qmake built-in replace functions
 
 	temp["first"] = ProFunction("first", VariableType.STRING, true, 1, -1,
-			[VariableType.STRING_LIST], (ref ProExecutionContext context, ref PersistentPropertyStorage persistentStorage, in string[] arguments) {
+			[VariableType.STRING_LIST], (ref ProExecutionContext context, ref PersistentPropertyStorage persistentStorage, const string[] arguments) {
 		if (arguments.length < 1)
 			throw new Exception(
 				"Invalid argument count: expected 1, got " ~ to!string(arguments.length));
 		return [arguments[0]];
 	});
 	temp["files"] = ProFunction("files", VariableType.STRING_LIST, false, 1, 1,
-			[VariableType.STRING_LIST], (ref ProExecutionContext context, ref PersistentPropertyStorage persistentStorage, in string[] arguments) {
+			[VariableType.STRING_LIST], (ref ProExecutionContext context, ref PersistentPropertyStorage persistentStorage, const string[] arguments) {
 		string[] result;
 
 		immutable string pattern = arguments[0];
@@ -195,13 +194,13 @@ shared static this()
 		return result;
 	});
 	temp["list"] = ProFunction("list", VariableType.STRING_LIST, true, 1, -1,
-			[VariableType.STRING], (ref ProExecutionContext context, ref PersistentPropertyStorage persistentStorage, in string[] arguments) {
+			[VariableType.STRING], (ref ProExecutionContext context, ref PersistentPropertyStorage persistentStorage, const string[] arguments) {
 		return arguments;
 	});
 
 	temp["replace"] = ProFunction("replace", VariableType.STRING_LIST, false, 3, 0, [VariableType.STRING,
 			VariableType.STRING, VariableType.STRING],
-			(ref ProExecutionContext context, ref PersistentPropertyStorage persistentStorage, in string[] arguments) {
+			(ref ProExecutionContext context, ref PersistentPropertyStorage persistentStorage, const string[] arguments) {
 				string variableName = arguments[0];
 				string sourceString = arguments[1];
 				string targetString = arguments[2];
@@ -217,7 +216,7 @@ shared static this()
 			});
 
 	temp["reverse"] = ProFunction("reverse", VariableType.STRING_LIST, false, 1, 0,
-			[VariableType.STRING], (ref ProExecutionContext context, ref PersistentPropertyStorage persistentStorage, in string[] arguments) {
+			[VariableType.STRING], (ref ProExecutionContext context, ref PersistentPropertyStorage persistentStorage, const string[] arguments) {
 		string variableName = arguments[0];
 
 		string[] variableValue = context.getVariableRawValue(variableName);
@@ -229,7 +228,7 @@ shared static this()
 	});
 
 	temp["section"] = ProFunction("section", VariableType.STRING, false, 3, 1,
-			[VariableType.STRING], (ref ProExecutionContext context, ref PersistentPropertyStorage persistentStorage, in string[] arguments) {
+			[VariableType.STRING], (ref ProExecutionContext context, ref PersistentPropertyStorage persistentStorage, const string[] arguments) {
 		trace(arguments);
 		assert(arguments.length == 3 || arguments.length == 4);
 
@@ -257,7 +256,7 @@ shared static this()
 
 	temp["split"] = ProFunction("split", VariableType.STRING_LIST, false, 2, 0,
 			[VariableType.STRING, VariableType.STRING],
-			(ref ProExecutionContext context, ref PersistentPropertyStorage persistentStorage, in string[] arguments) {
+			(ref ProExecutionContext context, ref PersistentPropertyStorage persistentStorage, const string[] arguments) {
 				string variableName = arguments[0];
 				string separator = arguments[1];
 
@@ -270,7 +269,7 @@ shared static this()
 			});
 
 	temp["unique"] = ProFunction("unique", VariableType.STRING_LIST, false, 1, 0,
-			[VariableType.STRING], (ref ProExecutionContext context, ref PersistentPropertyStorage persistentStorage, in string[] arguments) {
+			[VariableType.STRING], (ref ProExecutionContext context, ref PersistentPropertyStorage persistentStorage, const string[] arguments) {
 		string variableName = arguments[0];
 
 		string[] variableValue;
@@ -294,7 +293,7 @@ shared static this()
 	// system(command[, mode[, stsvar]])
 	temp["system"] = ProFunction("system", VariableType.STRING_LIST, false, 1, 2, [VariableType.STRING,
 			VariableType.STRING, VariableType.STRING],
-			(ref ProExecutionContext context, ref PersistentPropertyStorage persistentStorage, in string[] arguments) {
+			(ref ProExecutionContext context, ref PersistentPropertyStorage persistentStorage, const string[] arguments) {
 		string[] result;
 
 		trace(arguments);
@@ -415,7 +414,7 @@ shared static this()
 
 	temp["defined"] = ProFunction("defined", VariableType.BOOLEAN, false, 1, 1,
 			[VariableType.STRING, VariableType.STRING],
-			(ref ProExecutionContext context, ref PersistentPropertyStorage persistentStorage, in string[] arguments) {
+			(ref ProExecutionContext context, ref PersistentPropertyStorage persistentStorage, const string[] arguments) {
 				trace(arguments);
 				assert(arguments.length == 1 || arguments.length == 2);
 
@@ -452,7 +451,7 @@ shared static this()
 
 	temp["CONFIG"] = ProFunction("CONFIG", VariableType.BOOLEAN, false, 1, 1,
 			[VariableType.STRING, VariableType.STRING],
-			(ref ProExecutionContext context, ref PersistentPropertyStorage persistentStorage, in string[] arguments) {
+			(ref ProExecutionContext context, ref PersistentPropertyStorage persistentStorage, const string[] arguments) {
 				trace(arguments);
 				assert(arguments.length == 1 || arguments.length == 2);
 
@@ -494,14 +493,14 @@ shared static this()
 	temp["isActiveConfig"] = temp["CONFIG"];
 
 	temp["for"] = ProFunction("for", VariableType.BOOLEAN, false, 2, 0, [VariableType.STRING,
-			VariableType.STRING], (ref ProExecutionContext context, ref PersistentPropertyStorage persistentStorage, in string[] arguments) {
+			VariableType.STRING], (ref ProExecutionContext context, ref PersistentPropertyStorage persistentStorage, const string[] arguments) {
 		error("Control flow error: currently implemented in project.d");
 		bool b = false; assert(b);
 		return ["false"];
 	});
 
 	temp["include"] = ProFunction("include", VariableType.BOOLEAN, false, 1, 3,
-			[VariableType.STRING], (ref ProExecutionContext context, ref PersistentPropertyStorage persistentStorage, in string[] arguments) {
+			[VariableType.STRING], (ref ProExecutionContext context, ref PersistentPropertyStorage persistentStorage, const string[] arguments) {
 		import project : Project;
 
 		assert(arguments.length >= 1);
@@ -541,7 +540,7 @@ shared static this()
 	});
 
 	temp["load"] = ProFunction("load", VariableType.BOOLEAN, false, 1, 0,
-			[VariableType.STRING], (ref ProExecutionContext context, ref PersistentPropertyStorage persistentStorage, in string[] arguments) {
+			[VariableType.STRING], (ref ProExecutionContext context, ref PersistentPropertyStorage persistentStorage, const string[] arguments) {
 		import project : Project;
 
 		assert(arguments.length >= 1);
@@ -587,7 +586,7 @@ shared static this()
 
 	temp["equals"] = ProFunction("equals", VariableType.BOOLEAN, false, 2, 0,
 			[VariableType.STRING, VariableType.STRING],
-			(ref ProExecutionContext context, ref PersistentPropertyStorage persistentStorage, in string[] arguments) {
+			(ref ProExecutionContext context, ref PersistentPropertyStorage persistentStorage, const string[] arguments) {
 				string variableName = arguments[0];
 				string value = arguments[1];
 				trace("Variable name: ", "`", variableName, "`");
@@ -606,7 +605,7 @@ shared static this()
 	temp["isEqual"] = temp["equals"];
 
 	temp["isEmpty"] = ProFunction("isEmpty", VariableType.BOOLEAN, false, 1, 0,
-			[VariableType.STRING], (ref ProExecutionContext context, ref PersistentPropertyStorage persistentStorage, in string[] arguments) {
+			[VariableType.STRING], (ref ProExecutionContext context, ref PersistentPropertyStorage persistentStorage, const string[] arguments) {
 		string variableName = arguments[0];
 
 		if (!context.isVariableDefined(variableName))
@@ -624,7 +623,7 @@ shared static this()
 	});
 
 	temp["contains"] = ProFunction("contains", VariableType.BOOLEAN, false, 2, 0,
-			[VariableType.STRING], (ref ProExecutionContext context, ref PersistentPropertyStorage persistentStorage, in string[] arguments) {
+			[VariableType.STRING], (ref ProExecutionContext context, ref PersistentPropertyStorage persistentStorage, const string[] arguments) {
 		string variableName = arguments[0];
 		string value = arguments[1];
 
@@ -638,7 +637,7 @@ shared static this()
 	});
 
 	temp["exists"] = ProFunction("exists", VariableType.BOOLEAN, false, 1, 0,
-			[VariableType.STRING], (ref ProExecutionContext context, ref PersistentPropertyStorage persistentStorage, in string[] arguments) {
+			[VariableType.STRING], (ref ProExecutionContext context, ref PersistentPropertyStorage persistentStorage, const string[] arguments) {
 		string fileName = arguments[0];
 
 		trace("File name: ", fileName);
@@ -647,7 +646,7 @@ shared static this()
 	});
 
 	temp["debug"] = ProFunction("debug", VariableType.BOOLEAN, true, 2, -1,
-			[VariableType.STRING_LIST], (ref ProExecutionContext /*context*/, ref PersistentPropertyStorage persistentStorage, in string[] arguments) {
+			[VariableType.STRING_LIST], (ref ProExecutionContext /*context*/, ref PersistentPropertyStorage persistentStorage, const string[] arguments) {
 		assert(arguments.length >= 2);
 
 		// FIXME: implement level usage
@@ -661,7 +660,7 @@ shared static this()
 	});
 
 	temp["message"] = ProFunction("message", VariableType.BOOLEAN, true, 1, -1,
-			[VariableType.STRING_LIST], (ref ProExecutionContext /*context*/, ref PersistentPropertyStorage persistentStorage, in string[] arguments) {
+			[VariableType.STRING_LIST], (ref ProExecutionContext /*context*/, ref PersistentPropertyStorage persistentStorage, const string[] arguments) {
 		assert(arguments.length >= 1);
 
 		string message = arguments.join(" ");
@@ -671,7 +670,7 @@ shared static this()
 	});
 
 	temp["warning"] = ProFunction("warning", VariableType.BOOLEAN, true, 1, -1,
-			[VariableType.STRING_LIST], (ref ProExecutionContext /*context*/, ref PersistentPropertyStorage persistentStorage, in string[] arguments) {
+			[VariableType.STRING_LIST], (ref ProExecutionContext /*context*/, ref PersistentPropertyStorage persistentStorage, const string[] arguments) {
 		assert(arguments.length >= 1);
 
 		string message = arguments.join(" ");
@@ -681,7 +680,7 @@ shared static this()
 	});
 
 	temp["error"] = ProFunction("error", VariableType.BOOLEAN, true, 1, -1,
-			[VariableType.STRING_LIST], (ref ProExecutionContext /*context*/, ref PersistentPropertyStorage persistentStorage, in string[] arguments) {
+			[VariableType.STRING_LIST], (ref ProExecutionContext /*context*/, ref PersistentPropertyStorage persistentStorage, const string[] arguments) {
 		assert(arguments.length >= 1);
 
 		string message = arguments.join(" ");
@@ -693,7 +692,7 @@ shared static this()
 	// export(variablename)
 	// Exports the current value of variablename from the local context of a function to the global context.
 	temp["export"] = ProFunction("export", VariableType.BOOLEAN, false, 1, 0,
-			[VariableType.STRING], (ref ProExecutionContext context, ref PersistentPropertyStorage persistentStorage, in string[] arguments) {
+			[VariableType.STRING], (ref ProExecutionContext context, ref PersistentPropertyStorage persistentStorage, const string[] arguments) {
 		assert(arguments.length == 1);
 
 		string variableName = arguments[0];
@@ -707,7 +706,7 @@ shared static this()
 	});
 
 	temp["unset"] = ProFunction("unset", VariableType.BOOLEAN, false, 1, 0,
-			[VariableType.STRING], (ref ProExecutionContext context, ref PersistentPropertyStorage persistentStorage, in string[] arguments) {
+			[VariableType.STRING], (ref ProExecutionContext context, ref PersistentPropertyStorage persistentStorage, const string[] arguments) {
 		assert(arguments.length == 1);
 
 		string variableName = arguments[0];

@@ -106,13 +106,13 @@ public struct LineInfo
 //---------------------------------------------------------------------------------------------------------------------
 
 // FIXME: use this function instead of direct while loop
-void skipWhitespaces(in string sourceLine, ref long index)
+void skipWhitespaces(const string sourceLine, ref long index)
 {
     while (isWhite(sourceLine[index]) && (index < sourceLine.length))
         index++;
 }
 
-bool isInsideParenthesis(in string sourceLine, in long index, in ParenhesisType parType,
+bool isInsideParenthesis(const string sourceLine, const long index, const ParenhesisType parType,
     out long parIndex, bool findClosest = false)
 {
     immutable long startIndex = (parType == ParenhesisType.Opening) ? 0     : (index + 1);
@@ -152,7 +152,7 @@ bool isInsideParenthesis(in string sourceLine, in long index, in ParenhesisType 
     return false;
 }
 
-QuotesInfo detectFunctionArgument(in string functionName, in string sourceLine, in long index)
+QuotesInfo detectFunctionArgument(const string functionName, const string sourceLine, const long index)
 {
     long indexOpen;
     if (!isInsideParenthesis(sourceLine, index, ParenhesisType.Opening, indexOpen))
@@ -229,13 +229,13 @@ do
     return QuotesInfo(indexOpen, indexClose, true);
 }
 
-string cutInlineComment(in string sourceLine)
+string cutInlineComment(const string sourceLine)
 {
     bool commentFound;
     return cutInlineComment(sourceLine, commentFound);
 }
 
-string cutInlineComment(in string sourceLine, ref bool commentFound)
+string cutInlineComment(const string sourceLine, ref bool commentFound)
 {
     string result = sourceLine;
 
@@ -409,9 +409,9 @@ bool insideInnerFunctionCall(const long index, const ParIndex[] indeces)
 alias ExtractResult = Tuple!(string[], "arguments", long, "endIndex");
 // NOTE: regex may contain paired parenthesis which don't handled by grammar now
 ExtractResult extractFunctionArguments(
-    in string functionName,
-    in long requiredArgumentCount, in long optionalArgumentCount,
-    in long startIndex, in string sourceLine, const int srcLine)
+    const string functionName,
+    const long requiredArgumentCount, const long optionalArgumentCount,
+    const long startIndex, const string sourceLine, const int srcLine)
 in
 {
     assert(!functionName.empty);
@@ -487,12 +487,12 @@ do
     return result;
 }
 
-bool isMultiline(in string sourceLine)
+bool isMultiline(const string sourceLine)
 {
     return sourceLine.endsWith(STR_BACKSLASH);
 }
 
-bool mergeMultiline(in long startIndex, in string[] strLinesArray, out MultilineInfo result)
+bool mergeMultiline(const long startIndex, const string[] strLinesArray, out MultilineInfo result)
 in
 {
     //assert(isMultiline(lines[lineNo]));
@@ -579,7 +579,7 @@ do
     return true;
 }
 
-bool hasSinglelineScope(in string sourceLine, out long colonIndex)
+bool hasSinglelineScope(const string sourceLine, out long colonIndex)
 {
     colonIndex = -1;
 
@@ -643,13 +643,13 @@ bool hasSinglelineScope(in string sourceLine, out long colonIndex)
     return false;
 }
 
-bool hasSinglelineScope(in string sourceLine)
+bool hasSinglelineScope(const string sourceLine)
 {
     long colonIndex;
     return hasSinglelineScope(sourceLine, colonIndex);
 }
 
-bool fixSinglelineScope(in string sourceLine, out string resultLine)
+bool fixSinglelineScope(const string sourceLine, out string resultLine)
 {
     resultLine = sourceLine;
 
@@ -662,7 +662,7 @@ bool fixSinglelineScope(in string sourceLine, out string resultLine)
     return true;
 }
 
-bool hasMultilineScope(in string sourceLine, out long colonIndex)
+bool hasMultilineScope(const string sourceLine, out long colonIndex)
 {
     if (!sourceLine.endsWith(STR_OPENING_CURLY_BRACE))
         return false;
@@ -686,13 +686,13 @@ bool hasMultilineScope(in string sourceLine, out long colonIndex)
     return reduntant;
 }
 
-bool hasMultilineScope(in string sourceLine)
+bool hasMultilineScope(const string sourceLine)
 {
     long colonIndex;
     return hasMultilineScope(sourceLine, colonIndex);
 }
 
-bool fixMultilineScope(in string sourceLine, out string resultLine)
+bool fixMultilineScope(const string sourceLine, out string resultLine)
 {
     resultLine = sourceLine;
 
@@ -707,12 +707,12 @@ bool fixMultilineScope(in string sourceLine, out string resultLine)
     return true;
 }
 
-bool hasSinglelineScopeElse(in string sourceLine)
+bool hasSinglelineScopeElse(const string sourceLine)
 {
     return (sourceLine.indexOf(STR_ELSE_SINGLELINE) != -1);
 }
 
-bool fixSinglelineScopeElse(in string sourceLine, out string resultLine)
+bool fixSinglelineScopeElse(const string sourceLine, out string resultLine)
 {
     resultLine = sourceLine.replace(STR_ELSE_SINGLELINE, STR_ELSE ~ STR_DOG);
     return true;
@@ -742,7 +742,7 @@ void prettifyLine(ref LineInfo li)
     }
 }
 
-void fixMultiline(ref LineInfo li, ref MultilineInfo mresult, ref long lineIndex, in string[] strLinesArray)
+void fixMultiline(ref LineInfo li, ref MultilineInfo mresult, ref long lineIndex, const string[] strLinesArray)
 {
     if (isMultiline(li.line))
     {
@@ -786,7 +786,7 @@ void fixScope(ref LineInfo li)
     }
 }
 
-bool isEnquotedString(in string str)
+bool isEnquotedString(const string str)
 {
     if (str.length < 2)
         return false;
@@ -794,7 +794,7 @@ bool isEnquotedString(in string str)
     return (str.front == CHAR_DOUBLE_QUOTE) && (str.back == CHAR_DOUBLE_QUOTE);
 }
 
-string enquoteString(in string str)
+string enquoteString(const string str)
 {
     assert(!isEnquotedString(str));
 
@@ -810,9 +810,9 @@ string enquoteString(in string str)
  *      targetArgumentIndeces = one-based argument indeces to enquote
  *      li                    = reference to current line information structure to modify
  */
-void enquoteAmbiguousFunctionArguments(in string functionName,
-    in long requiredArgumentCount, in long optionalArgumentCount,
-    in long[] targetArgumentIndeces, ref LineInfo li)
+void enquoteAmbiguousFunctionArguments(const string functionName,
+    const long requiredArgumentCount, const long optionalArgumentCount,
+    const long[] targetArgumentIndeces, ref LineInfo li)
 {
     long functionCallIndex = 0;
     while (functionCallIndex < li.line.length)
@@ -907,7 +907,7 @@ void fixAmbiguousFunctionCalls(ref LineInfo li)
 
 //---------------------------------------------------------------------------------------------------------------------
 
-public string preprocessLines(in string[] strLinesArray, out LineInfo[] resultLines)
+public string preprocessLines(const string[] strLinesArray, out LineInfo[] resultLines)
 {
     string[] result;
     MultilineInfo mresult;

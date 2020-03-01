@@ -107,17 +107,17 @@ auto getDateTimeString()
 	return prettyStr;
 }
 
-@property string left(in string str, in long count)
+@property string left(const string str, const long count)
 {
 	return str[0 .. count];
 }
 
-@property string right(in string str, in long count)
+@property string right(const string str, const long count)
 {
 	return str[$ - count .. $];
 }
 
-bool isWhitespaceToken(in string str)
+bool isWhitespaceToken(const string str)
 {
 	// FIXME: use `isWhite` function
 	//
@@ -126,22 +126,22 @@ bool isWhitespaceToken(in string str)
 	return !matchFirst(str, r"\s+").empty;
 }
 
-bool isUnderscore(in char ch)
+bool isUnderscore(const char ch)
 {
 	return (ch == CHAR_UNDERSCORE);
 }
 
-bool isDot(in char ch)
+bool isDot(const char ch)
 {
 	return (ch == CHAR_DOT);
 }
 
-bool isAlphascore(in char ch)
+bool isAlphascore(const char ch)
 {
 	return (isAlpha(ch) || isUnderscore(ch));
 }
 
-bool containsQuote(in string str)
+bool containsQuote(const string str)
 {
 	foreach (ch; str)
 	{
@@ -151,7 +151,7 @@ bool containsQuote(in string str)
 	return false;
 }
 
-string joinTokens(in string str, in long index, in long count)
+string joinTokens(const string str, const long index, const long count)
 {
     string result = "";
     for (long j = index; j < min(index + count, str.length); j++)
@@ -159,7 +159,7 @@ string joinTokens(in string str, in long index, in long count)
     return result;
 }
 
-string[] splitString(in string str, in string delim, in bool skipEmptyParts)
+string[] splitString(const string str, const string delim, const bool skipEmptyParts)
 {
     string[] temp = str.split(delim);
 
@@ -175,7 +175,7 @@ string[] splitString(in string str, in string delim, in bool skipEmptyParts)
 	return temp_2;
 }
 
-string sectionString(in string str, in string delim, in long start, in long end = -1, in bool skipEmptyParts = false)
+string sectionString(const string str, const string delim, const long start, const long end = -1, const bool skipEmptyParts = false)
 {
 	string[] temp = splitString(str, delim, skipEmptyParts);
 
@@ -200,7 +200,7 @@ string sectionString(in string str, in string delim, in long start, in long end 
 	return temp[startNew .. endNew + 1].join(delim);
 }
 
-bool isNumeric(in string n, in int base)
+bool isNumeric(const string n, const int base)
 {
 	try
 	{
@@ -213,7 +213,7 @@ bool isNumeric(in string n, in int base)
 	}
 }
 
-string wildcardToRegex(in string pattern)
+string wildcardToRegex(const string pattern)
 {
     /*return "^" + Regex.Escape(pattern)
                       .Replace(@"\*", ".*")
@@ -229,7 +229,7 @@ string wildcardToRegex(in string pattern)
 	return result;
 }
 
-long detectIndentSize(in string str)
+long detectIndentSize(const string str)
 {
 	if (str.strip().empty)
 		return 0;
@@ -247,7 +247,7 @@ long detectIndentSize(in string str)
 	return result;
 }
 
-string getProcessOutput(in string command)
+string getProcessOutput(const string command)
 {
 	import std.process : executeShell;
 

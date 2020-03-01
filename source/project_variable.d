@@ -59,11 +59,11 @@ enum VariableType
 	COUNT
 }
 
-bool isStringType(in VariableType type)
+bool isStringType(const VariableType type)
 {
     return type == VariableType.RAW_STRING || type == VariableType.STRING || type == VariableType.RESTRICTED_STRING;
 }
-bool isStringListType(in VariableType type)
+bool isStringListType(const VariableType type)
 {
     return type == VariableType.STRING_LIST || type == VariableType.RESTRICTED_STRING_LIST;
 }
@@ -82,7 +82,7 @@ struct ProVariable
 //            isReadOnly: false,
 //            isRare: false
 
-	this(in string _name, in VariableType _type, string[] _valueRange, string[] _value)
+	this(const string _name, const VariableType _type, string[] _valueRange, string[] _value)
 	{
 		name = _name;
 		type = _type;

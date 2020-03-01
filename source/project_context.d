@@ -86,7 +86,7 @@ private:
 		return result;
 	}
 
-    bool isBuiltinVariable(in string name) const
+    bool isBuiltinVariable(const string name) const
     in
     {
         assert(!name.empty, "project variable name cannot be empty");
@@ -96,7 +96,7 @@ private:
         return (name in m_builtinVariables) !is null;
     }
 
-    bool isUserDefinedVariable(in string name) const
+    bool isUserDefinedVariable(const string name) const
     in
     {
         assert(!name.empty, "project variable name cannot be empty");
@@ -106,7 +106,7 @@ private:
         return (name in m_userVariables) !is null;
     }
 
-    void getVariableDescription(in string name, ref ProVariable var)
+    void getVariableDescription(const string name, ref ProVariable var)
     in
     {
         assert(!name.empty, "project variable name cannot be empty");
@@ -121,7 +121,7 @@ private:
             throw new Exception("Undefined variable '" ~ name ~ "'");
     }
 
-    bool addUserVariableDescription(in string name, in VariableType type = VariableType.STRING_LIST)
+    bool addUserVariableDescription(const string name, const VariableType type = VariableType.STRING_LIST)
     in
     {
         assert(!name.empty, "project variable name cannot be empty");
@@ -140,7 +140,7 @@ private:
         return true;
     }
 
-    void setVariableValue(in string name, in string[] value)
+    void setVariableValue(const string name, const string[] value)
     in
     {
         assert(!name.empty, "project variable name cannot be empty");
@@ -170,7 +170,7 @@ private:
             throw new Exception("Undefined variable '" ~ name ~ "'");
     }
 
-    void validateAssignmentOperands(in string name, in string[] value)
+    void validateAssignmentOperands(const string name, const string[] value)
     in
     {
         assert(!name.empty, "project variable name cannot be empty");
@@ -230,22 +230,22 @@ private:
 
     // ---------------------------------------------------------------------------------------------------------------------------
 
-    bool isBuiltinReplaceFunction(in string name)
+    bool isBuiltinReplaceFunction(const string name)
     {
         return ((name in m_builtinReplaceFunctions) !is null);
     }
 
-    bool isUserReplaceFunction(in string name)
+    bool isUserReplaceFunction(const string name)
     {
         return ((name in m_userReplaceFunctions) !is null);
     }
 
-    bool isBuiltinTestFunction(in string name)
+    bool isBuiltinTestFunction(const string name)
     {
         return ((name in m_builtinTestFunctions) !is null);
     }
 
-    bool isUserTestFunction(in string name)
+    bool isUserTestFunction(const string name)
     {
         return ((name in m_userTestFunctions) !is null);
     }
@@ -281,7 +281,7 @@ public:
         return m_userVariables.keys.sort.release();
     }
 
-    void setupPaths(in string projectFileName)
+    void setupPaths(const string projectFileName)
     {
         string dir = dirName(projectFileName);
         assignVariable("PWD", [dir], VariableType.STRING);
@@ -322,12 +322,12 @@ public:
             VariableType.STRING_LIST);*/
     }
 
-    bool isVariableDefined(in string name) const
+    bool isVariableDefined(const string name) const
     {
         return isBuiltinVariable(name) || isUserDefinedVariable(name);
     }
 
-    bool isVariableValueEmpty(in string name) /+const+/
+    bool isVariableValueEmpty(const string name) /+const+/
     {
         if (!isVariableDefined(name))
             return true;
@@ -336,7 +336,7 @@ public:
         return valueList.empty || (valueList.length == 1 && valueList[0].empty);
     }
 
-    VariableType getVariableType(in string name) /+const+/
+    VariableType getVariableType(const string name) /+const+/
     in
 	{
 		assert(!name.empty, "project variable name cannot be empty");
@@ -350,7 +350,7 @@ public:
     }
 
 	// FIXME: add const
-    string[] getVariableRawValue(in string name) /+const+/
+    string[] getVariableRawValue(const string name) /+const+/
 	in
 	{
 		assert(!name.empty, "project variable name cannot be empty");
@@ -363,7 +363,7 @@ public:
         return variableDescription.value;
     }
 
-    void unsetVariable(in string name)
+    void unsetVariable(const string name)
     in
 	{
 		assert(!name.empty, "project variable name cannot be empty");
@@ -379,7 +379,7 @@ public:
     }
 
     // var = value
-    void assignVariable(in string name, in string[] value, in VariableType variableType)
+    void assignVariable(const string name, const string[] value, const VariableType variableType)
 	in
 	{
 		assert(!name.empty, "project variable name cannot be empty");
@@ -394,7 +394,7 @@ public:
     }
 
     // var += value
-    void appendAssignVariable(in string name, in string[] value)
+    void appendAssignVariable(const string name, const string[] value)
 	in
 	{
 		assert(!name.empty, "project variable name cannot be empty");
@@ -409,7 +409,7 @@ public:
     }
 
     // var *= value
-    void appendUniqueAssignVariable(in string name, in string[] value)
+    void appendUniqueAssignVariable(const string name, const string[] value)
 	in
 	{
 		assert(!name.empty, "project variable name cannot be empty");
@@ -431,7 +431,7 @@ public:
     }
 
     // var -= value
-    void removeAssignVariable(in string name, in string[] value)
+    void removeAssignVariable(const string name, const string[] value)
 	in
 	{
 		assert(!name.empty, "project variable name cannot be empty");
@@ -454,7 +454,7 @@ public:
 		setVariableValue(name, currentValue);
     }
 
-	bool hasReplaceFunctionDescription(in string name)
+	bool hasReplaceFunctionDescription(const string name)
 	in
 	{
 		assert(!name.empty, "function name cannot be empty");
@@ -465,7 +465,7 @@ public:
 		return isBuiltinReplaceFunction(name) || isUserReplaceFunction(name);
 	}
 
-	ProFunction getReplaceFunctionDescription(in string name)
+	ProFunction getReplaceFunctionDescription(const string name)
 	in
 	{
 		assert(!name.empty, "function name cannot be empty");
@@ -481,7 +481,7 @@ public:
             throw new NotImplementedException("replace function " ~ "`" ~ name ~ "`" ~ " was not defined yet");
 	}
 
-    bool hasTestFunctionDescription(in string name)
+    bool hasTestFunctionDescription(const string name)
 	in
 	{
 		assert(!name.empty, "function name cannot be empty");
@@ -492,7 +492,7 @@ public:
 		return isBuiltinTestFunction(name) || isUserTestFunction(name);
 	}
 
-	ProFunction getTestFunctionDescription(in string name)
+	ProFunction getTestFunctionDescription(const string name)
 	in
 	{
 		assert(!name.empty, "function name cannot be empty");
@@ -510,13 +510,8 @@ public:
 
     // ---------------------------------------------------------------------------------------------------------------------------
 
-    void addReplaceFunctionDescription(in string name, in ProFunction.Action action)
+    void addReplaceFunctionDescription(const string name, const ProFunction.Action action)
     {
-        /*
-        this(in string name, in VariableType returnType,
-            in bool isVariadic, in int requiredArgumentCount, in int optionalArgumentCount,
-            VariableType[] argumentTypes, in Action action)
-        */
         m_userReplaceFunctions[name] = ProFunction(
             name,
             VariableType.STRING_LIST, /*FIXME: detect return type*/
@@ -526,11 +521,11 @@ public:
         );
     }
 
-    void addTestFunctionDescription(in string name, ProFunction.Action action)
+    void addTestFunctionDescription(const string name, ProFunction.Action action)
     {
         m_userTestFunctions[name] = ProFunction(
             name,
-            VariableType.STRING_LIST, /*FIXME: detect type*/
+            VariableType.STRING_LIST, /*FIXME: detect return type*/
             true, -1, -1, // all user-defined functions are variadic
             [VariableType.STRING],
             action
@@ -539,7 +534,7 @@ public:
 
     // ---------------------------------------------------------------------------------------------------------------------------
 
-    void pushFunctionResult(in string[] value)
+    void pushFunctionResult(const string[] value)
     {
         m_functionResult = value.dup;
     }
@@ -566,7 +561,7 @@ public:
         return m_flowControlStatement;
     }
 
-    void setFlowControlStatement(in FlowControlStatement fcs)
+    void setFlowControlStatement(const FlowControlStatement fcs)
     {
         m_flowControlStatement = fcs;
     }

@@ -71,7 +71,7 @@ enum VariableType
 }
 +/
 
-VariableType deduceRvalueType(in RvalueEvalResult[] rvalueCollection)
+VariableType deduceRvalueType(const RvalueEvalResult[] rvalueCollection)
 {
     // Corner case
     if (rvalueCollection.empty)
@@ -106,7 +106,7 @@ VariableType deduceRvalueType(in RvalueEvalResult[] rvalueCollection)
     }
 }
 
-string[] prettifyRvalue(in RvalueEvalResult[] rvalueCollection, in VariableType dataType)
+string[] prettifyRvalue(const RvalueEvalResult[] rvalueCollection, const VariableType dataType)
 {
     string[] result;
 

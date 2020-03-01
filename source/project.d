@@ -87,7 +87,7 @@ public:
         trace("\n\n");
     }
 
-    bool tryParseSnippet(in string snippet)
+    bool tryParseSnippet(const string snippet)
     {
         LineInfo[] li;
         string preprocessedSnippet = preprocessLines(splitString(snippet, "\n", false), li);
@@ -111,7 +111,7 @@ public:
         return parseTree.successful;
     }
 
-    bool tryParse(in string fileName) const
+    bool tryParse(const string fileName) const
     {
         trace("Trying to parse project file '" ~ fileName ~ "'...");
 
@@ -138,7 +138,7 @@ public:
         return parseTree.successful;
     }
 
-    bool eval(in string fileName) /*const*/
+    bool eval(const string fileName) /*const*/
     {
         trace("Trying to parse project file '" ~ fileName ~ "'...");
 
@@ -300,7 +300,7 @@ private:
         {
             case "QMakeProject.ReplaceFunctionDeclaration":
             {
-                // alias Action = const(string[]) function(ref ProExecutionContext context, in string[] arguments);
+                // alias Action = const(string[]) function(ref ProExecutionContext context, const string[] arguments);
                 auto nameNode = concreteDeclNode.children[1];
                 assert(nameNode.children.length == 0);
                 assert(nameNode.matches.length == 1);
@@ -309,7 +309,7 @@ private:
                 trace("Declare user-defined replace function ", "`", name, "`");
 
                 auto functionBlock = concreteDeclNode.children[3];
-                const(string[]) replaceAction(ref ProExecutionContext /*context*/, ref PersistentPropertyStorage persistentStorage, in string[] arguments)
+                const(string[]) replaceAction(ref ProExecutionContext /*context*/, ref PersistentPropertyStorage persistentStorage, const string[] arguments)
                 {
                     trace("Invoking user-defined replace function ", "`", name, "`");
 
@@ -355,7 +355,7 @@ private:
                 trace("Declare user-defined test function ", "`", name, "`");
 
                 auto functionBlock = concreteDeclNode.children[3];
-                const(string[]) testAction(ref ProExecutionContext /*context*/, ref PersistentPropertyStorage persistentStorage, in string[] arguments)
+                const(string[]) testAction(ref ProExecutionContext /*context*/, ref PersistentPropertyStorage persistentStorage, const string[] arguments)
                 {
                     trace("Invoking user-defined test function ", "`", name, "`");
 
@@ -652,7 +652,7 @@ private:
         return result;
     }
 
-    RvalueEvalResult evalVariableReplaceAssignmentNode(in string variableName, ref ParseTree assignmentTypeNode)
+    RvalueEvalResult evalVariableReplaceAssignmentNode(const string variableName, ref ParseTree assignmentTypeNode)
     {
         RvalueEvalResult result;
         result.type = VariableType.STRING;
@@ -728,7 +728,7 @@ private:
         return result;
     }
 
-    void assignVariable(in string name, in string operator, in string[] value, in VariableType type)
+    void assignVariable(const string name, const string operator, const string[] value, const VariableType type)
     {
         switch (operator)
         {
@@ -1163,7 +1163,7 @@ private:
         return result;
     }
 
-    string[] evalFunctionActualArguments(in int actualOperandCount, ref ParseTree functionArgumentListNode)
+    string[] evalFunctionActualArguments(const int actualOperandCount, ref ParseTree functionArgumentListNode)
     in
     {
         assert(functionArgumentListNode.name == "QMakeProject.FunctionArgumentList"
@@ -1677,7 +1677,7 @@ private:
         return result;
     }
 
-    void validateFunctionCall(in int actualOperandCount, ref ProFunction functionDescription)
+    void validateFunctionCall(const int actualOperandCount, ref ProFunction functionDescription)
     {
         // Report function expected and actual argument count (if applicable)
         // FIXME: implement user-defined functions support and add condition

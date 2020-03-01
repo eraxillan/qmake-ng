@@ -48,12 +48,12 @@ private:
 public:
     @disable this();
 
-    this(immutable QtVersionInfo qtInfo, in string mkSpec)
+    this(immutable QtVersionInfo qtInfo, const string mkSpec)
     {
         reload(qtInfo, mkSpec);
     }
 
-    void reload(immutable QtVersionInfo qtInfo, in string mkSpec)
+    void reload(immutable QtVersionInfo qtInfo, const string mkSpec)
     {
         m_values["QT_SYSROOT"] = "";
 
@@ -181,7 +181,7 @@ public:
         m_values["CROSS_COMPILE"] = "";
     }
 
-    string value(in string name)
+    string value(const string name)
     {
         if ((name in m_values) !is null)
             return m_values[name];
@@ -190,18 +190,18 @@ public:
         throw new NotImplementedException("Persistent storage not implemented yet");
     }
 
-    bool hasValue(in string v)
+    bool hasValue(const string v)
     {
         return ((v in m_values) !is null);
     }
 
-    void setValue(in string var, in string val)
+    void setValue(const string var, const string val)
     {
         // FIXME: implement
         throw new NotImplementedException("Persistent storage not implemented yet");
     }
 
-    void remove(in string var)
+    void remove(const string var)
     {
         // FIXME: implement
         throw new NotImplementedException("Persistent storage not implemented yet");
