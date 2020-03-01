@@ -40,28 +40,25 @@ static import std.regex;
 import common_const;
 import common_utils;
 
-private const auto STR_ELSE = "else";
-private const auto STR_ELSE_SINGLELINE = "else:";
+//---------------------------------------------------------------------------------------------------------------------
+private:
 
-private const auto EXISTS_FUNCTION_STR = "exists";      // test function, argument 1
-private const auto CONTAINS_FUNCTION_STR = "contains";  // test function, argument 2
-private const auto QTCONFIG_FUNCTION_STR = "qtConfig";  // test function, argument 1
-private const auto ERROR_FUNCTION_STR = "error";        // test function, argument 1
-private const auto SYSTEM_FUNCTION_STR = "system";      // test/replace function, argument 1
+const auto STR_ELSE = "else";
+const auto STR_ELSE_SINGLELINE = "else:";
 
-private const auto FIND_FUNCTION_STR = "find";          // replace function, argument 2
-private const auto REESCAPE_FUNCTION_STR = "re_escape"; // replace function, argument 1
-private const auto REPLACE_FUNCTION_STR = "replace";    // replace function, arguments 2 and 3
+const auto EXISTS_FUNCTION_STR = "exists";      // test function, argument 1
+const auto CONTAINS_FUNCTION_STR = "contains";  // test function, argument 2
+const auto QTCONFIG_FUNCTION_STR = "qtConfig";  // test function, argument 1
+const auto ERROR_FUNCTION_STR = "error";        // test function, argument 1
+const auto SYSTEM_FUNCTION_STR = "system";      // test/replace function, argument 1
 
+const auto FIND_FUNCTION_STR = "find";          // replace function, argument 2
+const auto REESCAPE_FUNCTION_STR = "re_escape"; // replace function, argument 1
+const auto REPLACE_FUNCTION_STR = "replace";    // replace function, arguments 2 and 3
 
-private struct QuotesInfo
-{
-    long indexOpen  = -1;
-    long indexClose = -1;
-    bool success;
-}
+//---------------------------------------------------------------------------------------------------------------------
 
-private enum PreprocessorModifications
+enum PreprocessorModifications
 {
     None,
     WhitespaceStripped       = 1 << 0,
@@ -74,21 +71,48 @@ private enum PreprocessorModifications
     FunctionArgumentEnquoted = 1 << 7
 } 
 
-private enum ParenhesisType
+enum ParenhesisType
 {
     None,
     Opening,
     Closing
 }
 
+struct MultilineInfo
+{
+    long startIndex = -1;
+    long endIndex = -1;
+    string line;
+}
+
+struct QuotesInfo
+{
+    long indexOpen  = -1;
+    long indexClose = -1;
+    bool success;
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+
+public struct LineInfo
+{
+    alias Mods = PreprocessorModifications;
+
+    string line;
+    long index;
+    Mods mods;
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+
 // FIXME: use this function instead of direct while loop
-private void skipWhitespaces(in string sourceLine, ref long index)
+void skipWhitespaces(in string sourceLine, ref long index)
 {
     while (isWhite(sourceLine[index]) && (index < sourceLine.length))
         index++;
 }
 
-private bool isInsideParenthesis(in string sourceLine, in long index, in ParenhesisType parType,
+bool isInsideParenthesis(in string sourceLine, in long index, in ParenhesisType parType,
     out long parIndex, bool findClosest = false)
 {
     immutable long startIndex = (parType == ParenhesisType.Opening) ? 0     : (index + 1);
@@ -128,7 +152,7 @@ private bool isInsideParenthesis(in string sourceLine, in long index, in Parenhe
     return false;
 }
 
-private QuotesInfo detectFunctionArgument(in string functionName, in string sourceLine, in long index)
+QuotesInfo detectFunctionArgument(in string functionName, in string sourceLine, in long index)
 {
     long indexOpen;
     if (!isInsideParenthesis(sourceLine, index, ParenhesisType.Opening, indexOpen))
@@ -149,7 +173,7 @@ private QuotesInfo detectFunctionArgument(in string functionName, in string sour
 }
 
 // TODO: rewrite code like in detectFunctionArgument
-private QuotesInfo isInsideQuotes(in string strLine, in long index)
+QuotesInfo isInsideQuotes(in string strLine, in long index)
 {    
     long[] stack;
     
@@ -186,13 +210,13 @@ private QuotesInfo isInsideQuotes(in string strLine, in long index)
     return QuotesInfo(indexOpen, indexClose, true);
 }
 
-private string cutInlineComment(in string sourceLine)
+string cutInlineComment(in string sourceLine)
 {
     bool commentFound;
     return cutInlineComment(sourceLine, commentFound);
 }
 
-private string cutInlineComment(in string sourceLine, ref bool commentFound)
+string cutInlineComment(in string sourceLine, ref bool commentFound)
 {
     string result = sourceLine;
 
@@ -214,7 +238,7 @@ private string cutInlineComment(in string sourceLine, ref bool commentFound)
     return result;
 }
 
-private long detectFunctionArgumentsStartIndex(const string functionName, const string sourceStr, const long fromIndex)
+long detectFunctionArgumentsStartIndex(const string functionName, const string sourceStr, const long fromIndex)
 in
 {
     assert(sourceStr.indexOf(functionName ~ STR_OPENING_PARENTHESIS, fromIndex) >= 0);
@@ -238,7 +262,7 @@ do
     return functionOpenParIndex;
 }
 
-private long detectFunctionArgumentsEndIndex(const string sourceStr, const long functionCallStartIndex)
+long detectFunctionArgumentsEndIndex(const string sourceStr, const long functionCallStartIndex)
 in
 {
     assert(functionCallStartIndex < sourceStr.length);
@@ -324,9 +348,9 @@ do
     return result;
 }
 
-private alias ParIndex = Tuple!(long, "startIndex", long, "endIndex");
+alias ParIndex = Tuple!(long, "startIndex", long, "endIndex");
 
-private ParIndex[] detectInnerFunctions(const string sourceStr)
+ParIndex[] detectInnerFunctions(const string sourceStr)
 // FIXME: in/out contracts
 {
     ParIndex[] result;
@@ -355,7 +379,7 @@ private ParIndex[] detectInnerFunctions(const string sourceStr)
     return result;
 }
 
-private bool insideInnerFunctionCall(const long index, const ParIndex[] indeces)
+bool insideInnerFunctionCall(const long index, const ParIndex[] indeces)
 {
     foreach (indexPair; indeces)
     {
@@ -365,9 +389,9 @@ private bool insideInnerFunctionCall(const long index, const ParIndex[] indeces)
     return false;
 }
 
-private alias ExtractResult = Tuple!(string[], "arguments", long, "endIndex");
+alias ExtractResult = Tuple!(string[], "arguments", long, "endIndex");
 // NOTE: regex may contain paired parenthesis which don't handled by grammar now
-private ExtractResult extractFunctionArguments(
+ExtractResult extractFunctionArguments(
     in string functionName,
     in long requiredArgumentCount, in long optionalArgumentCount,
     in long startIndex, in string sourceLine, const int srcLine)
@@ -446,19 +470,12 @@ do
     return result;
 }
 
-private bool isMultiline(in string sourceLine)
+bool isMultiline(in string sourceLine)
 {
     return sourceLine.endsWith(STR_BACKSLASH);
 }
 
-private struct MultilineInfo
-{
-    long startIndex = -1;
-    long endIndex = -1;
-    string line;
-}
-
-private bool mergeMultiline(in long startIndex, in string[] strLinesArray, out MultilineInfo result)
+bool mergeMultiline(in long startIndex, in string[] strLinesArray, out MultilineInfo result)
 in
 {
     //assert(isMultiline(lines[lineNo]));
@@ -545,7 +562,7 @@ do
     return true;
 }
 
-private bool hasSinglelineScope(in string sourceLine, out long colonIndex)
+bool hasSinglelineScope(in string sourceLine, out long colonIndex)
 {
     colonIndex = -1;
 
@@ -608,13 +625,13 @@ private bool hasSinglelineScope(in string sourceLine, out long colonIndex)
     return false;
 }
 
-private bool hasSinglelineScope(in string sourceLine)
+bool hasSinglelineScope(in string sourceLine)
 {
     long colonIndex;
     return hasSinglelineScope(sourceLine, colonIndex);
 }
 
-private bool fixSinglelineScope(in string sourceLine, out string resultLine)
+bool fixSinglelineScope(in string sourceLine, out string resultLine)
 {
     resultLine = sourceLine;
 
@@ -627,7 +644,7 @@ private bool fixSinglelineScope(in string sourceLine, out string resultLine)
     return true;
 }
 
-private bool hasMultilineScope(in string sourceLine, out long colonIndex)
+bool hasMultilineScope(in string sourceLine, out long colonIndex)
 {
     if (!sourceLine.endsWith(STR_OPENING_CURLY_BRACE))
         return false;
@@ -651,13 +668,13 @@ private bool hasMultilineScope(in string sourceLine, out long colonIndex)
     return reduntant;
 }
 
-private bool hasMultilineScope(in string sourceLine)
+bool hasMultilineScope(in string sourceLine)
 {
     long colonIndex;
     return hasMultilineScope(sourceLine, colonIndex);
 }
 
-private bool fixMultilineScope(in string sourceLine, out string resultLine)
+bool fixMultilineScope(in string sourceLine, out string resultLine)
 {
     resultLine = sourceLine;
 
@@ -670,18 +687,18 @@ private bool fixMultilineScope(in string sourceLine, out string resultLine)
     return true;
 }
 
-private bool hasSinglelineScopeElse(in string sourceLine)
+bool hasSinglelineScopeElse(in string sourceLine)
 {
     return sourceLine.indexOf(STR_ELSE_SINGLELINE) != -1;
 }
 
-private bool fixSinglelineScopeElse(in string sourceLine, out string resultLine)
+bool fixSinglelineScopeElse(in string sourceLine, out string resultLine)
 {
     resultLine = sourceLine.replace(STR_ELSE_SINGLELINE, STR_ELSE ~ STR_DOG);
     return true;
 }
 
-private void prettifyLine(ref LineInfo li)
+void prettifyLine(ref LineInfo li)
 {
     if (li.line.endsWith(STR_SEMICOLON))
     {
@@ -705,7 +722,7 @@ private void prettifyLine(ref LineInfo li)
     }
 }
 
-private void fixMultiline(ref LineInfo li, ref MultilineInfo mresult, ref long lineIndex, in string[] strLinesArray)
+void fixMultiline(ref LineInfo li, ref MultilineInfo mresult, ref long lineIndex, in string[] strLinesArray)
 {
     if (isMultiline(li.line))
     {
@@ -719,7 +736,7 @@ private void fixMultiline(ref LineInfo li, ref MultilineInfo mresult, ref long l
     }
 }
 
-private void fixScope(ref LineInfo li)
+void fixScope(ref LineInfo li)
 {
     // FIXME: workaround for grammar ambiguity - cannot distingush AND-colon and scope statement expression end colon
     // Replace last colon (":") with "@";
@@ -749,7 +766,7 @@ private void fixScope(ref LineInfo li)
     }
 }
 
-private bool isEnquotedString(in string str)
+bool isEnquotedString(in string str)
 {
     if (str.length < 2)
         return false;
@@ -757,7 +774,7 @@ private bool isEnquotedString(in string str)
     return (str.front == CHAR_DOUBLE_QUOTE) && (str.back == CHAR_DOUBLE_QUOTE);
 }
 
-private string enquoteString(in string str)
+string enquoteString(in string str)
 {
     assert(!isEnquotedString(str));
 
@@ -773,7 +790,7 @@ private string enquoteString(in string str)
  *      targetArgumentIndeces = one-based argument indeces to enquote
  *      li                    = reference to current line information structure to modify
  */
-private void enquoteAmbiguousFunctionArguments(in string functionName,
+void enquoteAmbiguousFunctionArguments(in string functionName,
     in long requiredArgumentCount, in long optionalArgumentCount,
     in long[] targetArgumentIndeces, ref LineInfo li)
 {
@@ -831,7 +848,7 @@ private void enquoteAmbiguousFunctionArguments(in string functionName,
     // FIXME: add error handling above, e.g. exception generation
 }
 
-private void fixAmbiguousFunctionCalls(ref LineInfo li)
+void fixAmbiguousFunctionCalls(ref LineInfo li)
 {
     // E.g.:
     // replace(string, old_string, new_string)
@@ -870,16 +887,7 @@ private void fixAmbiguousFunctionCalls(ref LineInfo li)
 
 //---------------------------------------------------------------------------------------------------------------------
 
-struct LineInfo
-{
-    alias Mods = PreprocessorModifications;
-
-    string line;
-    long index;
-    Mods mods;
-}
-
-string preprocessLines(in string[] strLinesArray, out LineInfo[] resultLines)
+public string preprocessLines(in string[] strLinesArray, out LineInfo[] resultLines)
 {
     string[] result;
     MultilineInfo mresult;
@@ -906,6 +914,8 @@ string preprocessLines(in string[] strLinesArray, out LineInfo[] resultLines)
 
     return result.join("\n");
 }
+
+//---------------------------------------------------------------------------------------------------------------------
 
 unittest
 {
