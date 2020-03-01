@@ -121,9 +121,9 @@ bool isInsideParenthesis(in string sourceLine, in long index, in ParenhesisType 
     long[] parenthesisStack;
     for (long i = startIndex; i < endIndex; i++)
     {
-        if ("" ~ sourceLine[cast(uint)i] == STR_OPENING_PARENTHESIS)
+        if (sourceLine[i] == CHAR_OPENING_PARENTHESIS)
             parenthesisStack ~= i;
-        else if ("" ~ sourceLine[cast(uint)i] == STR_CLOSING_PARENTHESIS)
+        else if (sourceLine[i] == CHAR_CLOSING_PARENTHESIS)
         {
             if (!parenthesisStack.empty)
                 parenthesisStack.popBack();
@@ -146,9 +146,9 @@ bool isInsideParenthesis(in string sourceLine, in long index, in ParenhesisType 
     }
 
     if (parType == ParenhesisType.Opening)
-        trace("no open parenthesis found, stack.length = " ~ std.conv.to!string(parenthesisStack.length));
+        trace("no open parenthesis found, stack.length = ", parenthesisStack.length);
     else
-        trace("no close parenthesis found, stack.length = " ~ std.conv.to!string(parenthesisStack.length));
+        trace("no close parenthesis found, stack.length = ", parenthesisStack.length);
     return false;
 }
 
@@ -162,7 +162,7 @@ QuotesInfo detectFunctionArgument(in string functionName, in string sourceLine, 
     if (!isInsideParenthesis(sourceLine, index, ParenhesisType.Closing, indexClose))
         return QuotesInfo(-1, -1, false);
 
-    auto thisFunctionName = sourceLine[cast(uint)(cast(uint)indexOpen - functionName.length) .. cast(uint)indexOpen];
+    auto thisFunctionName = sourceLine[indexOpen - functionName.length .. indexOpen];
     if (thisFunctionName != functionName)
     {
         trace("non-ambiguous function call detected = " ~ thisFunctionName);
@@ -173,35 +173,54 @@ QuotesInfo detectFunctionArgument(in string functionName, in string sourceLine, 
 }
 
 // TODO: rewrite code like in detectFunctionArgument
-QuotesInfo isInsideQuotes(in string strLine, in long index)
-{    
+QuotesInfo isInsideQuotes(const string strLine, const long index)
+in
+{
+    assert(index >= 0 && index < strLine.length);
+}
+out (result)
+{
+    assert((result.success && (result.indexOpen >= 0) && (result.indexClose < strLine.length)
+        && (strLine[result.indexOpen] == CHAR_DOUBLE_QUOTE) && (strLine[result.indexClose] == CHAR_DOUBLE_QUOTE))
+        || (!result.success) && (result.indexOpen == -1) && (result.indexClose == -1));
+}
+do
+{
+    // Naive optimization: enquoted char length must have length 3 or more
+    if (strLine.length < 3)
+    {
+        trace("input string is too short to contain quotes");
+        return QuotesInfo(-1, -1, false);
+    }
+
     long[] stack;
     
     // Search for opening separator: skip paired characters until we find unpaired one
     for (auto i = 0; i < index; i++)
     {
-        if ("" ~ strLine[i] == STR_DOUBLE_QUOTE)
+        if (strLine[i] == CHAR_DOUBLE_QUOTE)
             stack ~= i;
     }
     if (stack.empty || (stack.length % 2 == 0))
     {
-        trace("no open char '" ~ STR_DOUBLE_QUOTE ~ "' before index " ~ std.conv.to!string(index)
-                ~ ", stack.length = " ~ std.conv.to!string(stack.length));
+        trace("no opening double quote before index ", index,
+              ", stack.length = ", stack.length);
         return QuotesInfo(-1, -1, false);
     }
+
     auto indexOpen = stack[0];
     stack = [];
 
     // Search for closing double quote (unpaired)
     for (auto i = index + 1; i < strLine.length; i++)
     {
-        if ("" ~ strLine[cast(uint)i] == STR_DOUBLE_QUOTE)
+        if (strLine[i] == CHAR_DOUBLE_QUOTE)
             stack ~= i;
     }
     if (stack.empty || (stack.length % 2 == 0))
     {
-        trace("no close char '" ~ STR_DOUBLE_QUOTE ~ "' before index " ~ std.conv.to!string(index)
-                ~ ", stack.length = " ~ std.conv.to!string(stack.length));
+        trace("no closing double quote before index ", index,
+              ", stack.length = ", stack.length);
         return QuotesInfo(-1, -1, false);
     }
     auto indexClose = stack[0];
@@ -285,7 +304,6 @@ do
 {
     long result;
     long[] parenthesisStack;
-    //long[] doublequoteStack;
 
     bool isPrependedWithBackslash(const long index)
     {
@@ -305,7 +323,6 @@ do
         if ((sourceStr[result] == CHAR_DOUBLE_QUOTE) && !isPrependedWithBackslash(result))
         {
             trace("open quote detected at index ", result);
-            //doublequoteStack ~= result;
 
             // Skip enquoted argument
             result++;
@@ -575,7 +592,7 @@ bool hasSinglelineScope(in string sourceLine, out long colonIndex)
     long i;
     if (lastEqIndex == -1)
     {
-        i = cast(long)sourceLine.length - 1;
+        i = sourceLine.length - 1;
     }
     else if (isInsideQuotes(sourceLine, lastEqIndex).success)
     {
@@ -594,27 +611,28 @@ bool hasSinglelineScope(in string sourceLine, out long colonIndex)
 
     for ( ; i >= 0; i--)
     {
-        if ("" ~ sourceLine[cast(uint)i] != STR_COLON)
+        if (sourceLine[i] != CHAR_COLON)
             continue;
 
-        trace("colon detected at index " ~ std.conv.to!string(i));
+        trace("colon detected at index ", i);
 
         auto info1 = isInsideQuotes(sourceLine, i);
         if (info1.success)
         {
             i = info1.indexOpen - 1;
-            trace("quote begin = " ~ std.conv.to!string(info1.indexOpen));
-            trace("quote end = " ~ std.conv.to!string(info1.indexClose));
-            trace("colon inside quotes detected, go back to index " ~ std.conv.to!string(i));
+            trace("quote begin = ", info1.indexOpen);
+            trace("quote end = ", info1.indexClose);
+            trace("colon inside quotes detected, go back to index = ", i);
             continue;
         }
 
+        // FIXME: add explaining comment
         auto info2 = detectFunctionArgument("requires", sourceLine, i);
         if (info2.success)
         {
             i = info2.indexOpen - 1;
-            trace("function begin = " ~ std.conv.to!string(info2.indexOpen));
-            trace("function end = " ~ std.conv.to!string(info2.indexClose));
+            trace("function begin = ", info2.indexOpen);
+            trace("function end = ", info2.indexClose);
             continue;
         }
 
@@ -640,7 +658,7 @@ bool fixSinglelineScope(in string sourceLine, out string resultLine)
         return false;
 
     trace("single-line scope statement detected and fixed");
-    resultLine.replaceInPlace(cast(uint)colonIndex, cast(uint)(colonIndex + 1), STR_DOG);
+    resultLine.replaceInPlace(colonIndex, colonIndex + 1, STR_DOG);
     return true;
 }
 
@@ -656,7 +674,7 @@ bool hasMultilineScope(in string sourceLine, out long colonIndex)
         return false;
 
     bool reduntant = true;
-    for (int i = cast(int)colonIndex + 1; i < cast(int)sourceLine.length - 1; i++)
+    for (auto i = colonIndex + 1; i < sourceLine.length - 1; i++)
     {
         if (!isWhite(sourceLine[i]))
         {
@@ -682,14 +700,16 @@ bool fixMultilineScope(in string sourceLine, out string resultLine)
     if (!hasMultilineScope(sourceLine, colonIndex))
         return false;
 
+    assert(colonIndex >= 0);
     trace("single-line scope statement detected and fixed");
-    resultLine.replaceInPlace(cast(uint)colonIndex, cast(uint)(colonIndex + 1), "" ~ STR_DOG);
+
+    resultLine.replaceInPlace(colonIndex, colonIndex + 1, STR_DOG);
     return true;
 }
 
 bool hasSinglelineScopeElse(in string sourceLine)
 {
-    return sourceLine.indexOf(STR_ELSE_SINGLELINE) != -1;
+    return (sourceLine.indexOf(STR_ELSE_SINGLELINE) != -1);
 }
 
 bool fixSinglelineScopeElse(in string sourceLine, out string resultLine)
@@ -895,7 +915,7 @@ public string preprocessLines(in string[] strLinesArray, out LineInfo[] resultLi
     {
         LineInfo li;
         li.index = lineIndex;
-        li.line = strLinesArray[cast(uint)lineIndex];
+        li.line = strLinesArray[lineIndex];
 
         prettifyLine(li);
         fixMultiline(li, mresult, lineIndex, strLinesArray);

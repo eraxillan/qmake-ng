@@ -55,8 +55,10 @@ public const auto CHAR_DOT = '.';
 public const auto CHAR_COMMA = ',';
 public const auto STR_COMMA = ",";
 
+public const auto CHAR_DOG = '@';
 public const auto STR_DOG = "@";
 public const auto STR_EXCLAMATION_MARK = "!";
+public const auto CHAR_COLON = ':';
 public const auto STR_COLON = ":";
 public const auto STR_VERTICAL_BAR = "|";
 
