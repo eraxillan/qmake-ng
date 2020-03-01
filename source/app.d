@@ -39,7 +39,9 @@ import persistent_property;
 import command_line_options;
 import qt;
 
-private static const string QMAKE_CONF_FILE = "qmake.conf";
+private:
+
+static const string QMAKE_CONF_FILE = "qmake.conf";
 
 struct PlatformData
 {
@@ -135,7 +137,7 @@ struct PlatformData
     }
 }
 
-private static void loadQmakeDefaults(ref ProExecutionContext context, string[] argv, string qtConfFilePath)
+static void loadQmakeDefaults(ref ProExecutionContext context, string[] argv, string qtConfFilePath)
 {
     PlatformData pd;
     pd.initialize(argv, qtConfFilePath);
@@ -160,7 +162,7 @@ private static void loadQmakeDefaults(ref ProExecutionContext context, string[] 
     assert(context.getVariableRawValue("DIR_SEPARATOR")[0] == "/");
 }
 
-private static bool loadQmakeFeature(ref ProExecutionContext context, ref PersistentPropertyStorage persistentStorage,
+static bool loadQmakeFeature(ref ProExecutionContext context, ref PersistentPropertyStorage persistentStorage,
     in QtVersion qt, in string name)
 {
     string featureFileName = std.path.buildPath(qt.featureDirPath(), name);
@@ -189,7 +191,7 @@ private static bool loadQmakeFeature(ref ProExecutionContext context, ref Persis
 }
 
 // FIXME: change return type to void and enbrace usages in try-catch
-private static bool loadQmakeSpec(ref ProExecutionContext context, ref PersistentPropertyStorage persistentStorage,
+static bool loadQmakeSpec(ref ProExecutionContext context, ref PersistentPropertyStorage persistentStorage,
     in QtVersion qt, in string name)
 {
     assert(context.getVariableRawValue("DIR_SEPARATOR")[0] == "/");
@@ -249,7 +251,7 @@ private static bool loadQmakeSpec(ref ProExecutionContext context, ref Persisten
     return false;
 }
 
-private bool execPropertyAction(in QmakePropertyAction action, in string[] properties,
+bool execPropertyAction(in QmakePropertyAction action, in string[] properties,
     ref PersistentPropertyStorage storage)
 {
     bool ret = true;
@@ -337,14 +339,14 @@ private bool execPropertyAction(in QmakePropertyAction action, in string[] prope
    is much too slow, and called much too often inside of Qt (every fileFixify). With this we use a locally
    cached copy because I can control all the times it is set (because Qt never sets the pwd under me).
 */
-private static string pwd;
-private string qmake_getpwd()
+static string pwd;
+string qmake_getpwd()
 {
     if (pwd.empty)
         pwd = std.file.getcwd();
     return pwd;
 }
-private bool qmake_setpwd(in string p)
+bool qmake_setpwd(in string p)
 {
     /*if (QDir::setCurrent(p)) {
         pwd = QDir::currentPath();

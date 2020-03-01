@@ -43,10 +43,11 @@ import project_context;
 import persistent_property;
 
 // -------------------------------------------------------------------------------------------------
+public:
 
 enum ProFunctionType { Invalid = -1, Replace = 0, Test, Count }
 
-public struct ProFunction
+struct ProFunction
 {
 	this(in string name, in VariableType returnType, in bool isVariadic, in int requiredArgumentCount,
 			in int optionalArgumentCount, VariableType[] argumentTypes, in Action action)
@@ -61,18 +62,18 @@ public struct ProFunction
 	}
 
 	// Compile-time function info
-	public string m_name;
-	public VariableType m_returnType;
-	public bool m_isVariadic;
-	public int m_requiredArgumentCount;
-	public int m_optionalArgumentCount;
-	public VariableType[] m_argumentTypes;
+	string m_name;
+	VariableType m_returnType;
+	bool m_isVariadic;
+	int m_requiredArgumentCount;
+	int m_optionalArgumentCount;
+	VariableType[] m_argumentTypes;
 
 	// Run-time function info
-	public string[] m_arguments;
+	string[] m_arguments;
 	//alias Action = const(string[]) function(ref ProExecutionContext context, in string[] arguments);
 	alias Action = const(string[]) delegate(ref ProExecutionContext context, ref PersistentPropertyStorage persistentStorage, in string[] arguments);
-	public Action m_action;
+	Action m_action;
 
 	ProFunction dup() const @property
 	{
@@ -85,16 +86,18 @@ public struct ProFunction
 // --------------------------------------------------------------------------------------------------------------------
 
 // qmake builtin test and replace functions
-public immutable ProFunction[string] builtinTestFunctions;
-public immutable ProFunction[string] builtinReplaceFunctions;
+immutable ProFunction[string] builtinTestFunctions;
+immutable ProFunction[string] builtinReplaceFunctions;
 
 // Helpers
-private static string[] returnBoolString(in bool b)
+private:
+
+static string[] returnBoolString(in bool b)
 {
 	return b ? [STR_TRUE] : [STR_FALSE];
 }
 
-private static bool isActiveConfig(in string config, in string specName,
+static bool isActiveConfig(in string config, in string specName,
 		in string[] configVarValues, in bool useRegex = false)
 {
 	// Magic types for easy flipping

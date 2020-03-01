@@ -42,22 +42,14 @@ import common_utils;
 
 public class EscapeSequence
 {
+private:
 	alias ReplacementAction = string function(in string str, in int from, in int to);
 	immutable ReplacementAction[string] m_convertMap;
-	
+
+public:
     this()
 	{
 		import std.exception : assumeUnique;
-/+
-    AssignmentOperatorAction[string] temp1; // mutable buffer
-	temp1[STR_EQUALS] = (in string name, in string value, in string context) { /*context.assignVariable(name, value);*/ };
-	temp1[STR_PLUS_EQUALS] = (in string name, in string value, in string context) { /*context.appendAssignVariable(name, value);*/ };
-	temp1[STR_ASTERISK_EQUALS] = (in string name, in string value, in string context) { /*context.appendUniqueAssignVariable(name, value);*/ };
-	temp1[STR_MINUS_EQUALS] = (in string name, in string value, in string context) { /*context.removeAssignVariable(name, value);*/ };
-	temp1[STR_TILDE_EQUALS] = (in string name, in string value, in string context) { /* FIXME: implement */ };
-    temp1.rehash; // for faster lookups
-    assignmentOperators = assumeUnique(temp1);
-	+/
 
 		ReplacementAction[string] convertMap; // mutable buffer
         convertMap["\\\\"] = (in string str, in int from, in int length) {
@@ -142,7 +134,7 @@ public class EscapeSequence
 		m_convertMap = assumeUnique(convertMap);
     }
 
-	public struct Result
+	struct Result
 	{
 		bool result = false;
 		int length = 0;
@@ -154,7 +146,7 @@ public class EscapeSequence
 		}
 	}
 	
-    public Result isEscapeSequence(in string str, in int indexFrom)
+    Result isEscapeSequence(in string str, in int indexFrom)
 	{
         // NOTE: any escape sequence must start with exactly one backslash
         if ("" ~ str[indexFrom] != STR_BACKSLASH)
@@ -190,7 +182,7 @@ public class EscapeSequence
         return Result(false, 0);
     }
 
-    public string getEscapeSequence(in string str, in int indexFrom, in int length)
+    string getEscapeSequence(in string str, in int indexFrom, in int length)
 	{
 		auto key = str[indexFrom .. indexFrom + length];
         assert(key.length == 2 || key.length == 4);

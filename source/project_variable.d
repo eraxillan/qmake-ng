@@ -37,9 +37,10 @@ import std.range;
 import common_const;
 
 // -------------------------------------------------------------------------------------------------
+public:
 
 // FIXME: rename to `DataType` and move to the separate module
-public enum VariableType
+enum VariableType
 {
     UNKNOWN = -1,
     VOID = 0,
@@ -57,17 +58,18 @@ public enum VariableType
 //    DIR_PATH
 	COUNT
 }
-public bool isStringType(in VariableType type)
+
+bool isStringType(in VariableType type)
 {
     return type == VariableType.RAW_STRING || type == VariableType.STRING || type == VariableType.RESTRICTED_STRING;
 }
-public bool isStringListType(in VariableType type)
+bool isStringListType(in VariableType type)
 {
     return type == VariableType.STRING_LIST || type == VariableType.RESTRICTED_STRING_LIST;
 }
 
 // FIXME: implement read-only built-in variables
-public struct ProVariable
+struct ProVariable
 {
 	string name;
 	VariableType type;
@@ -103,8 +105,9 @@ public struct ProVariable
 }
 
 // --------------------------------------------------------------------------------------------------------------------------------------------------
+private:
 
-private string[] initConfigVariableValue()
+string[] initConfigVariableValue()
 {
     // FIXME: platform autodetect
     return [
@@ -115,7 +118,7 @@ private string[] initConfigVariableValue()
     ];
 }
 
-private string[] initConfigVariableRange()
+string[] initConfigVariableRange()
 {
     // FIXME: CONFIG variable can be extended with user-defined values! this list is uncomplete
     return [
@@ -186,12 +189,12 @@ private string[] initConfigVariableRange()
     ];
 }
 
-private string[] initQtVariableValue()
+string[] initQtVariableValue()
 {
     return ["core", "gui"];
 }
 
-private string[] initQtVariableRange()
+string[] initQtVariableRange()
 {
     return [
         "core", "gui", "widgets", "network", "multimedia", "sql", "testlib", "multimediawidgets", "qml", "quick",
@@ -205,23 +208,23 @@ private string[] initQtVariableRange()
     ];
 }
 
-private string[] initQtArchVariableRange()
+string[] initQtArchVariableRange()
 {
 	// FIXME: read-only variable
 	return ["i386", "x86_64", "arm"];
 }
 
-private string[] initTemplateVariableRange()
+string[] initTemplateVariableRange()
 {
     return ["app", "lib", "aux", "subdirs", "vcsubdirs", "vcapp", "vclib"];
 }
 
-private string[] initTemplateVariableValue()
+string[] initTemplateVariableValue()
 {
     return ["app"];
 }
 
-private string[] initQmakeCompilerVariableRange()
+string[] initQmakeCompilerVariableRange()
 {
 	return [
         "dummy_compiler",
@@ -234,7 +237,7 @@ private string[] initQmakeCompilerVariableRange()
 	];
 }
 
-private string[] initQmakePlatformVariableRange()
+string[] initQmakePlatformVariableRange()
 {
 	return [
         "dummy_platform",
@@ -254,8 +257,9 @@ private string[] initQmakePlatformVariableRange()
 }
 
 // --------------------------------------------------------------------------------------------------------------------------------------------------
+public:
 
-public immutable ProVariable[string] builtinVariables;
+immutable ProVariable[string] builtinVariables;
 
 shared static this()
 {

@@ -36,23 +36,26 @@ import std.string;
 import std.range;
 import common_const;
 // -------------------------------------------------------------------------------------------------
+public:
 
-// FIXME: use alias this to eliminate dublicated with std.array properties
-public class QStack(DataType)
+class QStack(DataType)
 {
+private:
 	DataType[] m_array;
+	alias m_array this;
 
-    public void push(DataType item)
+public:
+    void push(DataType item)
 	{
 		m_array ~= item;
 	}
 	
-	public void push(DataType[] item)
+	void push(DataType[] item)
 	{
 		m_array ~= item;
 	}
 
-    public DataType pop()
+    DataType pop()
 	{
 		if (!m_array.empty)
 		{
@@ -64,7 +67,7 @@ public class QStack(DataType)
 		throw new Exception("trying to pop item from empty stack");
 	}
 
-    public ref DataType top()
+    ref DataType top()
 	{
 		if (!m_array.empty)
 			return m_array[m_array.length - 1];
@@ -73,34 +76,11 @@ public class QStack(DataType)
 //		return defaultValue;
 		throw new Exception("trying to get top item value from empty stack");
     }
-
-    public void setTop(DataType value)
-	{
-		if (m_array.empty)
-			throw new Exception("trying to set top item value from empty stack");
-		
-		m_array[m_array.length - 1] = value;
-    }
-
-    public bool isEmpty()
-	{
-        return m_array.empty;
-    }
-	
-	public ulong length()
-	{
-		return m_array.length;
-	}
-	
-	public DataType[] data()
-	{
-		return m_array;
-	}
 }
 
 // -------------------------------------------------------------------------------------------------
 
-public void setupDatetimeLocale()
+void setupDatetimeLocale()
 {
 	import std.process : environment;
 	import core.stdc.locale: setlocale, LC_ALL, LC_TIME;
@@ -115,7 +95,7 @@ public void setupDatetimeLocale()
 		setlocale(LC_TIME, value.ptr);
 }
 
-public auto getDateTimeString()
+auto getDateTimeString()
 {
 	import core.stdc.time : time, localtime, strftime;
 	auto unixTime = time(null);
@@ -127,17 +107,17 @@ public auto getDateTimeString()
 	return prettyStr;
 }
 
-@property public string left(in string str, in long count)
+@property string left(in string str, in long count)
 {
 	return str[0 .. count];
 }
 
-@property public string right(in string str, in long count)
+@property string right(in string str, in long count)
 {
 	return str[$ - count .. $];
 }
 
-public bool isWhitespaceToken(in string str)
+bool isWhitespaceToken(in string str)
 {
 	// FIXME: use `isWhite` function
 	//
@@ -146,22 +126,22 @@ public bool isWhitespaceToken(in string str)
 	return !matchFirst(str, r"\s+").empty;
 }
 
-public bool isUnderscore(in char ch)
+bool isUnderscore(in char ch)
 {
 	return (ch == CHAR_UNDERSCORE);
 }
 
-public bool isDot(in char ch)
+bool isDot(in char ch)
 {
 	return (ch == CHAR_DOT);
 }
 
-public bool isAlphascore(in char ch)
+bool isAlphascore(in char ch)
 {
 	return (isAlpha(ch) || isUnderscore(ch));
 }
 
-public bool containsQuote(in string str)
+bool containsQuote(in string str)
 {
 	foreach (ch; str)
 	{
@@ -171,7 +151,7 @@ public bool containsQuote(in string str)
 	return false;
 }
 
-public string joinTokens(in string str, in long index, in long count)
+string joinTokens(in string str, in long index, in long count)
 {
     string result = "";
     for (long j = index; j < min(index + count, str.length); j++)
@@ -179,7 +159,7 @@ public string joinTokens(in string str, in long index, in long count)
     return result;
 }
 
-public string[] splitString(in string str, in string delim, in bool skipEmptyParts)
+string[] splitString(in string str, in string delim, in bool skipEmptyParts)
 {
     string[] temp = str.split(delim);
 
@@ -195,7 +175,7 @@ public string[] splitString(in string str, in string delim, in bool skipEmptyPar
 	return temp_2;
 }
 
-public string sectionString(in string str, in string delim, in int start, in int end = -1, in bool skipEmptyParts = false)
+string sectionString(in string str, in string delim, in long start, in long end = -1, in bool skipEmptyParts = false)
 {
 	string[] temp = splitString(str, delim, skipEmptyParts);
 
@@ -204,23 +184,23 @@ public string sectionString(in string str, in string delim, in int start, in int
 		return str;	
 	if (start == end)
 	{
-		immutable int startNew = (start >= 0) ? start : (cast(int)temp.length - (-start));
+		immutable auto startNew = (start >= 0) ? start : (temp.length - (-start));
 		return temp[startNew];
 	}
 
-	int startNew = start;
+	long startNew = start;
 	if (start < 0)
-		startNew = cast(int)temp.length - (-startNew);
-	int endNew = end;
+		startNew = temp.length - (-startNew);
+	long endNew = end;
 	if ((start >= 0) && (end == -1))
-		endNew = cast(int)temp.length - 1;
+		endNew = temp.length - 1;
 	else if (end < 0)
-		endNew = cast(int)temp.length - (-endNew);
+		endNew = temp.length - (-endNew);
 
 	return temp[startNew .. endNew + 1].join(delim);
 }
 
-public bool isNumeric(in string n, in int base)
+bool isNumeric(in string n, in int base)
 {
 	try
 	{
@@ -233,7 +213,7 @@ public bool isNumeric(in string n, in int base)
 	}
 }
 
-public string wildcardToRegex(in string pattern)
+string wildcardToRegex(in string pattern)
 {
     /*return "^" + Regex.Escape(pattern)
                       .Replace(@"\*", ".*")
@@ -249,7 +229,7 @@ public string wildcardToRegex(in string pattern)
 	return result;
 }
 
-public long detectIndentSize(in string str)
+long detectIndentSize(in string str)
 {
 	if (str.strip().empty)
 		return 0;
@@ -267,7 +247,7 @@ public long detectIndentSize(in string str)
 	return result;
 }
 
-public string getProcessOutput(in string command)
+string getProcessOutput(in string command)
 {
 	import std.process : executeShell;
 

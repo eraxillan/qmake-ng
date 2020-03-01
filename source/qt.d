@@ -33,6 +33,8 @@ import common_utils;
 import project_context;
 import project_variable;
 
+public:
+
 void setupQtEnvironmentVariables(in QtVersionInfo qtInfo)
 {
     import std.process: environment;

@@ -44,16 +44,18 @@ import project_context;
 import persistent_property;
 import type_deduction;
 
+public:
 
-public class Project
+class Project
 {
+private:
     // NOTE: variables defined in user-defined qmake functions must be local to them
     alias ContextStack = QStack!ProExecutionContext;
-    private ContextStack m_contextStack;
+    ContextStack m_contextStack;
+    PersistentPropertyStorage m_persistentStorage;
 
-    private PersistentPropertyStorage m_persistentStorage;
-
-    public this(ref ProExecutionContext context, ref PersistentPropertyStorage persistentStorage)
+public:
+    this(ref ProExecutionContext context, ref PersistentPropertyStorage persistentStorage)
     {
         m_contextStack = new ContextStack;
         m_contextStack.push(context);
@@ -61,7 +63,7 @@ public class Project
         m_persistentStorage = persistentStorage;
     }
 
-    public void dump() /*const*/
+    void dump() /*const*/
     {
         trace("\n\nqmake built-in variable values:");
         foreach (variableName; m_contextStack.top().getBuiltinVariableNames())
@@ -85,7 +87,7 @@ public class Project
         trace("\n\n");
     }
 
-    public bool tryParseSnippet(in string snippet)
+    bool tryParseSnippet(in string snippet)
     {
         LineInfo[] li;
         string preprocessedSnippet = preprocessLines(splitString(snippet, "\n", false), li);
@@ -109,7 +111,7 @@ public class Project
         return parseTree.successful;
     }
 
-    public bool tryParse(in string fileName) const
+    bool tryParse(in string fileName) const
     {
         trace("Trying to parse project file '" ~ fileName ~ "'...");
 
@@ -136,7 +138,7 @@ public class Project
         return parseTree.successful;
     }
 
-    public bool eval(in string fileName) /*const*/
+    bool eval(in string fileName) /*const*/
     {
         trace("Trying to parse project file '" ~ fileName ~ "'...");
 
@@ -201,8 +203,9 @@ public class Project
     }
 
     // ----------------------------------------------------------------------------------------------------------------------------------------------
+private:
 
-    private void evalStatementNode(ref ParseTree statementNode) /+const+/
+    void evalStatementNode(ref ParseTree statementNode) /+const+/
     {
         /*
         Statement <- | FunctionDeclaration
@@ -283,7 +286,7 @@ public class Project
         }
     }
 
-    private void evalFunctionDeclarationNode(ref ParseTree declNode)
+    void evalFunctionDeclarationNode(ref ParseTree declNode)
     in
     {
         assert(declNode.name.startsWith("QMakeProject.FunctionDeclaration"));
@@ -401,7 +404,7 @@ public class Project
         }
     }
 
-    private void evalForStatementNode(ref ParseTree forNode)
+    void evalForStatementNode(ref ParseTree forNode)
     in
     {
         assert(forNode.name == "QMakeProject.ForStatement");
@@ -515,7 +518,7 @@ public class Project
         trace("");
     }
 
-    private void evalBlock(ref ParseTree bodyNode)
+    void evalBlock(ref ParseTree bodyNode)
     {
         assert(bodyNode.name == "QMakeProject.Block");
         assert(bodyNode.children.length == 1);
@@ -530,7 +533,7 @@ public class Project
             throw new Exception("Unknown code block type");
     }
 
-    private void evalMultilineBlockNode(ref ParseTree multilineBlockNode) /+const+/
+    void evalMultilineBlockNode(ref ParseTree multilineBlockNode) /+const+/
     {
         assert(multilineBlockNode.name == "QMakeProject.MultiLineBlock");
         assert(multilineBlockNode.children.length >= 1);
@@ -552,7 +555,7 @@ public class Project
         trace("}");
     }
 
-    private void evalVariableAssignmentNode(ref ParseTree statementNode)
+    void evalVariableAssignmentNode(ref ParseTree statementNode)
     in
     {
         assert(statementNode.name == "QMakeProject.Assignment");
@@ -602,7 +605,7 @@ public class Project
         assignVariable(variableName, variableOperator, result.value, result.type);
     }
 
-    private RvalueEvalResult evalVariableStandardAssignmentNode(ref ParseTree assignmentTypeNode)
+    RvalueEvalResult evalVariableStandardAssignmentNode(ref ParseTree assignmentTypeNode)
     {
         RvalueEvalResult result;
         result.type = VariableType.STRING_LIST;
@@ -649,7 +652,7 @@ public class Project
         return result;
     }
 
-    private RvalueEvalResult evalVariableReplaceAssignmentNode(in string variableName, ref ParseTree assignmentTypeNode)
+    RvalueEvalResult evalVariableReplaceAssignmentNode(in string variableName, ref ParseTree assignmentTypeNode)
     {
         RvalueEvalResult result;
         result.type = VariableType.STRING;
@@ -725,7 +728,7 @@ public class Project
         return result;
     }
 
-    private void assignVariable(in string name, in string operator, in string[] value, in VariableType type)
+    void assignVariable(in string name, in string operator, in string[] value, in VariableType type)
     {
         switch (operator)
         {
@@ -750,7 +753,7 @@ public class Project
         }
     }
 
-    private void evalScopeNode(ref ParseTree statementNode) /+const+/
+    void evalScopeNode(ref ParseTree statementNode) /+const+/
     {
         ParseTree scopeConditionNode = statementNode.children[0];
         ParseTree scopeIfTrueBranch = statementNode.children[1];
@@ -815,7 +818,7 @@ public class Project
         }
     }
 
-    private bool evalScopeConditionNode(ref ParseTree statementNode) /+const+/
+    bool evalScopeConditionNode(ref ParseTree statementNode) /+const+/
     {
         assert(statementNode.name == "QMakeProject.BooleanExpression");
         assert(statementNode.children.length == 1);
@@ -886,7 +889,7 @@ public class Project
         return orResult;
     }
 
-    private bool evalBooleanExressionNode(ref ParseTree boolExprNode) /+const+/
+    bool evalBooleanExressionNode(ref ParseTree boolExprNode) /+const+/
     {
         assert(boolExprNode.children.length == 1);
         switch (boolExprNode.name)
@@ -923,7 +926,7 @@ public class Project
        // return false;
     }
 
-    private RvalueEvalResult evalReplaceFunctionNode(ref ParseTree replaceFunctionNode)
+    RvalueEvalResult evalReplaceFunctionNode(ref ParseTree replaceFunctionNode)
     in
     {
         assert(replaceFunctionNode.name == "QMakeProject.ReplaceFunctionCall");
@@ -949,7 +952,7 @@ public class Project
         return result;
     }
 
-    private bool evalTestFunctionNode(ref ParseTree testFunctionNode) /+const+/
+    bool evalTestFunctionNode(ref ParseTree testFunctionNode) /+const+/
     in
     {
         assert(testFunctionNode.name == "QMakeProject.TestFunctionCall");
@@ -995,7 +998,7 @@ public class Project
         return result;
     }
 
-    private RvalueEvalResult evalConcreteFunctionNode(ref ParseTree functionNode, ProFunctionType functionType)
+    RvalueEvalResult evalConcreteFunctionNode(ref ParseTree functionNode, ProFunctionType functionType)
     in
     {
         assert(functionNode.name == "QMakeProject.EvalTestFunctionCall"
@@ -1131,7 +1134,7 @@ public class Project
         return result;
     }
 
-    private int evalFunctionActualArgumentCount(ref ParseTree functionArgumentListNode)
+    int evalFunctionActualArgumentCount(ref ParseTree functionArgumentListNode)
     in
     {
         assert(functionArgumentListNode.name == "QMakeProject.FunctionArgumentList");
@@ -1160,7 +1163,7 @@ public class Project
         return result;
     }
 
-    private string[] evalFunctionActualArguments(in int actualOperandCount, ref ParseTree functionArgumentListNode)
+    string[] evalFunctionActualArguments(in int actualOperandCount, ref ParseTree functionArgumentListNode)
     in
     {
         assert(functionArgumentListNode.name == "QMakeProject.FunctionArgumentList"
@@ -1218,7 +1221,7 @@ public class Project
         return result;
     }
 
-    private RvalueEvalResult evalFunctionNode(ref ParseTree functionCallNode, ProFunctionType functionType)
+    RvalueEvalResult evalFunctionNode(ref ParseTree functionCallNode, ProFunctionType functionType)
     in
     {
         assert(functionCallNode.name == "QMakeProject.FunctionCall");
@@ -1304,7 +1307,7 @@ public class Project
         return result;
     }
 
-    private long evalFunctionArgumentListLength(ref ParseTree listNode)
+    long evalFunctionArgumentListLength(ref ParseTree listNode)
     in
     {
         assert(listNode.name.startsWith("QMakeProject.List!")); // comma or whitespace-separated list
@@ -1314,7 +1317,7 @@ public class Project
         return listNode.children.length;
     }
 
-    private string[][] evalFunctionArgumentList(ref ParseTree listNode)
+    string[][] evalFunctionArgumentList(ref ParseTree listNode)
     in
     {
         assert(listNode.name.startsWith("QMakeProject.List!")); // comma or whitespace-separated list
@@ -1338,7 +1341,7 @@ public class Project
     //       must not be confused with chain statements:
     //       message($${var}/dir/file.txt) ---> message(path/dir/file.txt)
     //       i.e. one token stay one
-    private string[] evalFunctionArgument(ref ParseTree argumentNode)
+    string[] evalFunctionArgument(ref ParseTree argumentNode)
     {
         string[] result;
 
@@ -1438,7 +1441,7 @@ public class Project
         return result;
     }
 
-    private bool evalBooleanVariableNode(ref ParseTree boolAtomNode)
+    bool evalBooleanVariableNode(ref ParseTree boolAtomNode)
     {
         assert(boolAtomNode.children.length == 0);
         assert(boolAtomNode.matches.length == 1);
@@ -1483,7 +1486,7 @@ public class Project
         return false;
     }
 
-    private RvalueEvalResult evalRvalueChain(ref ParseTree rvalueChainNode)
+    RvalueEvalResult evalRvalueChain(ref ParseTree rvalueChainNode)
     in
     {
         assert(rvalueChainNode.name.startsWith("QMakeProject.RvalueChain"));
@@ -1536,7 +1539,7 @@ public class Project
         return RvalueEvalResult(finalType, variableValue);
     }
 
-    private RvalueEvalResult evalRvalueAtomNode(ref ParseTree rvalueAtomMetaNode)
+    RvalueEvalResult evalRvalueAtomNode(ref ParseTree rvalueAtomMetaNode)
     {
         assert(rvalueAtomMetaNode.name.startsWith("QMakeProject.RvalueAtom"));
 
@@ -1674,7 +1677,7 @@ public class Project
         return result;
     }
 
-    private void validateFunctionCall(in int actualOperandCount, ref ProFunction functionDescription)
+    void validateFunctionCall(in int actualOperandCount, ref ProFunction functionDescription)
     {
         // Report function expected and actual argument count (if applicable)
         // FIXME: implement user-defined functions support and add condition

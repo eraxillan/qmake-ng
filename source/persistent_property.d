@@ -38,10 +38,14 @@ import common_const;
 import qmakeexception;
 import qt;
 
+public:
+
 class PersistentPropertyStorage
 {
-    private string[string] m_values;
+private:
+    string[string] m_values;
 
+public:
     @disable this();
 
     this(immutable QtVersionInfo qtInfo, in string mkSpec)
@@ -49,7 +53,7 @@ class PersistentPropertyStorage
         reload(qtInfo, mkSpec);
     }
 
-    public void reload(immutable QtVersionInfo qtInfo, in string mkSpec)
+    void reload(immutable QtVersionInfo qtInfo, in string mkSpec)
     {
         m_values["QT_SYSROOT"] = "";
 
@@ -177,7 +181,7 @@ class PersistentPropertyStorage
         m_values["CROSS_COMPILE"] = "";
     }
 
-    public string value(in string name)
+    string value(in string name)
     {
         if ((name in m_values) !is null)
             return m_values[name];
@@ -186,18 +190,18 @@ class PersistentPropertyStorage
         throw new NotImplementedException("Persistent storage not implemented yet");
     }
 
-    public bool hasValue(in string v)
+    bool hasValue(in string v)
     {
         return ((v in m_values) !is null);
     }
 
-    public void setValue(in string var, in string val)
+    void setValue(in string var, in string val)
     {
         // FIXME: implement
         throw new NotImplementedException("Persistent storage not implemented yet");
     }
 
-    public void remove(in string var)
+    void remove(in string var)
     {
         // FIXME: implement
         throw new NotImplementedException("Persistent storage not implemented yet");
@@ -220,7 +224,9 @@ struct PropertyDescription
     }
 }
 
-private static PropertyDescription[] propList = [
+private:
+
+static PropertyDescription[] propList = [
     PropertyDescription("QT_SYSROOT", QLibraryInfo.LibraryLocation.SysrootPath, true, true),
     PropertyDescription("QT_INSTALL_PREFIX", QLibraryInfo.LibraryLocation.PrefixPath, false, false),
     PropertyDescription("QT_INSTALL_ARCHDATA", QLibraryInfo.LibraryLocation.ArchDataPath, false, false),

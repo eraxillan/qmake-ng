@@ -22,13 +22,15 @@
 
 module qmakegrammar;
 
-private enum QMakeProjectEmptyStatement =
+private:
+
+enum QMakeProjectEmptyStatement =
 `
     # No input
     EmptyStatement <- eps :LineTerminator*
 `;
 
-private enum QMakeProjectComment =
+enum QMakeProjectComment =
 `
     # Comment, single-line and multi-line (extension)
     Comment                         <~ MultiLineComment / SingleLineComment
@@ -38,7 +40,7 @@ private enum QMakeProjectComment =
     SingleLineCommentChar           <- !LineTerminator SourceCharacter
 `;
 
-private enum QMakeProjectCodeBlock =
+enum QMakeProjectCodeBlock =
 `
     # Code block
     Block           <- SingleLineBlock / MultiLineBlock
@@ -46,7 +48,7 @@ private enum QMakeProjectCodeBlock =
     MultiLineBlock  <- :space* "{" :space* :LineTerminator* :space* Statement+ :space* :LineTerminator* "}" :space* :LineTerminator*
 `;
 
-private enum QMakeProjectAssignment =
+enum QMakeProjectAssignment =
 `
     # Variable or variable property assignment
     Assignment <- StandardAssignment / ReplaceAssignment
@@ -58,7 +60,7 @@ private enum QMakeProjectAssignment =
     ReplaceAssignmentOperator  <- "~="
 `;
 
-private enum QMakeProjectRvalue =
+enum QMakeProjectRvalue =
 `
     # Base rvalue statement: function call or variable/property expand
     RvalueAtom <- ReplaceFunctionCall / ExpandStatement / TestFunctionCall
@@ -84,7 +86,7 @@ private enum QMakeProjectRvalue =
     RegularExpressionChar     <- !RegularExpressionStopChar SourceCharacter
 `;
 
-private enum QMakeProjectFunctionCall =
+enum QMakeProjectFunctionCall =
 `
     # Test function call
     # E.g.:
@@ -122,7 +124,7 @@ private enum QMakeProjectFunctionCall =
     ExpandedFunctionIdentifier <- ExpandStatement / (doublequote ExpandStatement doublequote)
 `;
 
-private enum QMakeProjectFunctionArguments =
+enum QMakeProjectFunctionArguments =
 `
     FunctionArgumentStopRule   <- space / COMMA
 
@@ -161,14 +163,14 @@ private enum QMakeProjectFunctionArguments =
     )
 `;
 
-private enum QMakeProjectFunctionDeclaration =
+enum QMakeProjectFunctionDeclaration =
 `
     FunctionDeclaration        <- ReplaceFunctionDeclaration / TestFunctionDeclaration
     ReplaceFunctionDeclaration <- "defineReplace" OPEN_PAR_WS QualifiedIdentifier CLOSE_PAR_WS Block
     TestFunctionDeclaration    <- "defineTest"    OPEN_PAR_WS QualifiedIdentifier CLOSE_PAR_WS Block
 `;
 
-private enum QMakeProjectScope =
+enum QMakeProjectScope =
 `
     # Conditional statement
     # E.g.:
@@ -183,7 +185,7 @@ private enum QMakeProjectScope =
                          / "else"  MultiLineBlock
 `;
 
-private enum QMakeProjectBooleanExpression =
+enum QMakeProjectBooleanExpression =
 `
     # Compound boolean expression
     # E.g.:
@@ -208,7 +210,7 @@ private enum QMakeProjectBooleanExpression =
     BooleanConst       <- "true" / "false"
 `;
 
-private enum QMakeProjectForStatement =
+enum QMakeProjectForStatement =
 `
     # Loop statement (foreach and while(true) idioms)
     ForStatement <- ForEachInListStatement / ForEverStatement
@@ -218,7 +220,7 @@ private enum QMakeProjectForStatement =
     ForEverStatement <- "for" OPEN_PAR_WS "ever" CLOSE_PAR_WS Block
 `;
 
-private enum QMakeProjectExpandStatement =
+enum QMakeProjectExpandStatement =
 `
     ExpandStatement                    <- / FunctionArgumentExpandStatement
                                           / ProjectVariableExpandStatement
@@ -238,7 +240,7 @@ private enum QMakeProjectExpandStatement =
     PropertyVariableExpandStatement    <- "$$[" QualifiedIdentifier ("/get" / "/src")? "]"
 `;
 
-private enum QMakeProjectBuiltinFunctions =
+enum QMakeProjectBuiltinFunctions =
 `
     # Some built-in replace and test functions that cause difficulties during parsing
 
@@ -282,7 +284,7 @@ private enum QMakeProjectBuiltinFunctions =
     RequiresFunctionCall <- "requires" OPEN_PAR_WS BooleanExpression CLOSE_PAR_WS
 `;
 
-private enum QMakeProjectEnquotedString =
+enum QMakeProjectEnquotedString =
 `
     # Enquoted string: can contain any character except of quote
     EnquotedString            <- DoubleEnquotedString / SingleEnquotedString
@@ -292,7 +294,7 @@ private enum QMakeProjectEnquotedString =
     NonSingleQuoteCharacter   <- !(quote / BACKSLASH / LineTerminator) SourceCharacter / BACKSLASH EscapeSequence
 `;
 
-private enum QMakeProjectIdentifier =
+enum QMakeProjectIdentifier =
 `
     # NOTE: "a-b" and "c++11" are valid qmake identifiers too
     #Identifier <- identifier
@@ -308,7 +310,7 @@ private enum QMakeProjectIdentifier =
     QualifiedIdentifier <~ "."? LValue ("." LValue)*
 `;
 
-private enum QMakeProjectEscapeSequence =
+enum QMakeProjectEscapeSequence =
 `
     EscapeSequence <-
         / quote
@@ -339,7 +341,7 @@ private enum QMakeProjectEscapeSequence =
         / "}"
 `;
 
-private enum QMakeProjectTerminals =
+enum QMakeProjectTerminals =
 `
     OctDigit <- [0-7]
     DecDigit <- [0-9]

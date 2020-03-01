@@ -35,6 +35,7 @@ import qmakeexception;
 import common_utils;
 import qt;
 
+public:
 
 string[] macosDetectQtSourceRepositories()
 {
@@ -109,27 +110,30 @@ QtQmake[] macosDetectQmakeInstallations()
 }
 
 // --------------------------------------------------------------------------------------------------------------------
+private:
 
 class XcodeInfo
 {
-    private const string XCODE_APP_STR = "Xcode.app";
-    private enum SdkType { macos, ios, watchos, tvos }
+private:
+    const string XCODE_APP_STR = "Xcode.app";
+    enum SdkType { macos, ios, watchos, tvos }
 
-    private string m_path;
-    private string m_version;
+    string m_path;
+    string m_version;
 
-    private string m_clangPath;
-    private string m_clangVersion;
+    string m_clangPath;
+    string m_clangVersion;
 
-    private string m_lldbPath;
-    private string m_lldbVersion;
+    string m_lldbPath;
+    string m_lldbVersion;
 
+public:
     this()
     {
         detect();
     }
 
-    private void detect()
+    void detect()
     {
         import std.process;
 

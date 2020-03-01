@@ -50,10 +50,11 @@ import qmakeexception;
 import qmakeparser;
 
 
-public alias RvalueEvalResult = Tuple!(VariableType, "type", string[], "value");
+public:
+alias RvalueEvalResult = Tuple!(VariableType, "type", string[], "value");
 
 /+
-public enum VariableType
+enum VariableType
 {
     UNKNOWN = -1,
     VOID = 0,

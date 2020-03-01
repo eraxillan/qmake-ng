@@ -23,20 +23,22 @@
 module qmakeexception;
 
 
+public:
+
 /*********************
  * Thrown if we reach code that is not supported.
  */
-public class NotSupportedException : Exception
+class NotSupportedException : Exception
 {
     /**
-    Initialize with a message and an error code.
-    */
+     * Initialize with a message and an error code.
+     */
     this(string message) @trusted
     {
         super(message);
     }
 
-    /** Convenience functions that throw an `NotSupportedException`. */
+    /// Convenience functions that throw an `NotSupportedException`.
     static void opCall(string msg)
     {
         throw new NotSupportedException(msg);
@@ -52,50 +54,49 @@ public class NotSupportedException : Exception
 /*********************
  * Thrown if we reach code that is not implemented yet.
  */
-public class NotImplementedException : Exception
+class NotImplementedException : Exception
 {
-/**
-Initialize with a message and an error code.
-*/
+    /**
+     * Initialize with a message and an error code.
+     */
     this(string message) @trusted
     {
         super(message);
     }
 
-/** Convenience functions that throw an `NotImplementedException`. */
+    /// Convenience functions that throw an `NotImplementedException`.
     static void opCall(string msg)
     {
         throw new NotImplementedException(msg);
     }
 
-/// ditto
+    /// ditto
     static void opCall()
     {
         throw new NotImplementedException(null);
     }
 }
 
-
 /*********************
  * Thrown if evaluation logic errors happen.
  */
-public class EvalLogicException : Exception
+class EvalLogicException : Exception
 {
-/**
-Initialize with a message and an error code.
-*/
+    /**
+     * Initialize with a message and an error code.
+     */
     this(string message) @trusted
     {
         super(message);
     }
 
-/** Convenience functions that throw an `EvalLogicException`. */
+    /// Convenience functions that throw an `EvalLogicException`.
     static void opCall(string msg)
     {
         throw new EvalLogicException(msg);
     }
 
-/// ditto
+    /// ditto
     static void opCall()
     {
         throw new EvalLogicException(null);
