@@ -46,15 +46,20 @@ private:
 const auto STR_ELSE = "else";
 const auto STR_ELSE_SINGLELINE = "else:";
 
-const auto EXISTS_FUNCTION_STR = "exists";      // test function, argument 1
-const auto CONTAINS_FUNCTION_STR = "contains";  // test function, argument 2
-const auto QTCONFIG_FUNCTION_STR = "qtConfig";  // test function, argument 1
-const auto ERROR_FUNCTION_STR = "error";        // test function, argument 1
-const auto SYSTEM_FUNCTION_STR = "system";      // test/replace function, argument 1
+// ambiguous test functions
+const auto EXISTS_FUNCTION_STR = "exists";      // argument 1
+const auto CONTAINS_FUNCTION_STR = "contains";  // argument 2
+const auto QTCONFIG_FUNCTION_STR = "qtConfig";  // argument 1
+const auto ERROR_FUNCTION_STR = "error";        // argument 1
+const auto REQUIRES_FUNCTION_STR = "requires";  // argument 1
 
-const auto FIND_FUNCTION_STR = "find";          // replace function, argument 2
-const auto REESCAPE_FUNCTION_STR = "re_escape"; // replace function, argument 1
-const auto REPLACE_FUNCTION_STR = "replace";    // replace function, arguments 2 and 3
+// ambiguous test/replace functions
+const auto SYSTEM_FUNCTION_STR = "system";      // argument 1
+
+// ambiguous replace functions
+const auto FIND_FUNCTION_STR = "find";          // argument 2
+const auto REESCAPE_FUNCTION_STR = "re_escape"; // argument 1
+const auto REPLACE_FUNCTION_STR = "replace";    // arguments 2 and 3
 
 //---------------------------------------------------------------------------------------------------------------------
 
