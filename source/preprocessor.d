@@ -386,24 +386,21 @@ ParIndex[] detectInnerFunctions(const string sourceStr)
                 result ~= ParIndex(parenthesisStack[$ - 1], i);
                 parenthesisStack.popBack();
             }
-            
-            if (parenthesisStack.empty)
-                break;
         }
     }
-    assert(parenthesisStack.empty);
 
     return result;
 }
 
-bool insideInnerFunctionCall(const long index, const ParIndex[] indeces)
+QuotesInfo insideInnerFunctionCall(const long index, const ParIndex[] indeces)
 {
     foreach (indexPair; indeces)
     {
         if (index > indexPair.startIndex && index < indexPair.endIndex)
-            return true;
+            return QuotesInfo(indexPair.startIndex, indexPair.endIndex, true);
     }
-    return false;
+
+    return QuotesInfo(-1, -1, false);
 }
 
 alias ExtractResult = Tuple!(string[], "arguments", long, "endIndex");
@@ -459,7 +456,7 @@ do
     {
         if ((argumentString[i] == CHAR_COMMA)
             && !isInsideQuotes(argumentString, i).success
-            && !insideInnerFunctionCall(i, innerParenthesisIndeces))
+            && !insideInnerFunctionCall(i, innerParenthesisIndeces).success)
         {
             tracef("comma at %d", i);
             commaIndeces ~= i;
@@ -609,6 +606,9 @@ bool hasSinglelineScope(const string sourceLine, out long colonIndex)
         i = lastEqIndex - 1;
     }
 
+    ParIndex[] innerParenthesisIndeces = detectInnerFunctions(sourceLine);
+    trace("Internal function calls indeces: ", innerParenthesisIndeces);
+
     for ( ; i >= 0; i--)
     {
         if (sourceLine[i] != CHAR_COLON)
@@ -626,13 +626,19 @@ bool hasSinglelineScope(const string sourceLine, out long colonIndex)
             continue;
         }
 
-        // FIXME: add explaining comment
-        auto info2 = detectFunctionArgument("requires", sourceLine, i);
+        // Special case: `requires` test function call;
+        // it may contain colon in it's single parameter,
+        // and cause false code block detection.
+        // Examples:
+        // requires(qtConfig(opengl):!wasm)
+        // requires(linux:!android|macos)
+        auto info2 = insideInnerFunctionCall(i, innerParenthesisIndeces);
         if (info2.success)
         {
             i = info2.indexOpen - 1;
             trace("function begin = ", info2.indexOpen);
             trace("function end = ", info2.indexClose);
+            trace("colon inside " ~ REQUIRES_FUNCTION_STR ~ " function call detected, go back to index = ", i);
             continue;
         }
 
