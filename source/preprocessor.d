@@ -119,67 +119,6 @@ void skipWhitespaces(const string sourceLine, ref long index)
         index++;
 }
 
-bool isInsideParenthesis(const string sourceLine, const long index, const ParenhesisType parType,
-    out long parIndex, bool findClosest = false)
-{
-    immutable long startIndex = (parType == ParenhesisType.Opening) ? 0     : (index + 1);
-    immutable long endIndex   = (parType == ParenhesisType.Opening) ? index : sourceLine.length;
-
-    long[] parenthesisStack;
-    for (long i = startIndex; i < endIndex; i++)
-    {
-        if (sourceLine[i] == CHAR_OPENING_PARENTHESIS)
-            parenthesisStack ~= i;
-        else if (sourceLine[i] == CHAR_CLOSING_PARENTHESIS)
-        {
-            if (!parenthesisStack.empty)
-                parenthesisStack.popBack();
-            else
-            {
-                if (findClosest)
-                {
-                    parenthesisStack = [i];
-                    break;
-                }
-                else if (parType == ParenhesisType.Closing)
-                    parenthesisStack ~= i;
-            }
-        }
-    }
-    if (parenthesisStack.length == 1)
-    {
-         parIndex = parenthesisStack[0];
-         return true;
-    }
-
-    if (parType == ParenhesisType.Opening)
-        trace("no open parenthesis found, stack.length = ", parenthesisStack.length);
-    else
-        trace("no close parenthesis found, stack.length = ", parenthesisStack.length);
-    return false;
-}
-
-QuotesInfo detectFunctionArgument(const string functionName, const string sourceLine, const long index)
-{
-    long indexOpen;
-    if (!isInsideParenthesis(sourceLine, index, ParenhesisType.Opening, indexOpen))
-        return QuotesInfo(-1, -1, false);
-
-    long indexClose;
-    if (!isInsideParenthesis(sourceLine, index, ParenhesisType.Closing, indexClose))
-        return QuotesInfo(-1, -1, false);
-
-    auto thisFunctionName = sourceLine[indexOpen - functionName.length .. indexOpen];
-    if (thisFunctionName != functionName)
-    {
-        trace("non-ambiguous function call detected = " ~ thisFunctionName);
-        return QuotesInfo(-1, -1, false);
-    }
-
-    return QuotesInfo(indexOpen, indexClose, true);
-}
-
-// TODO: rewrite code like in detectFunctionArgument
 QuotesInfo isInsideQuotes(const string strLine, const long index)
 in
 {
@@ -239,11 +178,6 @@ do
 string cutInlineComment(const string sourceLine)
 {
     bool commentFound;
-    return cutInlineComment(sourceLine, commentFound);
-}
-
-string cutInlineComment(const string sourceLine, ref bool commentFound)
-{
     string result = sourceLine;
 
     auto hashIndex = sourceLine.indexOf(STR_HASH);
@@ -261,6 +195,7 @@ string cutInlineComment(const string sourceLine, ref bool commentFound)
         result = result.strip();
     }
 
+    // TODO: can be commentFound var useful outside?
     return result;
 }
 
