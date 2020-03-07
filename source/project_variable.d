@@ -20,7 +20,7 @@
 **
 ****************************************************************************/
 
-module project_variable;
+module source.project_variable;
 
 import std.experimental.logger;
 
@@ -34,7 +34,7 @@ import std.path;
 import std.string;
 import std.range;
 
-import common_const;
+import source.common_const;
 
 // -------------------------------------------------------------------------------------------------
 public:

@@ -20,7 +20,7 @@
 **
 ****************************************************************************/
 
-module project_context;
+module source.project_context;
 
 import std.experimental.logger;
 
@@ -29,12 +29,13 @@ import std.conv;
 import std.stdio;
 import std.path;
 import std.string;
-import common_const;
-import common_utils;
-import logger;
-import qmakeexception;
-import project_variable;
-import project_function;
+
+import source.common_const;
+import source.common_utils;
+import source.logger;
+import source.qmakeexception;
+import source.project_variable;
+import source.project_function;
 
 // -------------------------------------------------------------------------------------------------
 

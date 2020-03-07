@@ -20,14 +20,15 @@
 **
 ****************************************************************************/
 
-module logger;
+module source.logger;
+
+static import std.file;
+static import std.path;
 
 import core.stdc.errno;
 import std.exception;
 import std.stdio;
 import std.string;
-static import std.file;
-static import std.path;
 
 class NgLogger
 {

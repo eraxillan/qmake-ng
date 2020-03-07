@@ -19,9 +19,7 @@
 ** along with qmake-ng.  If not, see <http://www.gnu.org/licenses/>.
 **
 ****************************************************************************/
-
-module type_deduction;
-
+module source.type_deduction;
 
 import std.experimental.logger;
 
@@ -35,19 +33,16 @@ import std.getopt;
 import std.path;
 import std.string;
 import std.range;
-
 import std.algorithm;
-//import std.algorithm.comparison : equal;
 import std.container.rbtree;
 
-import common_const;
-import common_utils;
-import project_variable;
-import persistent_property;
-import project_function;
-import project_context;
-import qmakeexception;
-import qmakeparser;
+import source.common_const;
+import source.common_utils;
+import source.project_variable;
+import source.persistent_property;
+import source.project_function;
+import source.project_context;
+import source.qmakeexception;
 
 
 public:

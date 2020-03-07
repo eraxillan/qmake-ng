@@ -19,19 +19,22 @@
 ** along with qmake-ng.  If not, see <http://www.gnu.org/licenses/>.
 **
 ****************************************************************************/
+module source.qt;
 
 import std.experimental.logger;
 
 static import std.file;
 static import std.path;
+
 import std.stdio;
 import std.range;
 import std.conv;
 import std.string;
-import common_const;
-import common_utils;
-import project_context;
-import project_variable;
+
+import source.common_const;
+import source.common_utils;
+import source.project_context;
+import source.project_variable;
 
 public:
 
@@ -256,7 +259,7 @@ string[] detectQtSourceRepositories()
     }
     else version (OSX)
     {
-        import platform.macos;
+        import source.platform.macos;
         result = macosDetectQtSourceRepositories();
     }
     else version (linux)
@@ -281,7 +284,7 @@ QtQmake[] detectQmakeInstallations()
     }
     else version (OSX)
     {
-        import platform.macos;
+        import source.platform.macos;
         result = macosDetectQmakeInstallations();
     }
     else version (linux)

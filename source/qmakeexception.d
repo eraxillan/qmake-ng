@@ -20,7 +20,7 @@
 **
 ****************************************************************************/
 
-module qmakeexception;
+module source.qmakeexception;
 
 
 public:

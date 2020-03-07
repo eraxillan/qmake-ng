@@ -20,7 +20,7 @@
 **
 ****************************************************************************/
 
-module common_utils;
+module source.common_utils;
 
 import std.experimental.logger;
 
@@ -34,7 +34,8 @@ import std.getopt;
 import std.path;
 import std.string;
 import std.range;
-import common_const;
+
+import source.common_const;
 // -------------------------------------------------------------------------------------------------
 public:
 

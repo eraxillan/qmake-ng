@@ -20,7 +20,7 @@
 **
 ****************************************************************************/
 
-module platform.macos;
+module source.platform.macos;
 
 import std.experimental.logger;
 
@@ -31,9 +31,10 @@ import std.string;
 import std.algorithm;
 import std.stdio;
 import std.process;
-import qmakeexception;
-import common_utils;
-import qt;
+
+import source.qmakeexception;
+import source.common_utils;
+import source.qt;
 
 public:
 

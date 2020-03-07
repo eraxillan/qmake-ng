@@ -19,6 +19,7 @@
 ** along with qmake-ng.  If not, see <http://www.gnu.org/licenses/>.
 **
 ****************************************************************************/
+module source.command_line_options;
 
 import std.experimental.logger;
 
@@ -26,17 +27,19 @@ import std.string;
 import std.conv;
 import std.algorithm;
 import std.stdio;
+
 static import std.file;
 static import std.path;
 static import std.getopt;
-import qmakeexception;
-import project;
-import project_context;
-import project_variable;
-import common_const;
-import common_utils;
-import persistent_property;
-import qt;
+
+import source.qmakeexception;
+import source.project;
+import source.project_context;
+import source.project_variable;
+import source.common_const;
+import source.common_utils;
+import source.persistent_property;
+import source.qt;
 
 public:
 

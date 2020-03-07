@@ -20,7 +20,7 @@
 **
 ****************************************************************************/
 
-module project_function;
+module source.project_function;
 
 import std.experimental.logger;
 
@@ -34,13 +34,14 @@ import std.path;
 import std.string;
 import std.range;
 import std.regex;
-import qmakeexception;
-import common_const;
-import common_utils;
-import logger;
-import project_variable;
-import project_context;
-import persistent_property;
+
+import source.qmakeexception;
+import source.common_const;
+import source.common_utils;
+import source.logger;
+import source.project_variable;
+import source.project_context;
+import source.persistent_property;
 
 // -------------------------------------------------------------------------------------------------
 public:
@@ -501,7 +502,7 @@ shared static this()
 
 	temp["include"] = ProFunction("include", VariableType.BOOLEAN, false, 1, 3,
 			[VariableType.STRING], (ref ProExecutionContext context, ref PersistentPropertyStorage persistentStorage, const string[] arguments) {
-		import project : Project;
+		import source.project : Project;
 
 		assert(arguments.length >= 1);
 		if (arguments.length > 1)
@@ -541,7 +542,7 @@ shared static this()
 
 	temp["load"] = ProFunction("load", VariableType.BOOLEAN, false, 1, 0,
 			[VariableType.STRING], (ref ProExecutionContext context, ref PersistentPropertyStorage persistentStorage, const string[] arguments) {
-		import project : Project;
+		import source.project : Project;
 
 		assert(arguments.length >= 1);
 		if (arguments.length > 1)

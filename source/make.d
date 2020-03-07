@@ -19,13 +19,14 @@
 ** along with qmake-ng.  If not, see <http://www.gnu.org/licenses/>.
 **
 ****************************************************************************/
+module source.make;
 
 /**
  * Recreate the qmake project parser from the grammar.
  */
 
 import pegged.grammar;
-import qmakegrammar;
+import source.qmakegrammar;
 
 void main()
 {

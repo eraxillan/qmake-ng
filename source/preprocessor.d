@@ -20,12 +20,13 @@
 **
 ****************************************************************************/
 
-module preprocessor;
-
-import std.typecons;
+module source.preprocessor;
 
 import std.experimental.logger;
 
+static import std.regex;
+
+import std.typecons;
 import std.uni;
 import std.algorithm;
 import std.conv;
@@ -35,10 +36,9 @@ import std.getopt;
 import std.path;
 import std.string;
 import std.range;
-static import std.regex;
 
-import common_const;
-import common_utils;
+import source.common_const;
+import source.common_utils;
 
 //---------------------------------------------------------------------------------------------------------------------
 private:

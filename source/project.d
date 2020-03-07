@@ -20,7 +20,9 @@
 **
 ****************************************************************************/
 
-module project;
+module source.project;
+
+import std.experimental.logger;
 
 import std.typecons;
 import std.conv;
@@ -30,19 +32,17 @@ import std.string;
 import std.algorithm;
 import std.process;
 
-import std.experimental.logger;
-
-import preprocessor;
-import qmakeexception;
 import qmakeparser;
 
-import common_const;
-import common_utils;
-import project_variable;
-import project_function;
-import project_context;
-import persistent_property;
-import type_deduction;
+import source.preprocessor;
+import source.qmakeexception;
+import source.common_const;
+import source.common_utils;
+import source.project_variable;
+import source.project_function;
+import source.project_context;
+import source.persistent_property;
+import source.type_deduction;
 
 public:
 
@@ -1733,10 +1733,10 @@ private:
 
 unittest
 {
-    import std.stdio : writefln, readln, stdin;
+    import std.stdio : writeln, writefln, readln, stdin;
     import std.conv : to;
     static import std.file, std.path;
-    import qt;
+    import source.qt;
 
     immutable(QtVersionInfo) qtInfo = chooseQtSourceVersion();
     immutable(string) mkspec = QtMakeSpecification.detectHostMakeSpec();
@@ -1797,6 +1797,7 @@ for(_, $$list(_)) { # just a way to break easily
     // Qt projects
     assert(pro.tryParse(buildPath(qtPath, "qt.pro")));
     assert(pro.tryParse(buildPath(qtPath, "qtbase/mkspecs/features/qt_configure.prf")));
+    assert(pro.tryParse(buildPath(qtPath, "qt3d/qt3d.pro")));
     assert(pro.tryParse(buildPath(qtPath, "qt3d/tests/auto/render/render.pro")));
     assert(pro.tryParse(buildPath(qtPath, "qtmultimedia/examples/multimedia/multimedia.pro")));
     assert(pro.tryParse(buildPath(qtPath, "qtremoteobjects/tests/auto/integration_multiprocess/server/server.pro")));
@@ -1868,10 +1869,11 @@ for(_, $$list(_)) { # just a way to break easily
         }
 
         immutable int totalCount = successfulCount + failedCount;
+        writeln("\n===============================================================================================");
         writefln("[%s] Total file count: " ~ to!string(totalCount), qtDir);
         writefln("[%s] Successfully parsed: " ~ to!string(successfulCount), qtDir);
         writefln("[%s] Failed to parse: " ~ to!string(failedCount) ~ " or "
-            ~ to!string(100 * failedCount / totalCount) ~ "%%", qtDir);
+            ~ to!string(100.0f * failedCount / totalCount) ~ "%%", qtDir);
         if (failedCount > 0)
         {
             writefln("");
@@ -1879,11 +1881,16 @@ for(_, $$list(_)) { # just a way to break easily
             foreach (project; failedProjects)
                 writefln(project);
         }
+        writeln("\n===============================================================================================");
 
         return ((successfulCount > 0) && (failedCount == 0)) ? true : false;
     }
 
     bool result = parseQtSourceProjects(buildPath(qtPath), pro);
+
+    writeln("\n===============================================================================================");
+    writeln("===============================================================================================");
+    writeln("===============================================================================================\n");
 
     if (failedProjects.length > 0)
     {

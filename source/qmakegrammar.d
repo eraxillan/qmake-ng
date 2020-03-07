@@ -20,7 +20,7 @@
 **
 ****************************************************************************/
 
-module qmakegrammar;
+module source.qmakegrammar;
 
 private:
 

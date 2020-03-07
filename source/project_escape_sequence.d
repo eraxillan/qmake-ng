@@ -20,7 +20,7 @@
 **
 ****************************************************************************/
 
-module project_escape_sequence;
+module source.project_escape_sequence;
 
 import std.experimental.logger;
 
@@ -35,8 +35,8 @@ import std.path;
 import std.string;
 import std.range;
 
-import common_const;
-import common_utils;
+import source.common_const;
+import source.common_utils;
 
 // -------------------------------------------------------------------------------------------------
 

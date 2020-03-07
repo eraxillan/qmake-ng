@@ -20,7 +20,7 @@
 **
 ****************************************************************************/
 
-module common_const;
+module source.common_const;
 
 public:
 const string QMAKE_VERSION_STR = "3.1";

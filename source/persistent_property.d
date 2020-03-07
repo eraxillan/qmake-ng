@@ -20,7 +20,8 @@
 **
 ****************************************************************************/
 
-module persistent_property;
+module source.persistent_property;
+
 import std.experimental.logger;
 
 import std.uni;
@@ -34,9 +35,10 @@ import std.string;
 import std.range;
 import std.regex;
 import std.process;
-import common_const;
-import qmakeexception;
-import qt;
+
+import source.common_const;
+import source.qmakeexception;
+import source.qt;
 
 public:
 
