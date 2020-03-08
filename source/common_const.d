@@ -23,6 +23,8 @@
 module source.common_const;
 
 public:
+const long INVALID_INDEX = -1;
+
 const string QMAKE_VERSION_STR = "3.1";
 
 const auto STR_EMPTY = "";

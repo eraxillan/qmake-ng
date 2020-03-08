@@ -24,8 +24,9 @@ module source.common_utils;
 
 import std.experimental.logger;
 
+static import std.regex;
+
 import std.uni;
-import std.regex;
 import std.algorithm;
 import std.conv;
 import std.stdio;
@@ -38,6 +39,30 @@ import std.range;
 import source.common_const;
 // -------------------------------------------------------------------------------------------------
 public:
+
+struct TextSearchResult
+{
+    long indexOpen = INVALID_INDEX;
+    long indexClose = INVALID_INDEX;
+    bool success = false;
+
+	this(const long indexOpen, const long indexClose, const bool success)
+	{
+		this.indexOpen = indexOpen;
+		this.indexClose = indexClose;
+		this.success = success;
+	}
+
+	@safe bool isValid() const nothrow
+	{
+		if (!success)
+			return (indexOpen == INVALID_INDEX) && (indexClose == INVALID_INDEX);
+		
+		return (indexOpen >=0) && (indexClose > indexOpen);
+	}
+
+	@safe bool opCast(T:bool)() const nothrow { return success; }
+}
 
 class QStack(DataType)
 {
@@ -120,11 +145,7 @@ auto getDateTimeString()
 
 bool isWhitespaceToken(const string str)
 {
-	// FIXME: use `isWhite` function
-	//
-	// FIXME: implement unit-test
-	// if (/\s/.test(token)
-	return !matchFirst(str, r"\s+").empty;
+	return !std.regex.matchFirst(str, r"\s+").empty;
 }
 
 bool isUnderscore(const char ch)
@@ -176,7 +197,7 @@ string[] splitString(const string str, const string delim, const bool skipEmptyP
 	return temp_2;
 }
 
-string sectionString(const string str, const string delim, const long start, const long end = -1, const bool skipEmptyParts = false)
+string sectionString(const string str, const string delim, const long start, const long end = INVALID_INDEX, const bool skipEmptyParts = false)
 {
 	string[] temp = splitString(str, delim, skipEmptyParts);
 
@@ -193,7 +214,7 @@ string sectionString(const string str, const string delim, const long start, con
 	if (start < 0)
 		startNew = temp.length - (-startNew);
 	long endNew = end;
-	if ((start >= 0) && (end == -1))
+	if ((start >= 0) && (end == INVALID_INDEX))
 		endNew = temp.length - 1;
 	else if (end < 0)
 		endNew = temp.length - (-endNew);
@@ -216,36 +237,40 @@ bool isNumeric(const string n, const int base)
 
 string wildcardToRegex(const string pattern)
 {
-    /*return "^" + Regex.Escape(pattern)
-                      .Replace(@"\*", ".*")
-                      .Replace(@"\?", ".")
-               + "$";*/
 	string result;
 	result ~= "^";
 
-	string escapedPattern = to!string(pattern.escaper.array);
+	string escapedPattern = to!string(std.regex.escaper(pattern).array);
 	result ~= escapedPattern.replace(`\*`, `.*`).replace(`\?`, `.`);
 
 	result ~= "$";
 	return result;
 }
 
-long detectIndentSize(const string str)
+// Minimal function call statement contains at least three characters: f()
+private const auto MINIMAL_FUNCTION_CALL_LENGTH = 3;
+
+TextSearchResult findFunctionCall(const string sourceStr, const string functionName, const long fromIndex)
+in
 {
-	if (str.strip().empty)
-		return 0;
+	assert(!functionName.empty);
+	assert(fromIndex >= 0 && fromIndex <= sourceStr.length - MINIMAL_FUNCTION_CALL_LENGTH);
+}
+out (result)
+{
+	assert(result.isValid());
+}
+do
+{
+	if (sourceStr.length < MINIMAL_FUNCTION_CALL_LENGTH)
+		return TextSearchResult();
 
-	long result = 0;
+	//immutable auto functionCallIndex_2 = sourceStr.indexOf(functionName ~ STR_OPENING_PARENTHESIS, fromIndex);
+    auto result = std.regex.matchFirst(sourceStr[fromIndex .. $], functionName ~ `\s*\(`);
+	if (!result)
+		return TextSearchResult();
 
-	for (long i = 0; i < str.length; i++)
-	{
-		if (!isWhitespaceToken("" ~ str[i]))
-			break;
-
-		result++;
-	}
-
-	return result;
+	return TextSearchResult(result.pre.length + fromIndex, result.pre.length + fromIndex + result.hit.length - 1, true);
 }
 
 string getProcessOutput(const string command)

@@ -87,16 +87,9 @@ enum ParenhesisType
 
 struct MultilineInfo
 {
-    long startIndex = -1;
-    long endIndex = -1;
+    long startIndex = INVALID_INDEX;
+    long endIndex = INVALID_INDEX;
     string line;
-}
-
-struct QuotesInfo
-{
-    long indexOpen  = -1;
-    long indexClose = -1;
-    bool success;
 }
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -112,14 +105,7 @@ public struct LineInfo
 
 //---------------------------------------------------------------------------------------------------------------------
 
-// FIXME: use this function instead of direct while loop
-void skipWhitespaces(const string sourceLine, ref long index)
-{
-    while (isWhite(sourceLine[index]) && (index < sourceLine.length))
-        index++;
-}
-
-QuotesInfo isInsideQuotes(const string strLine, const long index)
+TextSearchResult isInsideQuotes(const string strLine, const long index)
 in
 {
     assert(index >= 0 && index < strLine.length);
@@ -128,7 +114,7 @@ out (result)
 {
     assert((result.success && (result.indexOpen >= 0) && (result.indexClose < strLine.length)
         && (strLine[result.indexOpen] == CHAR_DOUBLE_QUOTE) && (strLine[result.indexClose] == CHAR_DOUBLE_QUOTE))
-        || (!result.success) && (result.indexOpen == -1) && (result.indexClose == -1));
+        || (!result.success) && (result.indexOpen == INVALID_INDEX) && (result.indexClose == INVALID_INDEX));
 }
 do
 {
@@ -136,7 +122,7 @@ do
     if (strLine.length < 3)
     {
         trace("input string is too short to contain quotes");
-        return QuotesInfo(-1, -1, false);
+        return TextSearchResult();
     }
 
     long[] stack;
@@ -151,7 +137,7 @@ do
     {
         trace("no opening double quote before index ", index,
               ", stack.length = ", stack.length);
-        return QuotesInfo(-1, -1, false);
+        return TextSearchResult();
     }
 
     auto indexOpen = stack[0];
@@ -167,12 +153,12 @@ do
     {
         trace("no closing double quote before index ", index,
               ", stack.length = ", stack.length);
-        return QuotesInfo(-1, -1, false);
+        return TextSearchResult();
     }
     auto indexClose = stack[0];
     stack = [];
 
-    return QuotesInfo(indexOpen, indexClose, true);
+    return TextSearchResult(indexOpen, indexClose, true);
 }
 
 string cutInlineComment(const string sourceLine)
@@ -202,7 +188,8 @@ string cutInlineComment(const string sourceLine)
 long detectFunctionArgumentsStartIndex(const string functionName, const string sourceStr, const long fromIndex)
 in
 {
-    assert(sourceStr.indexOf(functionName ~ STR_OPENING_PARENTHESIS, fromIndex) >= 0);
+    assert(!functionName.empty);
+    assert(fromIndex >= 0 && fromIndex < sourceStr.length - 1);
 }
 out (result)
 {
@@ -211,13 +198,11 @@ out (result)
 }
 do
 {
-    // Search for function call statement: function name + opening parenthehis
-    //
-    // FIXME: allow whitespace* between function name and parenthesis (use regex)
-    immutable auto functionCallIndex = sourceStr.indexOf(functionName ~ STR_OPENING_PARENTHESIS, fromIndex);
-    assert(functionCallIndex >= 0);
+    // Search for function call statement: function name + optional whitespaces + opening parenthehis
+    immutable auto functionCallPos = findFunctionCall(sourceStr, functionName, fromIndex);
+    assert(functionCallPos.isValid() && functionCallPos.success);
 
-    immutable auto functionOpenParIndex = functionCallIndex + functionName.length;
+    immutable auto functionOpenParIndex = functionCallPos.indexClose;
     trace("Arguments start index = ", functionOpenParIndex);
 
     return functionOpenParIndex;
@@ -310,8 +295,10 @@ do
 alias ParIndex = Tuple!(long, "startIndex", long, "endIndex");
 
 ParIndex[] detectInnerFunctions(const string sourceStr)
-// FIXME: in/out contracts
 {
+    if (sourceStr.length < 3)
+        return [];
+
     ParIndex[] result;
     long[] parenthesisStack;
 
@@ -334,15 +321,15 @@ ParIndex[] detectInnerFunctions(const string sourceStr)
     return result;
 }
 
-QuotesInfo insideInnerFunctionCall(const long index, const ParIndex[] indeces)
+TextSearchResult insideInnerFunctionCall(const long index, const ParIndex[] indeces)
 {
     foreach (indexPair; indeces)
     {
         if (index > indexPair.startIndex && index < indexPair.endIndex)
-            return QuotesInfo(indexPair.startIndex, indexPair.endIndex, true);
+            return TextSearchResult(indexPair.startIndex, indexPair.endIndex, true);
     }
 
-    return QuotesInfo(-1, -1, false);
+    return TextSearchResult();
 }
 
 package alias ExtractResult = Tuple!(string[], "arguments", long, "endIndex");
@@ -520,7 +507,7 @@ do
 
 bool hasSinglelineScope(const string sourceLine, out long colonIndex)
 {
-    colonIndex = -1;
+    colonIndex = INVALID_INDEX;
 
     if (sourceLine.empty || sourceLine.endsWith(STR_OPENING_CURLY_BRACE))
         return false;
@@ -529,14 +516,14 @@ bool hasSinglelineScope(const string sourceLine, out long colonIndex)
     auto lastEqIndex = sourceLine.lastIndexOf(STR_EQUALS);
 
     long i;
-    if (lastEqIndex == -1)
+    if (lastEqIndex == INVALID_INDEX)
     {
         i = sourceLine.length - 1;
     }
     else if (isInsideQuotes(sourceLine, lastEqIndex).success)
     {
         trace("assignment operator detected inside quotes on position ", lastEqIndex);
-        while ((lastEqIndex != -1) && isInsideQuotes(sourceLine, lastEqIndex).success)
+        while ((lastEqIndex != INVALID_INDEX) && isInsideQuotes(sourceLine, lastEqIndex).success)
         {
             lastEqIndex = sourceLine.lastIndexOf(STR_EQUALS, lastEqIndex);
         }
@@ -618,7 +605,7 @@ bool hasMultilineScope(const string sourceLine, out long colonIndex)
     // Search for reduntant colon
     // E.g.: contains(TEMPLATE, ".*app"):!build_pass: { ... }
     colonIndex = sourceLine.lastIndexOf(STR_COLON);
-    if (colonIndex == -1)
+    if (colonIndex == INVALID_INDEX)
         return false;
 
     bool reduntant = true;
@@ -657,7 +644,7 @@ bool fixMultilineScope(const string sourceLine, out string resultLine)
 
 bool hasSinglelineScopeElse(const string sourceLine)
 {
-    return (sourceLine.indexOf(STR_ELSE_SINGLELINE) != -1);
+    return (sourceLine.indexOf(STR_ELSE_SINGLELINE) != INVALID_INDEX);
 }
 
 bool fixSinglelineScopeElse(const string sourceLine, out string resultLine)
@@ -671,7 +658,7 @@ void prettifyLine(ref LineInfo li)
     if (li.line.endsWith(STR_SEMICOLON))
     {
         li.mods |= PreprocessorModifications.TrailingSemicolonRemoved;
-        li.line = li.line[0 .. $-1];
+        li.line = li.line[0 .. $ - 1];
         assert(!li.line.endsWith(STR_SEMICOLON));
     }
 
@@ -706,7 +693,8 @@ void fixMultiline(ref LineInfo li, ref MultilineInfo mresult, ref long lineIndex
 
 void fixScope(ref LineInfo li)
 {
-    // FIXME: workaround for grammar ambiguity - cannot distingush AND-colon and scope statement expression end colon
+    // NOTE: workaround for grammar ambiguity: cannot distingush AND-colon and single-line code block colon
+    //
     // Replace last colon (":") with "@";
     // Exceptions:
     // - there is an "{" on this line
@@ -765,10 +753,11 @@ void enquoteAmbiguousFunctionArguments(const string functionName,
     long functionCallIndex = 0;
     while (functionCallIndex < li.line.length)
     {
-        // FIXME: replace with regex to allow whitespaces between function name and opening parenthesis
-        functionCallIndex = li.line.indexOf(functionName ~ STR_OPENING_PARENTHESIS, functionCallIndex);
-        if (functionCallIndex == -1)
+        auto functionCallPos = findFunctionCall(li.line, functionName, functionCallIndex);
+        if (!functionCallPos)
             break;
+
+        functionCallIndex = functionCallPos.indexOpen;
 
         auto replaceArguments = extractFunctionArguments(functionName,
             requiredArgumentCount, optionalArgumentCount,
@@ -812,8 +801,6 @@ void enquoteAmbiguousFunctionArguments(const string functionName,
 
         functionCallIndex++;
     }
-
-    // FIXME: add error handling above, e.g. exception generation
 }
 
 void fixAmbiguousFunctionCalls(ref LineInfo li)
