@@ -37,6 +37,8 @@ import source.project_context;
 import source.project_variable;
 import source.common_const;
 import source.common_utils;
+import source.io_utils;
+import source.os_utils;
 import source.logger;
 import source.persistent_property;
 import source.command_line_options;

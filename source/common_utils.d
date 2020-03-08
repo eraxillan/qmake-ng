@@ -118,33 +118,6 @@ public:
 
 // -------------------------------------------------------------------------------------------------
 
-void setupDatetimeLocale()
-{
-    import std.process : environment;
-    import core.stdc.locale: setlocale, LC_ALL, LC_TIME;
-
-    auto value = environment.get("LC_TIME");
-    if (value is null)
-    {
-        warning("LC_TIME is not defined: use en_US.UTF-8 by default");
-        setlocale(LC_TIME, "en_US.UTF-8");
-    }
-    else
-        setlocale(LC_TIME, value.ptr);
-}
-
-auto getDateTimeString()
-{
-    import core.stdc.time : time, localtime, strftime;
-    auto unixTime = time(null);
-    auto tmVar = localtime(&unixTime);
-    char[256] buffer;
-    auto len = strftime(buffer.ptr, 80, toStringz("%a %b. %d %T %Y"), tmVar);
-    auto prettyStr = buffer[0 .. len].idup;
-    prettyStr = toLower(prettyStr);
-    return prettyStr;
-}
-
 @property string left(const string str, const long count)
 {
     return str[0 .. count];
@@ -283,33 +256,6 @@ do
         return TextSearchResult();
 
     return TextSearchResult(result.pre.length + fromIndex, result.pre.length + fromIndex + result.hit.length - 1, true);
-}
-
-string getProcessOutput(const string command)
-{
-    import std.process : executeShell;
-
-    auto outputData = executeShell(command);
-
-    if (outputData.status != 0)
-    {
-        error("Command '%s' failed with code %d", command, outputData.status);
-        return "";
-    }
-
-    return outputData.output.strip();
-}
-
-bool isValidFilePath(const string path)
-{
-    static import std.file;
-    return (!path.empty && std.file.exists(path) && std.file.isFile(path));
-}
-
-bool isValidDirectoryPath(const string path)
-{
-    static import std.file;
-    return (!path.empty && std.file.exists(path) && std.file.isDir(path));
 }
 
 unittest
