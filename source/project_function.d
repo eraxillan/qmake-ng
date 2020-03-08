@@ -37,7 +37,7 @@ import std.regex;
 
 import source.qmakeexception;
 import source.common_const;
-import source.common_utils;
+import source.text_utils;
 import source.io_utils;
 import source.logger;
 import source.project_variable;

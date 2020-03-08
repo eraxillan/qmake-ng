@@ -38,7 +38,7 @@ import std.string;
 import std.range;
 
 import source.common_const;
-import source.common_utils;
+import source.text_utils;
 
 //---------------------------------------------------------------------------------------------------------------------
 private:

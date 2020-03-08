@@ -33,7 +33,7 @@ import std.stdio;
 import std.process;
 
 import source.qmakeexception;
-import source.common_utils;
+import source.text_utils;
 import source.qt;
 
 public:

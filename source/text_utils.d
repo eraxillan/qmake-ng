@@ -20,7 +20,7 @@
 **
 ****************************************************************************/
 
-module source.common_utils;
+module source.text_utils;
 
 import std.experimental.logger;
 
