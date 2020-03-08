@@ -20,53 +20,25 @@
 **
 ****************************************************************************/
 
-module source.os_utils;
+module source.utils.io_utils;
 
 import std.experimental.logger;
 
-import std.string;
+static import std.file;
+
+import std.range;
 
 // -------------------------------------------------------------------------------------------------
 public:
 
-void setupDatetimeLocale()
+bool isValidFilePath(const string path)
 {
-    import std.process : environment;
-    import core.stdc.locale: setlocale, LC_ALL, LC_TIME;
-
-    auto value = environment.get("LC_TIME");
-    if (value is null)
-    {
-        warning("LC_TIME is not defined: use en_US.UTF-8 by default");
-        setlocale(LC_TIME, "en_US.UTF-8");
-    }
-    else
-        setlocale(LC_TIME, value.ptr);
+    static import std.file;
+    return (!path.empty && std.file.exists(path) && std.file.isFile(path));
 }
 
-auto getDateTimeString()
+bool isValidDirectoryPath(const string path)
 {
-    import core.stdc.time : time, localtime, strftime;
-    auto unixTime = time(null);
-    auto tmVar = localtime(&unixTime);
-    char[256] buffer;
-    auto len = strftime(buffer.ptr, 80, toStringz("%a %b. %d %T %Y"), tmVar);
-    auto prettyStr = buffer[0 .. len].idup;
-    prettyStr = toLower(prettyStr);
-    return prettyStr;
-}
-
-string getProcessOutput(const string command)
-{
-    import std.process : executeShell;
-
-    auto outputData = executeShell(command);
-
-    if (outputData.status != 0)
-    {
-        error("Command '%s' failed with code %d", command, outputData.status);
-        return "";
-    }
-
-    return outputData.output.strip();
+    static import std.file;
+    return (!path.empty && std.file.exists(path) && std.file.isDir(path));
 }

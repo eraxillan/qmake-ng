@@ -1,7 +1,7 @@
 module source.preprocessor_tests;
 
 import std.stdio;
-import source.text_utils;
+import source.utils.text_utils;
 import source.preprocessor;
 
 //---------------------------------------------------------------------------------------------------------------------

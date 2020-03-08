@@ -37,7 +37,7 @@ import std.algorithm;
 import std.container.rbtree;
 
 import source.common_const;
-import source.text_utils;
+import source.utils.text_utils;
 import source.project_variable;
 import source.persistent_property;
 import source.project_function;
