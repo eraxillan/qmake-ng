@@ -1064,8 +1064,8 @@ private:
                     throw new Exception("Unsupported function '" ~ functionName ~ "'");
                 
                 // Invoke function
-                const(string[]) resultAsList = functionDescription.m_action(m_contextStack.top(), m_persistentStorage, [variableName, expression]);
-                if (functionDescription.m_returnType == VariableType.STRING_LIST)
+                const(string[]) resultAsList = functionDescription.action(m_contextStack.top(), m_persistentStorage, [variableName, expression]);
+                if (functionDescription.fti.returnType == VariableType.STRING_LIST)
                 {
                     trace("Function ", "`", functionName, "`", " returns list: ", resultAsList);
                 }
@@ -1073,7 +1073,7 @@ private:
                 {
                     trace("Function ", "`", functionName, "`", " returns string: ", "`", resultAsList[0], "`");
                 }
-                result.type = functionDescription.m_returnType;
+                result.type = functionDescription.fti.returnType;
                 result.value = resultAsList.dup;
                 break;
             }
@@ -1292,8 +1292,8 @@ private:
         trace("Actual function ", "`", functionName, "`", " arguments: ", actualArguments);
 
         // Invoke function
-        const(string[]) resultAsList = functionDescription.m_action(m_contextStack.top(), m_persistentStorage, actualArguments);
-        if (functionDescription.m_returnType == VariableType.STRING_LIST)
+        const(string[]) resultAsList = functionDescription.action(m_contextStack.top(), m_persistentStorage, actualArguments);
+        if (functionDescription.fti.returnType == VariableType.STRING_LIST)
         {
             trace("Function ", "`", functionName, "`", " returns list: ", resultAsList);
         }
@@ -1301,7 +1301,7 @@ private:
         {
             trace("Function ", "`", functionName, "`", " returns string: ", "`", resultAsList[0], "`");
         }
-        result.type = functionDescription.m_returnType;
+        result.type = functionDescription.fti.returnType;
         result.value = resultAsList.dup;
 
         return result;
@@ -1682,13 +1682,13 @@ private:
         // Report function expected and actual argument count (if applicable)
         // FIXME: implement user-defined functions support and add condition
         // `&& !functionDescription.m_isUserDefined`
-        if (!functionDescription.m_isVariadic)
+        if (!functionDescription.fti.isVariadic)
         {
             string temp;
-            if (functionDescription.m_requiredArgumentCount > 0)
-                temp ~= to!string(functionDescription.m_requiredArgumentCount) ~ " " ~ "required";
-            if (functionDescription.m_optionalArgumentCount)
-                temp ~= ", " ~ to!string(functionDescription.m_optionalArgumentCount) ~ " " ~ "optional";
+            if (functionDescription.fbi.requiredArgumentCount > 0)
+                temp ~= to!string(functionDescription.fbi.requiredArgumentCount) ~ " " ~ "required";
+            if (functionDescription.fbi.optionalArgumentCount)
+                temp ~= ", " ~ to!string(functionDescription.fbi.optionalArgumentCount) ~ " " ~ "optional";
             trace("Expected replace function count: ", temp);
         }
         else
@@ -1697,32 +1697,32 @@ private:
         }
 
         // Validate arguments count for non-variadic functions
-        if (!functionDescription.m_isVariadic)
+        if (!functionDescription.fti.isVariadic)
         {
-            if (functionDescription.m_requiredArgumentCount < 0)
+            if (functionDescription.fbi.requiredArgumentCount < 0)
             {
                 throw new Exception(
-                        "Invalid function '" ~ functionDescription.m_name ~ "' argument count description");
+                        "Invalid function '" ~ functionDescription.fbi.functionName ~ "' argument count description");
             }
 
-            if (functionDescription.m_optionalArgumentCount < 0)
+            if (functionDescription.fbi.optionalArgumentCount < 0)
             {
-                if (actualOperandCount < functionDescription.m_requiredArgumentCount)
+                if (actualOperandCount < functionDescription.fbi.requiredArgumentCount)
                 {
                     throw new  /*RangeError*/ Exception(
-                            "Invalid number of arguments for function '" ~ functionDescription.m_name ~ "': " ~ to!string(
-                            functionDescription.m_requiredArgumentCount) ~ " expected, but " ~ to!string(
+                            "Invalid number of arguments for function '" ~ functionDescription.fbi.functionName ~ "': " ~ to!string(
+                            functionDescription.fbi.requiredArgumentCount) ~ " expected, but " ~ to!string(
                             actualOperandCount) ~ " given");
                 }
             }
             else
             {
-                int minArgCount = functionDescription.m_requiredArgumentCount;
-                int maxArgCount = minArgCount + functionDescription.m_optionalArgumentCount;
+                long minArgCount = functionDescription.fbi.requiredArgumentCount;
+                long maxArgCount = minArgCount + functionDescription.fbi.optionalArgumentCount;
                 if ((actualOperandCount < minArgCount) || (actualOperandCount > maxArgCount))
                 {
                     throw new  /*RangeError*/ Exception(
-                            "Invalid number of arguments for function '" ~ functionDescription.m_name ~ "': from " ~ to!string(
+                            "Invalid number of arguments for function '" ~ functionDescription.fbi.functionName ~ "': from " ~ to!string(
                             minArgCount) ~ " to " ~ to!string(
                             maxArgCount) ~ " expected, but " ~ to!string(actualOperandCount) ~ " given");
                 }

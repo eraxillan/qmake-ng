@@ -46,61 +46,73 @@ struct TextSearchResult
     long indexClose = INVALID_INDEX;
     bool success = false;
 
-	this(const long indexOpen, const long indexClose, const bool success)
-	{
-		this.indexOpen = indexOpen;
-		this.indexClose = indexClose;
-		this.success = success;
-	}
+    this(const long indexOpen, const long indexClose, const bool success)
+    {
+        this.indexOpen = indexOpen;
+        this.indexClose = indexClose;
+        this.success = success;
+    }
 
-	@safe bool isValid() const nothrow
-	{
-		if (!success)
-			return (indexOpen == INVALID_INDEX) && (indexClose == INVALID_INDEX);
-		
-		return (indexOpen >=0) && (indexClose > indexOpen);
-	}
+    @safe bool isValid() const nothrow
+    {
+        if (!success)
+            return (indexOpen == INVALID_INDEX) && (indexClose == INVALID_INDEX);
+        
+        return (indexOpen >=0) && (indexClose > indexOpen);
+    }
 
-	@safe bool opCast(T:bool)() const nothrow { return success; }
+    @safe bool opCast(T:bool)() const nothrow { return success; }
+}
+
+struct FunctionBaseInfo
+{
+    string functionName;
+    long requiredArgumentCount;
+    long optionalArgumentCount;
+
+    FunctionBaseInfo dup() const @property
+    {
+        return FunctionBaseInfo(functionName.dup, requiredArgumentCount, optionalArgumentCount);
+    }
 }
 
 class QStack(DataType)
 {
 private:
-	DataType[] m_array;
-	alias m_array this;
+    DataType[] m_array;
+    alias m_array this;
 
 public:
     void push(DataType item)
-	{
-		m_array ~= item;
-	}
-	
-	void push(DataType[] item)
-	{
-		m_array ~= item;
-	}
+    {
+        m_array ~= item;
+    }
+    
+    void push(DataType[] item)
+    {
+        m_array ~= item;
+    }
 
     DataType pop()
-	{
-		if (!m_array.empty)
-		{
-			DataType top = m_array.back;
-			m_array.popBack();
-			return top;
-		}
-		
-		throw new Exception("trying to pop item from empty stack");
-	}
+    {
+        if (!m_array.empty)
+        {
+            DataType top = m_array.back;
+            m_array.popBack();
+            return top;
+        }
+        
+        throw new Exception("trying to pop item from empty stack");
+    }
 
     ref DataType top()
-	{
-		if (!m_array.empty)
-			return m_array[m_array.length - 1];
+    {
+        if (!m_array.empty)
+            return m_array[m_array.length - 1];
 
-//		static DataType defaultValue;
-//		return defaultValue;
-		throw new Exception("trying to get top item value from empty stack");
+//        static DataType defaultValue;
+//        return defaultValue;
+        throw new Exception("trying to get top item value from empty stack");
     }
 }
 
@@ -108,69 +120,69 @@ public:
 
 void setupDatetimeLocale()
 {
-	import std.process : environment;
-	import core.stdc.locale: setlocale, LC_ALL, LC_TIME;
+    import std.process : environment;
+    import core.stdc.locale: setlocale, LC_ALL, LC_TIME;
 
-	auto value = environment.get("LC_TIME");
-	if (value is null)
-	{
-		warning("LC_TIME is not defined: use en_US.UTF-8 by default");
-		setlocale(LC_TIME, "en_US.UTF-8");
-	}
-	else
-		setlocale(LC_TIME, value.ptr);
+    auto value = environment.get("LC_TIME");
+    if (value is null)
+    {
+        warning("LC_TIME is not defined: use en_US.UTF-8 by default");
+        setlocale(LC_TIME, "en_US.UTF-8");
+    }
+    else
+        setlocale(LC_TIME, value.ptr);
 }
 
 auto getDateTimeString()
 {
-	import core.stdc.time : time, localtime, strftime;
-	auto unixTime = time(null);
-	auto tmVar = localtime(&unixTime);
-	char[256] buffer;
+    import core.stdc.time : time, localtime, strftime;
+    auto unixTime = time(null);
+    auto tmVar = localtime(&unixTime);
+    char[256] buffer;
     auto len = strftime(buffer.ptr, 80, toStringz("%a %b. %d %T %Y"), tmVar);
-	auto prettyStr = buffer[0 .. len].idup;
-	prettyStr = toLower(prettyStr);
-	return prettyStr;
+    auto prettyStr = buffer[0 .. len].idup;
+    prettyStr = toLower(prettyStr);
+    return prettyStr;
 }
 
 @property string left(const string str, const long count)
 {
-	return str[0 .. count];
+    return str[0 .. count];
 }
 
 @property string right(const string str, const long count)
 {
-	return str[$ - count .. $];
+    return str[$ - count .. $];
 }
 
 bool isWhitespaceToken(const string str)
 {
-	return !std.regex.matchFirst(str, r"\s+").empty;
+    return !std.regex.matchFirst(str, r"\s+").empty;
 }
 
 bool isUnderscore(const char ch)
 {
-	return (ch == CHAR_UNDERSCORE);
+    return (ch == CHAR_UNDERSCORE);
 }
 
 bool isDot(const char ch)
 {
-	return (ch == CHAR_DOT);
+    return (ch == CHAR_DOT);
 }
 
 bool isAlphascore(const char ch)
 {
-	return (isAlpha(ch) || isUnderscore(ch));
+    return (isAlpha(ch) || isUnderscore(ch));
 }
 
 bool containsQuote(const string str)
 {
-	foreach (ch; str)
-	{
-		if ((ch == CHAR_SINGLE_QUOTE) || (ch == CHAR_DOUBLE_QUOTE))
-			return true;
-	}
-	return false;
+    foreach (ch; str)
+    {
+        if ((ch == CHAR_SINGLE_QUOTE) || (ch == CHAR_DOUBLE_QUOTE))
+            return true;
+    }
+    return false;
 }
 
 string joinTokens(const string str, const long index, const long count)
@@ -185,8 +197,8 @@ string[] splitString(const string str, const string delim, const bool skipEmptyP
 {
     string[] temp = str.split(delim);
 
-	if (!skipEmptyParts)
-		return temp;
+    if (!skipEmptyParts)
+        return temp;
 
     string[] temp_2;
     foreach (value; temp)
@@ -194,57 +206,57 @@ string[] splitString(const string str, const string delim, const bool skipEmptyP
         if (!value.empty)
             temp_2 ~= value;
     }
-	return temp_2;
+    return temp_2;
 }
 
 string sectionString(const string str, const string delim, const long start, const long end = INVALID_INDEX, const bool skipEmptyParts = false)
 {
-	string[] temp = splitString(str, delim, skipEmptyParts);
+    string[] temp = splitString(str, delim, skipEmptyParts);
 
-	// Naive optimization: no or just one section items
-	if (temp.length <= 1)
-		return str;	
-	if (start == end)
-	{
-		immutable auto startNew = (start >= 0) ? start : (temp.length - (-start));
-		return temp[startNew];
-	}
+    // Naive optimization: no or just one section items
+    if (temp.length <= 1)
+        return str;    
+    if (start == end)
+    {
+        immutable auto startNew = (start >= 0) ? start : (temp.length - (-start));
+        return temp[startNew];
+    }
 
-	long startNew = start;
-	if (start < 0)
-		startNew = temp.length - (-startNew);
-	long endNew = end;
-	if ((start >= 0) && (end == INVALID_INDEX))
-		endNew = temp.length - 1;
-	else if (end < 0)
-		endNew = temp.length - (-endNew);
+    long startNew = start;
+    if (start < 0)
+        startNew = temp.length - (-startNew);
+    long endNew = end;
+    if ((start >= 0) && (end == INVALID_INDEX))
+        endNew = temp.length - 1;
+    else if (end < 0)
+        endNew = temp.length - (-endNew);
 
-	return temp[startNew .. endNew + 1].join(delim);
+    return temp[startNew .. endNew + 1].join(delim);
 }
 
 bool isNumeric(const string n, const int base)
 {
-	try
-	{
-		/*auto a =*/ to!uint(n, base);
-		return true;
-	}
-	catch (std.conv.ConvException exc)
-	{
-		return false;
-	}
+    try
+    {
+        /*auto a =*/ to!uint(n, base);
+        return true;
+    }
+    catch (std.conv.ConvException exc)
+    {
+        return false;
+    }
 }
 
 string wildcardToRegex(const string pattern)
 {
-	string result;
-	result ~= "^";
+    string result;
+    result ~= "^";
 
-	string escapedPattern = to!string(std.regex.escaper(pattern).array);
-	result ~= escapedPattern.replace(`\*`, `.*`).replace(`\?`, `.`);
+    string escapedPattern = to!string(std.regex.escaper(pattern).array);
+    result ~= escapedPattern.replace(`\*`, `.*`).replace(`\?`, `.`);
 
-	result ~= "$";
-	return result;
+    result ~= "$";
+    return result;
 }
 
 // Minimal function call statement contains at least three characters: f()
@@ -253,29 +265,29 @@ private const auto MINIMAL_FUNCTION_CALL_LENGTH = 3;
 TextSearchResult findFunctionCall(const string sourceStr, const string functionName, const long fromIndex)
 in
 {
-	assert(!functionName.empty);
-	assert(fromIndex >= 0 && fromIndex <= sourceStr.length - MINIMAL_FUNCTION_CALL_LENGTH);
+    assert(!functionName.empty);
+    assert(fromIndex >= 0 && fromIndex <= sourceStr.length - MINIMAL_FUNCTION_CALL_LENGTH);
 }
 out (result)
 {
-	assert(result.isValid());
+    assert(result.isValid());
 }
 do
 {
-	if (sourceStr.length < MINIMAL_FUNCTION_CALL_LENGTH)
-		return TextSearchResult();
+    if (sourceStr.length < MINIMAL_FUNCTION_CALL_LENGTH)
+        return TextSearchResult();
 
-	//immutable auto functionCallIndex_2 = sourceStr.indexOf(functionName ~ STR_OPENING_PARENTHESIS, fromIndex);
+    //immutable auto functionCallIndex_2 = sourceStr.indexOf(functionName ~ STR_OPENING_PARENTHESIS, fromIndex);
     auto result = std.regex.matchFirst(sourceStr[fromIndex .. $], functionName ~ `\s*\(`);
-	if (!result)
-		return TextSearchResult();
+    if (!result)
+        return TextSearchResult();
 
-	return TextSearchResult(result.pre.length + fromIndex, result.pre.length + fromIndex + result.hit.length - 1, true);
+    return TextSearchResult(result.pre.length + fromIndex, result.pre.length + fromIndex + result.hit.length - 1, true);
 }
 
 string getProcessOutput(const string command)
 {
-	import std.process : executeShell;
+    import std.process : executeShell;
 
     auto outputData = executeShell(command);
 
@@ -302,32 +314,32 @@ bool isValidDirectoryPath(const string path)
 
 unittest
 {
-	// left
-	assert("pineapple".left(4) == "pine");
-	// right
-	assert("pineapple".right(5) == "apple");
-	// FIXME: isWhitespaceToken
-	// FIXME: joinTokens
+    // left
+    assert("pineapple".left(4) == "pine");
+    // right
+    assert("pineapple".right(5) == "apple");
+    // FIXME: isWhitespaceToken
+    // FIXME: joinTokens
 
-	// FIXME: splitString
+    // FIXME: splitString
 
-	// sectionString
-	void testSplit()
-	{
-		immutable string csv = "forename,middlename,surname,phone";
-  		immutable string path = "/usr/local/bin/myapp";
+    // sectionString
+    void testSplit()
+    {
+        immutable string csv = "forename,middlename,surname,phone";
+          immutable string path = "/usr/local/bin/myapp";
 
-		assert(sectionString(csv, ",", 2, 2) == "surname");
-		assert(sectionString(path, "/", 3, 4) == "bin/myapp");
-		assert(sectionString(path, "/", 3, 3, true) == "myapp");
-    	assert(sectionString(csv, ",", -3, -2) == "middlename,surname");
-    	assert(sectionString(path, "/", -1) == "myapp");
-	}
-	testSplit();
-	
-	// FIXME: isNumeric
-	// FIXME: isHexNumeric
-	// FIXME: wildcardToRegex
-	
-	//assert(false);
+        assert(sectionString(csv, ",", 2, 2) == "surname");
+        assert(sectionString(path, "/", 3, 4) == "bin/myapp");
+        assert(sectionString(path, "/", 3, 3, true) == "myapp");
+        assert(sectionString(csv, ",", -3, -2) == "middlename,surname");
+        assert(sectionString(path, "/", -1) == "myapp");
+    }
+    testSplit();
+    
+    // FIXME: isNumeric
+    // FIXME: isHexNumeric
+    // FIXME: wildcardToRegex
+    
+    //assert(false);
 }

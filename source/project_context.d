@@ -510,14 +510,13 @@ public:
 	}
 
     // ---------------------------------------------------------------------------------------------------------------------------
+    // NOTE: all user-defined functions are variadic
 
     void addReplaceFunctionDescription(const string name, const ProFunction.Action action)
     {
         m_userReplaceFunctions[name] = ProFunction(
-            name,
-            VariableType.STRING_LIST, /*FIXME: detect return type*/
-            true, -1, -1, // all user-defined functions are variadic
-            [VariableType.STRING],
+            FunctionBaseInfo(name, -1, -1),
+            FunctionTypeInfo(true, [VariableType.STRING], VariableType.STRING_LIST),
             action
         );
     }
@@ -525,10 +524,8 @@ public:
     void addTestFunctionDescription(const string name, ProFunction.Action action)
     {
         m_userTestFunctions[name] = ProFunction(
-            name,
-            VariableType.STRING_LIST, /*FIXME: detect return type*/
-            true, -1, -1, // all user-defined functions are variadic
-            [VariableType.STRING],
+            FunctionBaseInfo(name, -1, -1),
+            FunctionTypeInfo(true, [VariableType.STRING], VariableType.STRING_LIST),
             action
         );
     }

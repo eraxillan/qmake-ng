@@ -334,24 +334,21 @@ TextSearchResult insideInnerFunctionCall(const long index, const ParIndex[] inde
 
 package alias ExtractResult = Tuple!(string[], "arguments", long, "endIndex");
 // NOTE: regex may contain paired parenthesis which don't handled by grammar now
-package ExtractResult extractFunctionArguments(
-    const string functionName,
-    const long requiredArgumentCount, const long optionalArgumentCount,
-    const long startIndex, const string sourceLine, const int srcLine)
+package ExtractResult extractFunctionArguments(const FunctionBaseInfo fbi, const long startIndex, const string sourceLine, const int srcLine)
 in
 {
-    assert(!functionName.empty);
+    assert(!fbi.functionName.empty);
     // NOTE: no arguments ==> nothing to extract
-    assert(requiredArgumentCount >= 0);
-    assert(optionalArgumentCount >= 0);
-    assert(requiredArgumentCount + optionalArgumentCount >= 1);
+    assert(fbi.requiredArgumentCount >= 0);
+    assert(fbi.optionalArgumentCount >= 0);
+    assert(fbi.requiredArgumentCount + fbi.optionalArgumentCount >= 1);
     assert((startIndex >= 0) && startIndex < (sourceLine.length));
-    assert(sourceLine.length > functionName.length);
+    assert(sourceLine.length > fbi.functionName.length);
 }
 out (result)
 {
-    assert(result.arguments.length >= requiredArgumentCount);
-    assert(result.arguments.length <= requiredArgumentCount + optionalArgumentCount);
+    assert(result.arguments.length >= fbi.requiredArgumentCount);
+    assert(result.arguments.length <= fbi.requiredArgumentCount + fbi.optionalArgumentCount);
 }
 do
 {
@@ -359,14 +356,14 @@ do
     trace("Caller source code line number: ", srcLine);
     trace("Source code line: " ~ sourceLine);
     trace("Source code line length: ", sourceLine.length);
-    trace("Extracting function '" ~ functionName ~ "' arguments...");
-    trace("Expect from ", requiredArgumentCount, " to ", requiredArgumentCount + optionalArgumentCount, " items");
+    trace("Extracting function '" ~ fbi.functionName ~ "' arguments...");
+    trace("Expect from ", fbi.requiredArgumentCount, " to ", fbi.requiredArgumentCount + fbi.optionalArgumentCount, " items");
     trace("");
 
     ExtractResult result;
 
     // Search for function call statement: function name + opening parenthehis
-    immutable auto functionOpenParIndex = detectFunctionArgumentsStartIndex(functionName, sourceLine, startIndex);
+    immutable auto functionOpenParIndex = detectFunctionArgumentsStartIndex(fbi.functionName, sourceLine, startIndex);
 
     // Determine where function ends, i.e. final closing parenthesis, using stack collection
     immutable auto functionCloseParIndex = detectFunctionArgumentsEndIndex(sourceLine, functionOpenParIndex);
@@ -746,24 +743,20 @@ string enquoteString(const string str)
  *      targetArgumentIndeces = one-based argument indeces to enquote
  *      li                    = reference to current line information structure to modify
  */
-void enquoteAmbiguousFunctionArguments(const string functionName,
-    const long requiredArgumentCount, const long optionalArgumentCount,
-    const long[] targetArgumentIndeces, ref LineInfo li)
+void enquoteAmbiguousFunctionArguments(const FunctionBaseInfo fbi, const long[] targetArgumentIndeces, ref LineInfo li)
 {
     long functionCallIndex = 0;
     while (functionCallIndex < li.line.length)
     {
-        auto functionCallPos = findFunctionCall(li.line, functionName, functionCallIndex);
+        auto functionCallPos = findFunctionCall(li.line, fbi.functionName, functionCallIndex);
         if (!functionCallPos)
             break;
 
         functionCallIndex = functionCallPos.indexOpen;
 
-        auto replaceArguments = extractFunctionArguments(functionName,
-            requiredArgumentCount, optionalArgumentCount,
-            functionCallIndex, li.line, __LINE__);
-        assert(replaceArguments.arguments.length >= requiredArgumentCount);
-        assert(replaceArguments.arguments.length <= requiredArgumentCount + optionalArgumentCount);
+        auto replaceArguments = extractFunctionArguments(fbi, functionCallIndex, li.line, __LINE__);
+        assert(replaceArguments.arguments.length >= fbi.requiredArgumentCount);
+        assert(replaceArguments.arguments.length <= fbi.requiredArgumentCount + fbi.optionalArgumentCount);
         assert(replaceArguments.endIndex > functionCallIndex);
 
         // NOTE: function argument indeces are one-based, not zero-ones
@@ -788,7 +781,7 @@ void enquoteAmbiguousFunctionArguments(const string functionName,
             string lineAfter = li.line[replaceArguments.endIndex .. $];
             string finalLine =
                 lineBefore
-                ~ functionName
+                ~ fbi.functionName
                 ~ STR_OPENING_PARENTHESIS
                 ~ replaceArguments.arguments.join(STR_COMMA ~ STR_WS)
                 ~ STR_CLOSING_PARENTHESIS
@@ -814,30 +807,30 @@ void fixAmbiguousFunctionCalls(ref LineInfo li)
     // Test functions
 
     // Enquote `exists` test function second argument
-    enquoteAmbiguousFunctionArguments(EXISTS_FUNCTION_STR, 1, 0, [1], li);
+    enquoteAmbiguousFunctionArguments(FunctionBaseInfo(EXISTS_FUNCTION_STR, 1, 0), [1], li);
 
     // Enquote `contains` test function second argument
-    enquoteAmbiguousFunctionArguments(CONTAINS_FUNCTION_STR, 2, 1, [2, 3], li);
+    enquoteAmbiguousFunctionArguments(FunctionBaseInfo(CONTAINS_FUNCTION_STR, 2, 1), [2, 3], li);
 
     // Enquote `qtConfig` test function first argument
-    enquoteAmbiguousFunctionArguments(QTCONFIG_FUNCTION_STR, 1, 0, [1], li);
+    enquoteAmbiguousFunctionArguments(FunctionBaseInfo(QTCONFIG_FUNCTION_STR, 1, 0), [1], li);
 
     // Enquote `error` test function first argument
-    enquoteAmbiguousFunctionArguments(ERROR_FUNCTION_STR, 0, 1, [1], li);
+    enquoteAmbiguousFunctionArguments(FunctionBaseInfo(ERROR_FUNCTION_STR, 0, 1), [1], li);
 
     // Replace functions
 
     // Enquote `find` replace function second and third arguments
-    enquoteAmbiguousFunctionArguments(FIND_FUNCTION_STR, 2, 0, [2], li);
+    enquoteAmbiguousFunctionArguments(FunctionBaseInfo(FIND_FUNCTION_STR, 2, 0), [2], li);
 
     // Enquote `re_escape` replace function second and third arguments
-    enquoteAmbiguousFunctionArguments(REESCAPE_FUNCTION_STR, 1, 0, [1], li);
+    enquoteAmbiguousFunctionArguments(FunctionBaseInfo(REESCAPE_FUNCTION_STR, 1, 0), [1], li);
 
     // Enquote `replace` replace function second and third arguments
-    enquoteAmbiguousFunctionArguments(REPLACE_FUNCTION_STR, 3, 0, [2, 3], li);
+    enquoteAmbiguousFunctionArguments(FunctionBaseInfo(REPLACE_FUNCTION_STR, 3, 0), [2, 3], li);
 
     // Enquote `system` replace/test function first argument
-    enquoteAmbiguousFunctionArguments(SYSTEM_FUNCTION_STR, 1, 2, [1], li);
+    enquoteAmbiguousFunctionArguments(FunctionBaseInfo(SYSTEM_FUNCTION_STR, 1, 2), [1], li);
 }
 
 //---------------------------------------------------------------------------------------------------------------------
