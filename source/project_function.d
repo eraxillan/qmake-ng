@@ -201,6 +201,14 @@ shared static this()
         return arguments;
     });
 
+    temp["system_quote"] = ProFunction(FunctionBaseInfo("system_quote", 1, 0),
+                                  FunctionTypeInfo(false, [VariableType.STRING], VariableType.STRING),
+                                  (ref ProExecutionContext context, ref PersistentPropertyStorage persistentStorage, const string[] arguments) {
+        import source.utils.io_utils;
+        string command = arguments[0];
+        return [shellQuote(command)];
+    });
+
     temp["replace"] = ProFunction(FunctionBaseInfo("replace", 3, 0),
                                   FunctionTypeInfo(false, [VariableType.STRING, VariableType.STRING, VariableType.STRING], VariableType.STRING_LIST),
                                   (ref ProExecutionContext context, ref PersistentPropertyStorage persistentStorage, const string[] arguments) {
@@ -548,7 +556,7 @@ shared static this()
 
         assert(arguments.length >= 1);
         if (arguments.length > 1)
-            error("Optional 'include' test functions arguments are not implemented yet");
+            error("Optional 'load' test functions arguments are not implemented yet");
         string projectFileName = arguments[0];
 
         string[] featureDirectoryRaw = context.getVariableRawValue("QMAKESPEC_FEATURES");
@@ -564,8 +572,8 @@ shared static this()
         {
             error("feature file '", projectFileName,
                 "' was not found or not a file, so return FALSE");
+            // FIXME: FileNotFoundException
             throw new NotImplementedException("file not found: " ~ "`" ~ projectFileName ~ "`");
-            //return false;
         }
 
         auto pro = new Project(context, persistentStorage);
