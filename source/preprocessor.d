@@ -161,6 +161,12 @@ do
     return TextSearchResult(indexOpen, indexClose, true);
 }
 
+bool isInsideQuotes(const string strLine, const long index, out TextSearchResult result)
+{
+    result = isInsideQuotes(strLine, index);
+    return result.success;
+}
+
 string cutInlineComment(const string sourceLine)
 {
     bool commentFound;
@@ -513,18 +519,27 @@ bool hasSinglelineScope(const string sourceLine, out long colonIndex)
     auto lastEqIndex = sourceLine.lastIndexOf(STR_EQUALS);
 
     long i;
+    TextSearchResult tsr;
     if (lastEqIndex == INVALID_INDEX)
     {
         i = sourceLine.length - 1;
     }
-    else if (isInsideQuotes(sourceLine, lastEqIndex).success)
+    else if (isInsideQuotes(sourceLine, lastEqIndex, tsr))
     {
         trace("assignment operator detected inside quotes on position ", lastEqIndex);
-        while ((lastEqIndex != INVALID_INDEX) && isInsideQuotes(sourceLine, lastEqIndex).success)
+        while ((lastEqIndex != INVALID_INDEX) && isInsideQuotes(sourceLine, lastEqIndex, tsr))
         {
             lastEqIndex = sourceLine.lastIndexOf(STR_EQUALS, lastEqIndex);
         }
-        trace("new assignment operator index on position ", lastEqIndex);
+        
+        if (lastEqIndex == INVALID_INDEX)
+        {
+            lastEqIndex = sourceLine.length;
+            trace("only enquoted assignment operators found, move position to end");
+        }
+        else
+            trace("new assignment operator index on position ", lastEqIndex);
+        
         i = lastEqIndex - 1;
     }
     else
