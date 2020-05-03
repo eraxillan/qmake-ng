@@ -13,7 +13,7 @@ This module was automatically generated from the following grammar:
                      | TestFunctionCall
                      | BooleanExpression
                      | Comment
-                     | EmptyStatement
+                     | :EmptyStatement
 
     # No input
     EmptyStatement <- eps :LineTerminator*
@@ -146,8 +146,7 @@ This module was automatically generated from the following grammar:
     Scope             <- BooleanExpression ScopeMainBranch ScopeElseIfBranch* ScopeElseBranch?
     ScopeMainBranch   <- Block
     ScopeElseIfBranch <- "else@" :space* BooleanExpression Block
-    ScopeElseBranch   <- / "else@" :space* Statement
-                         / "else"  MultiLineBlock
+    ScopeElseBranch   <- "else" Block
 
     # Compound boolean expression
     # E.g.:
@@ -199,7 +198,7 @@ This module was automatically generated from the following grammar:
 
     # eval(string)
     EvalTestFunctionCall <- "eval" OPEN_PAR_WS EvalArg CLOSE_PAR_WS
-    EvalArg <- FunctionDeclaration / List(:space+, :space) / FunctionArgument(FunctionArgumentStopRule)
+    EvalArg <- FunctionDeclaration / FunctionArgumentList
 
     # cache(variablename, [set|add|sub] [transient] [super|stash], [source variablename])
     #
@@ -231,7 +230,8 @@ This module was automatically generated from the following grammar:
     # error() / error("message")
     # NOTE: multiline string must be merged in interpreter
     ErrorFunctionCall <- "error" OPEN_PAR_WS ErrorMessage? CLOSE_PAR_WS
-    ErrorMessage      <- List(:space+, :space) / FunctionArgument(FunctionArgumentStopRule)
+    #ErrorMessage      <- List(:space+, :space) / FunctionArgument(FunctionArgumentStopRule)
+    ErrorMessage <- FunctionArgumentList
 
     # requires(condition)
     RequiresFunctionCall <- "requires" OPEN_PAR_WS BooleanExpression CLOSE_PAR_WS
@@ -530,7 +530,7 @@ struct GenericQMakeProject(TParseTree)
     {
         if(__ctfe)
         {
-            return         pegged.peg.defined!(pegged.peg.longest_match!(FunctionDeclaration, Assignment, ForStatement, Scope, Block, ReplaceFunctionCall, TestFunctionCall, BooleanExpression, Comment, EmptyStatement), "QMakeProject.Statement")(p);
+            return         pegged.peg.defined!(pegged.peg.longest_match!(FunctionDeclaration, Assignment, ForStatement, Scope, Block, ReplaceFunctionCall, TestFunctionCall, BooleanExpression, Comment, pegged.peg.discard!(EmptyStatement)), "QMakeProject.Statement")(p);
         }
         else
         {
@@ -538,7 +538,7 @@ struct GenericQMakeProject(TParseTree)
                 return *m;
             else
             {
-                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.longest_match!(FunctionDeclaration, Assignment, ForStatement, Scope, Block, ReplaceFunctionCall, TestFunctionCall, BooleanExpression, Comment, EmptyStatement), "QMakeProject.Statement"), "Statement")(p);
+                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.longest_match!(FunctionDeclaration, Assignment, ForStatement, Scope, Block, ReplaceFunctionCall, TestFunctionCall, BooleanExpression, Comment, pegged.peg.discard!(EmptyStatement)), "QMakeProject.Statement"), "Statement")(p);
                 memo[tuple(`Statement`, p.end)] = result;
                 return result;
             }
@@ -549,12 +549,12 @@ struct GenericQMakeProject(TParseTree)
     {
         if(__ctfe)
         {
-            return         pegged.peg.defined!(pegged.peg.longest_match!(FunctionDeclaration, Assignment, ForStatement, Scope, Block, ReplaceFunctionCall, TestFunctionCall, BooleanExpression, Comment, EmptyStatement), "QMakeProject.Statement")(TParseTree("", false,[], s));
+            return         pegged.peg.defined!(pegged.peg.longest_match!(FunctionDeclaration, Assignment, ForStatement, Scope, Block, ReplaceFunctionCall, TestFunctionCall, BooleanExpression, Comment, pegged.peg.discard!(EmptyStatement)), "QMakeProject.Statement")(TParseTree("", false,[], s));
         }
         else
         {
             forgetMemo();
-            return hooked!(pegged.peg.defined!(pegged.peg.longest_match!(FunctionDeclaration, Assignment, ForStatement, Scope, Block, ReplaceFunctionCall, TestFunctionCall, BooleanExpression, Comment, EmptyStatement), "QMakeProject.Statement"), "Statement")(TParseTree("", false,[], s));
+            return hooked!(pegged.peg.defined!(pegged.peg.longest_match!(FunctionDeclaration, Assignment, ForStatement, Scope, Block, ReplaceFunctionCall, TestFunctionCall, BooleanExpression, Comment, pegged.peg.discard!(EmptyStatement)), "QMakeProject.Statement"), "Statement")(TParseTree("", false,[], s));
         }
     }
     static string Statement(GetName g)
@@ -2702,7 +2702,7 @@ struct GenericQMakeProject(TParseTree)
     {
         if(__ctfe)
         {
-            return         pegged.peg.defined!(pegged.peg.or!(pegged.peg.and!(pegged.peg.literal!("else@"), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), Statement), pegged.peg.and!(pegged.peg.literal!("else"), MultiLineBlock)), "QMakeProject.ScopeElseBranch")(p);
+            return         pegged.peg.defined!(pegged.peg.and!(pegged.peg.literal!("else"), Block), "QMakeProject.ScopeElseBranch")(p);
         }
         else
         {
@@ -2710,7 +2710,7 @@ struct GenericQMakeProject(TParseTree)
                 return *m;
             else
             {
-                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.or!(pegged.peg.and!(pegged.peg.literal!("else@"), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), Statement), pegged.peg.and!(pegged.peg.literal!("else"), MultiLineBlock)), "QMakeProject.ScopeElseBranch"), "ScopeElseBranch")(p);
+                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.and!(pegged.peg.literal!("else"), Block), "QMakeProject.ScopeElseBranch"), "ScopeElseBranch")(p);
                 memo[tuple(`ScopeElseBranch`, p.end)] = result;
                 return result;
             }
@@ -2721,12 +2721,12 @@ struct GenericQMakeProject(TParseTree)
     {
         if(__ctfe)
         {
-            return         pegged.peg.defined!(pegged.peg.or!(pegged.peg.and!(pegged.peg.literal!("else@"), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), Statement), pegged.peg.and!(pegged.peg.literal!("else"), MultiLineBlock)), "QMakeProject.ScopeElseBranch")(TParseTree("", false,[], s));
+            return         pegged.peg.defined!(pegged.peg.and!(pegged.peg.literal!("else"), Block), "QMakeProject.ScopeElseBranch")(TParseTree("", false,[], s));
         }
         else
         {
             forgetMemo();
-            return hooked!(pegged.peg.defined!(pegged.peg.or!(pegged.peg.and!(pegged.peg.literal!("else@"), pegged.peg.discard!(pegged.peg.zeroOrMore!(space)), Statement), pegged.peg.and!(pegged.peg.literal!("else"), MultiLineBlock)), "QMakeProject.ScopeElseBranch"), "ScopeElseBranch")(TParseTree("", false,[], s));
+            return hooked!(pegged.peg.defined!(pegged.peg.and!(pegged.peg.literal!("else"), Block), "QMakeProject.ScopeElseBranch"), "ScopeElseBranch")(TParseTree("", false,[], s));
         }
     }
     static string ScopeElseBranch(GetName g)
@@ -3494,7 +3494,7 @@ struct GenericQMakeProject(TParseTree)
     {
         if(__ctfe)
         {
-            return         pegged.peg.defined!(pegged.peg.or!(FunctionDeclaration, List!(pegged.peg.discard!(pegged.peg.oneOrMore!(space)), pegged.peg.discard!(space)), FunctionArgument!(FunctionArgumentStopRule)), "QMakeProject.EvalArg")(p);
+            return         pegged.peg.defined!(pegged.peg.or!(FunctionDeclaration, FunctionArgumentList), "QMakeProject.EvalArg")(p);
         }
         else
         {
@@ -3502,7 +3502,7 @@ struct GenericQMakeProject(TParseTree)
                 return *m;
             else
             {
-                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.or!(FunctionDeclaration, List!(pegged.peg.discard!(pegged.peg.oneOrMore!(space)), pegged.peg.discard!(space)), FunctionArgument!(FunctionArgumentStopRule)), "QMakeProject.EvalArg"), "EvalArg")(p);
+                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.or!(FunctionDeclaration, FunctionArgumentList), "QMakeProject.EvalArg"), "EvalArg")(p);
                 memo[tuple(`EvalArg`, p.end)] = result;
                 return result;
             }
@@ -3513,12 +3513,12 @@ struct GenericQMakeProject(TParseTree)
     {
         if(__ctfe)
         {
-            return         pegged.peg.defined!(pegged.peg.or!(FunctionDeclaration, List!(pegged.peg.discard!(pegged.peg.oneOrMore!(space)), pegged.peg.discard!(space)), FunctionArgument!(FunctionArgumentStopRule)), "QMakeProject.EvalArg")(TParseTree("", false,[], s));
+            return         pegged.peg.defined!(pegged.peg.or!(FunctionDeclaration, FunctionArgumentList), "QMakeProject.EvalArg")(TParseTree("", false,[], s));
         }
         else
         {
             forgetMemo();
-            return hooked!(pegged.peg.defined!(pegged.peg.or!(FunctionDeclaration, List!(pegged.peg.discard!(pegged.peg.oneOrMore!(space)), pegged.peg.discard!(space)), FunctionArgument!(FunctionArgumentStopRule)), "QMakeProject.EvalArg"), "EvalArg")(TParseTree("", false,[], s));
+            return hooked!(pegged.peg.defined!(pegged.peg.or!(FunctionDeclaration, FunctionArgumentList), "QMakeProject.EvalArg"), "EvalArg")(TParseTree("", false,[], s));
         }
     }
     static string EvalArg(GetName g)
@@ -3854,7 +3854,7 @@ struct GenericQMakeProject(TParseTree)
     {
         if(__ctfe)
         {
-            return         pegged.peg.defined!(pegged.peg.or!(List!(pegged.peg.discard!(pegged.peg.oneOrMore!(space)), pegged.peg.discard!(space)), FunctionArgument!(FunctionArgumentStopRule)), "QMakeProject.ErrorMessage")(p);
+            return         pegged.peg.defined!(FunctionArgumentList, "QMakeProject.ErrorMessage")(p);
         }
         else
         {
@@ -3862,7 +3862,7 @@ struct GenericQMakeProject(TParseTree)
                 return *m;
             else
             {
-                TParseTree result = hooked!(pegged.peg.defined!(pegged.peg.or!(List!(pegged.peg.discard!(pegged.peg.oneOrMore!(space)), pegged.peg.discard!(space)), FunctionArgument!(FunctionArgumentStopRule)), "QMakeProject.ErrorMessage"), "ErrorMessage")(p);
+                TParseTree result = hooked!(pegged.peg.defined!(FunctionArgumentList, "QMakeProject.ErrorMessage"), "ErrorMessage")(p);
                 memo[tuple(`ErrorMessage`, p.end)] = result;
                 return result;
             }
@@ -3873,12 +3873,12 @@ struct GenericQMakeProject(TParseTree)
     {
         if(__ctfe)
         {
-            return         pegged.peg.defined!(pegged.peg.or!(List!(pegged.peg.discard!(pegged.peg.oneOrMore!(space)), pegged.peg.discard!(space)), FunctionArgument!(FunctionArgumentStopRule)), "QMakeProject.ErrorMessage")(TParseTree("", false,[], s));
+            return         pegged.peg.defined!(FunctionArgumentList, "QMakeProject.ErrorMessage")(TParseTree("", false,[], s));
         }
         else
         {
             forgetMemo();
-            return hooked!(pegged.peg.defined!(pegged.peg.or!(List!(pegged.peg.discard!(pegged.peg.oneOrMore!(space)), pegged.peg.discard!(space)), FunctionArgument!(FunctionArgumentStopRule)), "QMakeProject.ErrorMessage"), "ErrorMessage")(TParseTree("", false,[], s));
+            return hooked!(pegged.peg.defined!(FunctionArgumentList, "QMakeProject.ErrorMessage"), "ErrorMessage")(TParseTree("", false,[], s));
         }
     }
     static string ErrorMessage(GetName g)

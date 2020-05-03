@@ -181,8 +181,7 @@ enum QMakeProjectScope =
     Scope             <- BooleanExpression ScopeMainBranch ScopeElseIfBranch* ScopeElseBranch?
     ScopeMainBranch   <- Block
     ScopeElseIfBranch <- "else@" :space* BooleanExpression Block
-    ScopeElseBranch   <- / "else@" :space* Statement
-                         / "else"  MultiLineBlock
+    ScopeElseBranch   <- "else" Block
 `;
 
 enum QMakeProjectBooleanExpression =
@@ -246,7 +245,7 @@ enum QMakeProjectBuiltinFunctions =
 
     # eval(string)
     EvalTestFunctionCall <- "eval" OPEN_PAR_WS EvalArg CLOSE_PAR_WS
-    EvalArg <- FunctionDeclaration / List(:space+, :space) / FunctionArgument(FunctionArgumentStopRule)
+    EvalArg <- FunctionDeclaration / FunctionArgumentList
 
     # cache(variablename, [set|add|sub] [transient] [super|stash], [source variablename])
     #
@@ -278,7 +277,7 @@ enum QMakeProjectBuiltinFunctions =
     # error() / error("message")
     # NOTE: multiline string must be merged in interpreter
     ErrorFunctionCall <- "error" OPEN_PAR_WS ErrorMessage? CLOSE_PAR_WS
-    ErrorMessage      <- List(:space+, :space) / FunctionArgument(FunctionArgumentStopRule)
+    ErrorMessage <- FunctionArgumentList
 
     # requires(condition)
     RequiresFunctionCall <- "requires" OPEN_PAR_WS BooleanExpression CLOSE_PAR_WS
@@ -383,7 +382,7 @@ public enum QMakeGrammar =
                      | TestFunctionCall
                      | BooleanExpression
                      | Comment
-                     | EmptyStatement
+                     | :EmptyStatement
 `
     ~ QMakeProjectEmptyStatement
     ~ QMakeProjectComment
