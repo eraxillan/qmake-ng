@@ -230,7 +230,6 @@ This module was automatically generated from the following grammar:
     # error() / error("message")
     # NOTE: multiline string must be merged in interpreter
     ErrorFunctionCall <- "error" OPEN_PAR_WS ErrorMessage? CLOSE_PAR_WS
-    #ErrorMessage      <- List(:space+, :space) / FunctionArgument(FunctionArgumentStopRule)
     ErrorMessage <- FunctionArgumentList
 
     # requires(condition)
