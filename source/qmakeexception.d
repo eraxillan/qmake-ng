@@ -22,6 +22,7 @@
 
 module source.qmakeexception;
 
+static import std.conv;
 
 public:
 
@@ -31,11 +32,11 @@ public:
 class NotSupportedException : Exception
 {
     /**
-     * Initialize with a message and an error code.
+     * Initialize with a message.
      */
-    this(string message) @trusted
+    this(string message, int lineNo = __LINE__, string functionName = __FUNCTION__) @trusted
     {
-        super(message);
+        super(functionName ~ ":" ~ std.conv.to!string(lineNo) ~ ": " ~ message);
     }
 
     /// Convenience functions that throw an `NotSupportedException`.
@@ -57,11 +58,11 @@ class NotSupportedException : Exception
 class NotImplementedException : Exception
 {
     /**
-     * Initialize with a message and an error code.
+     * Initialize with a message.
      */
-    this(string message) @trusted
+    this(string message, int lineNo = __LINE__, string functionName = __FUNCTION__) @trusted
     {
-        super(message);
+        super(functionName ~ ":" ~ std.conv.to!string(lineNo) ~ ": " ~ message);
     }
 
     /// Convenience functions that throw an `NotImplementedException`.
@@ -83,11 +84,11 @@ class NotImplementedException : Exception
 class EvalLogicException : Exception
 {
     /**
-     * Initialize with a message and an error code.
+     * Initialize with a message.
      */
-    this(string message) @trusted
+    this(string message, int lineNo = __LINE__, string functionName = __FUNCTION__) @trusted
     {
-        super(message);
+        super(functionName ~ ":" ~ std.conv.to!string(lineNo) ~ ": " ~ message);
     }
 
     /// Convenience functions that throw an `EvalLogicException`.
