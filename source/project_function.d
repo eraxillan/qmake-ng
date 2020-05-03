@@ -644,7 +644,15 @@ shared static this()
         trace("Variable name: ", variableName);
         trace("Variable value: ", variableRawValue);
         trace("Value to search for: ", value);
-        return (variableRawValue.countUntil(value) > 0) ? ["true"] : ["false"];
+        
+        // 1) value is regular string
+        bool rawResult = (variableRawValue.countUntil(value) >= 0);
+        if (rawResult) return ["true"];
+
+        // 2) value is regex
+        auto re = regex(value);
+        if (variableRawValue.length > 1) assert(0);
+        return !matchFirst(variableRawValue[0], re).empty ? ["true"] : ["false"];
     });
 
     temp["exists"] = ProFunction(FunctionBaseInfo("exists", 1, 0), FunctionTypeInfo(false, [VariableType.STRING], VariableType.BOOLEAN),
