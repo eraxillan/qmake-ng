@@ -50,9 +50,8 @@ auto getDateTimeString()
     auto unixTime = time(null);
     auto tmVar = localtime(&unixTime);
     char[256] buffer;
-    auto len = strftime(buffer.ptr, 80, toStringz("%a %b. %d %T %Y"), tmVar);
+    auto len = strftime(buffer.ptr, 80, toStringz("%a %b %d %T %Y"), tmVar);
     auto prettyStr = buffer[0 .. len].idup;
-    prettyStr = toLower(prettyStr);
     return prettyStr;
 }
 
