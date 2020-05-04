@@ -70,7 +70,7 @@ struct PlatformData
     void initialize(string[] argv, const string qtConfFilePath)
     {
         import std.socket : Socket;
-        import core.cpuid : coresPerCPU;
+        import core.cpuid : threadsPerCPU;
 
         directorySeparator = std.path.dirSeparator;
         directoryListSeparator = std.path.pathSeparator;
@@ -80,7 +80,7 @@ struct PlatformData
         applicationArguments = argv;
         this.qtConfFilePath = qtConfFilePath;
 
-        hostCpuCount = to!string(coresPerCPU());
+        hostCpuCount = to!string(threadsPerCPU());
         version (Windows)
         {
             hostOs = "Windows";
@@ -123,7 +123,7 @@ struct PlatformData
             hostVersion = getProcessOutput("uname -r"); // e.g. "17.7.0"
             hostVersionString = getProcessOutput("uname -v"); // e.g. "Darwin Kernel Version 17.7.0: Sun Dec  1 19:19:56 PST 2019; root:xnu-4570.71.63~1/RELEASE_X86_64"
             hostArch = getProcessOutput("uname -m"); // e.g. "x86_64"
-            targetArch = hostArch;
+            targetArch = "";
         }
         else version (linux)
         {
@@ -163,8 +163,6 @@ static void loadQmakeDefaults(ref ProExecutionContext context, string[] argv, st
     context.assignVariable("QMAKE_HOST.version_string", [pd.hostVersionString], VariableType.STRING);
     context.assignVariable("QMAKE_HOST.arch", [pd.hostArch], VariableType.STRING);
     context.assignVariable("QMAKE_TARGET.arch", [pd.targetArch], VariableType.STRING);
-
-    assert(context.getVariableRawValue("DIR_SEPARATOR")[0] == "/");
 }
 
 static bool loadQmakeFeature(ref ProExecutionContext context, ref PersistentPropertyStorage persistentStorage,
