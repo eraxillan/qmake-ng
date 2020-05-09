@@ -218,7 +218,7 @@ private:
                      | TestFunctionCall
                      | BooleanExpression
                      | Comment
-                     | EmptyStatement
+                     | :EmptyStatement
         */
         switch (statementNode.name)
         {
@@ -273,11 +273,6 @@ private:
                 trace("Comment was ignored");
                 break;
             }
-            case "QMakeProject.EmptyStatement":
-            {
-                trace("Empty statement was ignored");
-                break;
-            }
             default:
             {
                 trace(statementNode);
@@ -310,11 +305,11 @@ private:
                 trace("Declare user-defined replace function ", "`", name, "`");
 
                 auto functionBlock = concreteDeclNode.children[3];
-                const(string[]) replaceAction(ref ProExecutionContext /*context*/, ref PersistentPropertyStorage persistentStorage, const string[] arguments)
+                const(string[]) replaceAction(ref ProExecutionContext context, ref PersistentPropertyStorage persistentStorage, const string[] arguments)
                 {
                     trace("Invoking user-defined replace function ", "`", name, "`");
 
-                    m_contextStack.push(new ProExecutionContext());
+                    m_contextStack.push(context);
 
                     // Declare function arguments like $${1} etc.
                     for (int i = 0; i < arguments.length; i++)
@@ -328,12 +323,7 @@ private:
                     assert(functionBlock.children.length == 1);
 
                     auto blockNode = functionBlock.children[0];
-                    if (blockNode.name == "QMakeProject.SingleLineBlock")
-                        evalStatementNode(blockNode.children[0].children[0]);
-                    else if (blockNode.name == "QMakeProject.MultiLineBlock")
-                        evalMultilineBlockNode(blockNode);
-                    else
-                        throw new Exception("Unknown code block type");
+                    evalBlock(functionBlock);
                     
                     //
                     // FIXME: merge all global already defined variables from internal function context
@@ -356,13 +346,13 @@ private:
                 trace("Declare user-defined test function ", "`", name, "`");
 
                 auto functionBlock = concreteDeclNode.children[3];
-                const(string[]) testAction(ref ProExecutionContext /*context*/, ref PersistentPropertyStorage persistentStorage, const string[] arguments)
+                const(string[]) testAction(ref ProExecutionContext context, ref PersistentPropertyStorage persistentStorage, const string[] arguments)
                 {
                     trace("Invoking user-defined test function ", "`", name, "`");
 
                     const(string[]) result = ["true"];
 
-                    m_contextStack.push(new ProExecutionContext());
+                    m_contextStack.push(context);
 
                     // Declare function arguments like $${1} etc.
                     for (int i = 0; i < arguments.length; i++)
@@ -382,12 +372,8 @@ private:
                     assert(functionBlock.children.length == 1);
 
                     auto blockNode = functionBlock.children[0];
-                    if (blockNode.name == "QMakeProject.SingleLineBlock")
-                        evalStatementNode(blockNode.children[0].children[0]);
-                    else if (blockNode.name == "QMakeProject.MultiLineBlock")
-                        evalMultilineBlockNode(blockNode);
-                    else
-                        throw new Exception("Unknown code block type");
+                    evalBlock(functionBlock);
+
                     
                     //
                     // FIXME: merge all global variables from internal function context
@@ -525,7 +511,7 @@ private:
         assert(bodyNode.children.length == 1);
 
         /*immutable*/ auto blockNode = bodyNode.children[0];
-        if (blockNode.name == "QMakeProject.SingleLineBlock")
+        if ((blockNode.name == "QMakeProject.SingleLineBlock") || (blockNode.name == "QMakeProject.Statement"))
             // FIXME: add checks for children count
             evalStatementNode(blockNode.children[0].children[0]);
         else if (blockNode.name == "QMakeProject.MultiLineBlock")
@@ -542,16 +528,18 @@ private:
         trace("{");
         for (int i = 0; i < multilineBlockNode.children.length; i++)
         {
+            auto blockStatementNode = multilineBlockNode.children[i].children[0];
+
             if (m_contextStack.top().hasFlowControlStatement())
             {
                 trace("flow control statement ", m_contextStack.top().getFlowControlStatement(), " found: stop eval block");
                 break;
             }
 
-            auto blockStatementNode = multilineBlockNode.children[i];
-            trace("Eval statement [", i, "] of type ", blockStatementNode.children[0].name);
-
-            evalStatementNode(blockStatementNode.children[0]);
+            trace("Eval statement [", i, "] of type ", blockStatementNode.name);
+            trace("{");
+            evalStatementNode(blockStatementNode);
+            trace("}");
         }
         trace("}");
     }
@@ -799,19 +787,8 @@ private:
                     trace("Scope main and all else-if conditions '", scopeConditionNode.matches.join(" "),
                         "' evaluated to FALSE, select else branch code path");
 
-                    auto bodyNode = statementNode.children[i].children[0];
-                    if (bodyNode.name == "QMakeProject.Statement")
-                    {
-                        evalStatementNode(bodyNode.children[0]);
-                    }
-                    else if (bodyNode.name == "QMakeProject.MultiLineBlock")
-                    {
-                        evalMultilineBlockNode(bodyNode);
-                    }
-                    else
-                    {
-                        throw new Exception("Invalid node type in else-if branch");
-                    }
+                    auto blockNode = statementNode.children[i].children[0];
+                    evalBlock(blockNode);
                     break;
                 default:
                     throw new Exception("Invalid scope node type");
