@@ -202,7 +202,7 @@ static bool loadQmakeSpec(ref ProExecutionContext context, ref PersistentPropert
     // 1) Eval pre-feature
     if (!loadQmakeFeature(context, persistentStorage, qt, QMAKE_SPEC_PRE_FILE))
     {
-        throw new Exception("Spec pre-feature eval failed");
+        throw new EvalFailedException("mkspec spec_pre feaure eval failed");
     }
 
 	trace("\n\nqmake built-in variable values:");
@@ -233,8 +233,7 @@ static bool loadQmakeSpec(ref ProExecutionContext context, ref PersistentPropert
     auto mkspecProject = new Project(context, persistentStorage);
     if (!mkspecProject.eval(mkspecFilePath))
     {
-        throw new Exception("spec parse failed");
-        //return false;
+        throw new EvalFailedException("mkspec eval failed");
     }
 
     info("\n===============================================================================================");
@@ -244,8 +243,7 @@ static bool loadQmakeSpec(ref ProExecutionContext context, ref PersistentPropert
     // 3) Eval post-feature
     if (!loadQmakeFeature(context, persistentStorage, qt, QMAKE_SPEC_POST_FILE))
     {
-        throw new Exception("Spec post-feature eval failed");
-        //return false;
+        throw new EvalFailedException("mkspec spec_post feature eval failed");
     }
     assert(context.getVariableRawValue("DIR_SEPARATOR")[0] == "/");
 
@@ -482,9 +480,8 @@ int main(string[] argv)
             // Eval default_pre
             if (!loadQmakeFeature(context, persistentStorage, qt, QMAKE_PRE_FILE))
             {
-                throw new Exception("Pre-feature eval failed");
+                throw new EvalFailedException("default_pre feature eval failed");
             }
-            //assert(context.getVariableRawValue("DIR_SEPARATOR")[0] == "/");
 
             NgLogger.get().traceProjectLoadBegin(fn);
 
@@ -505,26 +502,15 @@ int main(string[] argv)
                 // No need to create makefile
                 continue;
             }
+
+            // Eval default_post
+            if (!loadQmakeFeature(context, persistentStorage, qt, QMAKE_POST_FILE))
+            {
+                throw new EvalFailedException("default_post feature eval failed");
+            }
         }
 
-        /+
-        bool success = true;
-        MetaMakefileGenerator *mkfile = MetaMakefileGenerator::createMetaGenerator(&project, QString(), false, &success);
-        if (!success)
-            exit_val = 3;
-
-        if (mkfile && !mkfile->write())
-        {
-            if(Option::qmake_mode == Option::QMAKE_GENERATE_PROJECT)
-                fprintf(stderr, "Unable to generate project file.\n");
-            else
-                fprintf(stderr, "Unable to generate makefile for: %s\n",
-                        QDir::toNativeSeparators(*projectFileName).toLatin1().constData());
-            exit_val = 5;
-        }
-        delete mkfile;
-        mkfile = NULL;
-        +/
+        // FIXME: generate ninja build scripts
     }
 
     //qmakeClearCaches();

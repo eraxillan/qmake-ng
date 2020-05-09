@@ -27,32 +27,6 @@ static import std.conv;
 public:
 
 /*********************
- * Thrown if we reach code that is not supported.
- */
-class NotSupportedException : Exception
-{
-    /**
-     * Initialize with a message.
-     */
-    this(string message, int lineNo = __LINE__, string functionName = __FUNCTION__) @trusted
-    {
-        super(functionName ~ ":" ~ std.conv.to!string(lineNo) ~ ": " ~ message);
-    }
-
-    /// Convenience functions that throw an `NotSupportedException`.
-    static void opCall(string msg)
-    {
-        throw new NotSupportedException(msg);
-    }
-
-    /// ditto
-    static void opCall()
-    {
-        throw new NotSupportedException(null);
-    }
-}
-
-/*********************
  * Thrown if we reach code that is not implemented yet.
  */
 class NotImplementedException : Exception
@@ -78,28 +52,110 @@ class NotImplementedException : Exception
     }
 }
 
-/*********************
- * Thrown if evaluation logic errors happen.
- */
-class EvalLogicException : Exception
+class EvalFailedException : Exception
 {
-    /**
-     * Initialize with a message.
-     */
     this(string message, int lineNo = __LINE__, string functionName = __FUNCTION__) @trusted
     {
         super(functionName ~ ":" ~ std.conv.to!string(lineNo) ~ ": " ~ message);
     }
 
-    /// Convenience functions that throw an `EvalLogicException`.
     static void opCall(string msg)
     {
-        throw new EvalLogicException(msg);
+        throw new EvalFailedException(msg);
     }
 
-    /// ditto
     static void opCall()
     {
-        throw new EvalLogicException(null);
+        throw new EvalFailedException(null);
+    }
+}
+
+class EvalLogicalException : Exception
+{
+    this(string message, int lineNo = __LINE__, string functionName = __FUNCTION__) @trusted
+    {
+        super(functionName ~ ":" ~ std.conv.to!string(lineNo) ~ ": " ~ message);
+    }
+
+    static void opCall(string msg)
+    {
+        throw new EvalLogicalException(msg);
+    }
+
+    static void opCall()
+    {
+        throw new EvalLogicalException(null);
+    }
+}
+
+class EvalVariableException : Exception
+{
+    this(string message, int lineNo = __LINE__, string functionName = __FUNCTION__) @trusted
+    {
+        super(functionName ~ ":" ~ std.conv.to!string(lineNo) ~ ": " ~ message);
+    }
+
+    static void opCall(string msg)
+    {
+        throw new EvalVariableException(msg);
+    }
+
+    static void opCall()
+    {
+        throw new EvalVariableException(null);
+    }
+}
+
+class EvalFunctionException : Exception
+{
+    this(string message, int lineNo = __LINE__, string functionName = __FUNCTION__) @trusted
+    {
+        super(functionName ~ ":" ~ std.conv.to!string(lineNo) ~ ": " ~ message);
+    }
+
+    static void opCall(string msg)
+    {
+        throw new EvalFunctionException(msg);
+    }
+
+    static void opCall()
+    {
+        throw new EvalFunctionException(null);
+    }
+}
+
+class CollectionException : Exception
+{
+    this(string message, int lineNo = __LINE__, string functionName = __FUNCTION__) @trusted
+    {
+        super(functionName ~ ":" ~ std.conv.to!string(lineNo) ~ ": " ~ message);
+    }
+
+    static void opCall(string msg)
+    {
+        throw new CollectionException(msg);
+    }
+
+    static void opCall()
+    {
+        throw new CollectionException(null);
+    }
+}
+
+class EscapeSequenceException : Exception
+{
+    this(string message, int lineNo = __LINE__, string functionName = __FUNCTION__) @trusted
+    {
+        super(functionName ~ ":" ~ std.conv.to!string(lineNo) ~ ": " ~ message);
+    }
+
+    static void opCall(string msg)
+    {
+        throw new EscapeSequenceException(msg);
+    }
+
+    static void opCall()
+    {
+        throw new EscapeSequenceException(null);
     }
 }

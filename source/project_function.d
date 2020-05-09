@@ -159,7 +159,7 @@ shared static this()
     temp["first"] = ProFunction(FunctionBaseInfo("first", 1, -1), FunctionTypeInfo(true, [VariableType.STRING_LIST], VariableType.STRING),
                                 (ref ProExecutionContext context, ref PersistentPropertyStorage persistentStorage, const string[] arguments) {
         if (arguments.length < 1)
-            throw new Exception(
+            throw new EvalFunctionException(
                 "Invalid argument count: expected 1, got " ~ to!string(arguments.length));
         return [arguments[0]];
     });
@@ -333,7 +333,7 @@ shared static this()
                 lines = true;
             }
             else
-                throw new NotSupportedException("Invalid system() replace function mode "
+                throw new EvalFunctionException("Invalid system() replace function mode "
                     ~ "`" ~ arguments[1] ~ "`");
         }
 
@@ -452,7 +452,7 @@ shared static this()
                             return returnBoolString(b);
                         }
                     default:
-                        throw new Exception("Unexpected type " ~ type);
+                        throw new EvalFunctionException("Unexpected type " ~ type);
                     }
                 }
                 // return returnBool(m_functionDefs.replaceFunctions.contains(var) || m_functionDefs.testFunctions.contains(var));
@@ -605,7 +605,7 @@ shared static this()
 
                 string[] variableRawValue = context.getVariableRawValue(variableName);
                 if (variableRawValue.length >= 2)
-                    throw new Exception(
+                    throw new EvalFunctionException(
                         "Variable type mismatch: 'equals' test function can work only with string-typed variable");
 
                 string variableValue = variableRawValue[0];
@@ -716,7 +716,7 @@ shared static this()
 
         string variableName = arguments[0];
         if (!context.isVariableDefined(variableName))
-            throw new Exception("Variable '" ~ variableName ~ "' was defined yet");
+            throw new EvalFunctionException("Variable '" ~ variableName ~ "' was defined yet");
 
         // FIXME: implement!
         // Specified variable must be set in parent context (if any)

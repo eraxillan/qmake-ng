@@ -277,7 +277,7 @@ private:
             {
                 trace(statementNode);
                 error("Invalid statement type '" ~ statementNode.name ~ "'");
-                throw new Exception("Invalid statement type '" ~ statementNode.name ~ "'");
+                throw new EvalLogicalException("Invalid statement type '" ~ statementNode.name ~ "'");
             }
         }
     }
@@ -435,7 +435,7 @@ private:
                 assert(result.length == 1);
                 trace("List variable name: ", result[0]);
                 if (!m_contextStack.top().isVariableDefined(result[0]))
-                    throw new Exception("Undefined list variable '" ~ result[0] ~ "', aborting");
+                    throw new EvalLogicalException("Undefined list variable '" ~ result[0] ~ "', aborting");
                 iterableList = m_contextStack.top().getVariableRawValue(result[0]);
                 // NOTE: list can be empty
                 //assert(iterableList.length >= 1);
@@ -448,7 +448,7 @@ private:
             }
             else
             {
-                throw new Exception("Unknown type of for-iterable list");
+                throw new EvalLogicalException("Unknown type of for-iterable list");
             }
 
             auto blockNode = forSubtypeNode.children[5];
@@ -499,7 +499,7 @@ private:
         }
         else
         {
-            throw new Exception("Unknown type of 'for' list");
+            throw new EvalLogicalException("Unknown type of 'for' list");
         }
 
         trace("");
@@ -517,7 +517,7 @@ private:
         else if (blockNode.name == "QMakeProject.MultiLineBlock")
             evalMultilineBlockNode(blockNode);
         else
-            throw new Exception("Unknown code block type");
+            throw new EvalLogicalException("Unknown code block type");
     }
 
     void evalMultilineBlockNode(ref ParseTree multilineBlockNode) /+const+/
@@ -581,7 +581,7 @@ private:
         }
         else
         {
-            throw new NotSupportedException("Unknown assignment type " ~ assignmentTypeNode.name);
+            throw new EvalFunctionException("Unknown assignment type " ~ assignmentTypeNode.name);
         }
 
         trace("Variable name: '" ~ variableName ~ "'");
@@ -738,7 +738,7 @@ private:
             m_contextStack.top().assignVariable(name, value, type);
             break;
         default:
-            throw new Exception("Invalid assignment operator '" ~ operator ~ "'");
+            throw new EvalLogicalException("Invalid assignment operator '" ~ operator ~ "'");
         }
     }
 
@@ -791,7 +791,7 @@ private:
                     evalBlock(blockNode);
                     break;
                 default:
-                    throw new Exception("Invalid scope node type");
+                    throw new EvalLogicalException("Invalid scope node type");
             }
         }
     }
@@ -874,10 +874,10 @@ private:
         {
         case "QMakeProject.ParenthesedBooleanExpression":
             // FIXME: implement
-            throw new Exception("Not implemented");
+            throw new EvalLogicalException("Not implemented");
         case "QMakeProject.IfTestFunctionCall":
             // FIXME: implement
-            throw new Exception("Not implemented");
+            throw new EvalLogicalException("Not implemented");
         case "QMakeProject.BooleanAtom":
             // BooleanAtom <- ReplaceFunctionCall / TestFunctionCall / QualifiedIdentifier / BooleanConst
             auto boolAtomNode = boolExprNode.children[0];
@@ -885,20 +885,20 @@ private:
             {
             case "QMakeProject.ReplaceFunctionCall":
                 // FIXME: implement
-                throw new Exception("Not implemented yet");
+                throw new EvalLogicalException("Not implemented yet");
             case "QMakeProject.TestFunctionCall":
                 return evalTestFunctionNode(boolAtomNode);
             case "QMakeProject.QualifiedIdentifier":
                 return evalBooleanVariableNode(boolAtomNode);
             case "QMakeProject.BooleanConst":
                 // FIXME: implement
-                throw new Exception("Not implemented yet");
+                throw new EvalLogicalException("Not implemented yet");
             default:
-                throw new Exception("Unknown boolean atom type");
+                throw new EvalLogicalException("Unknown boolean atom type");
             }
             //break;
         default:
-            throw new Exception("Unknown boolean meta-expression type");
+            throw new EvalLogicalException("Unknown boolean meta-expression type");
         }
 
        // return false;
@@ -965,12 +965,12 @@ private:
                         result = false;
                         break;
                     default:
-                        throw new EvalLogicException("boolean constant must be true or false, not "
+                        throw new EvalLogicalException("boolean constant must be true or false, not "
                             ~ resultAsRaw.value[0]);
                 }
                 break;
             }
-            default: throw new EvalLogicException("test function must return boolean, not "
+            default: throw new EvalLogicalException("test function must return boolean, not "
                 ~ to!string(resultAsRaw.type));
         }
         return result;
@@ -1039,7 +1039,7 @@ private:
                 if (m_contextStack.top().hasTestFunctionDescription(functionName))
                     functionDescription = m_contextStack.top().getTestFunctionDescription(functionName);
                 else
-                    throw new Exception("Unsupported function '" ~ functionName ~ "'");
+                    throw new EvalLogicalException("Unsupported function '" ~ functionName ~ "'");
                 
                 // Invoke function
                 const(string[]) resultAsList = functionDescription.action(m_contextStack.top(), m_persistentStorage, [variableName, expression]);
@@ -1136,7 +1136,7 @@ private:
             result = 1;
         }
         else
-            throw new EvalLogicException("Unknown function argument type");
+            throw new EvalLogicalException("Unknown function argument type");
         
         return result;
     }
@@ -1194,7 +1194,7 @@ private:
             }
         }
         else
-            throw new EvalLogicException("Unknown function argument type");
+            throw new EvalLogicalException("Unknown function argument type");
         
         return result;
     }
@@ -1227,16 +1227,16 @@ private:
                 if (m_contextStack.top().hasReplaceFunctionDescription(functionName))
                     functionDescription = m_contextStack.top().getReplaceFunctionDescription(functionName);
                 else
-                    throw new Exception("Unsupported replace function '" ~ functionName ~ "'");
+                    throw new EvalLogicalException("Unsupported replace function '" ~ functionName ~ "'");
                 break;
             case ProFunctionType.Test:
                 if (m_contextStack.top().hasTestFunctionDescription(functionName))
                     functionDescription = m_contextStack.top().getTestFunctionDescription(functionName);
                 else
-                    throw new Exception("Unsupported test function '" ~ functionName ~ "'");
+                    throw new EvalLogicalException("Unsupported test function '" ~ functionName ~ "'");
                 break;
             default:
-                throw new Exception("Unsupported function type'" ~ to!string(functionType) ~ "'");
+                throw new EvalLogicalException("Unsupported function type'" ~ to!string(functionType) ~ "'");
         }
         
         auto openParNode = functionCallNode.children[1];
@@ -1255,7 +1255,7 @@ private:
         {
         }
         else
-            throw new EvalLogicException("function argument list or closing parenthehis expected");
+            throw new EvalLogicalException("function argument list or closing parenthehis expected");
 
         trace("Actual function ", "`", functionName, "`", " argument count: ", actualOperandCount);
 
@@ -1546,7 +1546,7 @@ private:
 
                     // Unlike project variable, function argument must be defined earlier
                     if (!m_contextStack.top().isVariableDefined(variableName))
-                        throw new EvalLogicException("Undefined project variable found");
+                        throw new EvalLogicalException("Undefined project variable found");
                     
                     assert(m_contextStack.top().getVariableType(variableName) == VariableType.STRING);
 
@@ -1569,7 +1569,7 @@ private:
                         warning("undefined variable ", "`", variableName, "`");
                         result.type = VariableType.STRING_LIST;
                         result.value = [""];
-                        //throw new EvalLogicException("Undefined project variable found");
+                        //throw new EvalLogicalException("Undefined project variable found");
                     }
                     else
                     {
@@ -1601,7 +1601,7 @@ private:
                     string variableName = expandNode.children[0].matches[0];
                     trace("Makefile variable name: ", variableName);
                     //if (!m_context.isVariableDefined(variableName))
-                    //    throw new EvalLogicException("Undefined project variable found");
+                    //    throw new EvalLogicalException("Undefined project variable found");
                     result.type = VariableType.STRING;
                     result.value = [variableName];
                     break;
@@ -1631,7 +1631,7 @@ private:
                     string propertyName = expandNode.children[0].matches[0];
                     trace("Persistent property name: ", propertyName);
                     if (!m_persistentStorage.hasValue(propertyName))
-                        throw new EvalLogicException("Undefined persistent property found");
+                        throw new EvalLogicalException("Undefined persistent property found");
 
                     // FIXME: investigate whether properties can be lists
                     result.type = VariableType.STRING;
@@ -1679,7 +1679,7 @@ private:
         {
             if (functionDescription.fbi.requiredArgumentCount < 0)
             {
-                throw new Exception(
+                throw new EvalLogicalException(
                         "Invalid function '" ~ functionDescription.fbi.functionName ~ "' argument count description");
             }
 

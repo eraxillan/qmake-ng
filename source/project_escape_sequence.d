@@ -37,6 +37,7 @@ import std.range;
 
 import source.common_const;
 import source.utils.text_utils;
+import source.qmakeexception;
 
 // -------------------------------------------------------------------------------------------------
 
@@ -76,7 +77,7 @@ public:
 				result ~= buf;
 //                result = string.fromCharCode(charCode);
             } catch (ConvException exc) {
-                throw new Exception("invalid hexadecimal character code '" ~ charCodeStr ~ "'");
+                throw new EscapeSequenceException("invalid hexadecimal character code '" ~ charCodeStr ~ "'");
             }
             return result;
         };
@@ -171,7 +172,7 @@ public:
             } while (true);
 
             if (digitCount == 0)
-                throw new Exception("invalid sequence \\x: must be followed with hexadecimal character code");
+                throw new EscapeSequenceException("invalid sequence \\x: must be followed with hexadecimal character code");
 
             return Result(true, digitCount + 2);
         } else if (fourTokens in m_convertMap)
@@ -193,7 +194,7 @@ public:
         }
         else
         {
-            throw new Exception("invalid sequence '" ~ key ~ "'");
+            throw new EscapeSequenceException("invalid sequence '" ~ key ~ "'");
         }
     }
 }

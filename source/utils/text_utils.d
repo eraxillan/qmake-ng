@@ -37,6 +37,7 @@ import std.string;
 import std.range;
 
 import source.common_const;
+import source.qmakeexception;
 // -------------------------------------------------------------------------------------------------
 public:
 
@@ -102,7 +103,7 @@ public:
             return top;
         }
         
-        throw new Exception("trying to pop item from empty stack");
+        throw new CollectionException("trying to pop item from empty stack");
     }
 
     ref DataType top()
@@ -110,9 +111,7 @@ public:
         if (!m_array.empty)
             return m_array[m_array.length - 1];
 
-//        static DataType defaultValue;
-//        return defaultValue;
-        throw new Exception("trying to get top item value from empty stack");
+        throw new CollectionException("trying to get top item value from empty stack");
     }
 }
 

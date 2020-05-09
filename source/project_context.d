@@ -119,7 +119,7 @@ private:
         else if (isUserDefinedVariable(name))
             var = m_userVariables[name];
         else
-            throw new Exception("Undefined variable '" ~ name ~ "'");
+            throw new EvalVariableException("Undefined variable '" ~ name ~ "'");
     }
 
     bool addUserVariableDescription(const string name, const VariableType type = VariableType.STRING_LIST)
@@ -131,7 +131,7 @@ private:
     {
         if (isBuiltinVariable(name) || isUserDefinedVariable(name))
         {
-            throw new Exception("variable '" ~ name ~ "' was already defined");
+            throw new EvalVariableException("variable '" ~ name ~ "' was already defined");
             //warning("variable '" ~ name ~ "' was already defined");
             //return false;
         }
@@ -168,7 +168,7 @@ private:
             m_userVariables[name].value = clearValue.dup;
         }
         else
-            throw new Exception("Undefined variable '" ~ name ~ "'");
+            throw new EvalVariableException("Undefined variable '" ~ name ~ "'");
     }
 
     void validateAssignmentOperands(const string name, const string[] value)
@@ -182,28 +182,32 @@ private:
         getVariableDescription(name, variableDescription);
         switch (variableDescription.type)
         {
+            case VariableType.BOOLEAN: {
+                // FIXME: implement
+                break;
+            }
             case VariableType.RESTRICTED_STRING: {
                 if (value.length != 1)
-                    throw new Exception("variable '" ~ name ~ " assignment value must be a single string token, not a list");
+                    throw new EvalVariableException("variable '" ~ name ~ " assignment value must be a single string token, not a list");
 
                 // FIXME: implement
 //                if (!variableDescription.canBeEmpty && !value[0].length)
-//                    throw new Exception("variable '" ~ name ~ "' can not have empty value");
+//                    throw new EvalVariableException("variable '" ~ name ~ "' can not have empty value");
 
                 if (variableDescription.valueRange.countUntil(value[0]) < 0)
-                    throw new Exception("variable '" ~ name ~ "' assignment value must be one of the strings: " ~ to!string(variableDescription.valueRange));
+                    throw new EvalVariableException("variable '" ~ name ~ "' assignment value must be one of the strings: " ~ to!string(variableDescription.valueRange));
 
                 break;
             }
             case VariableType.RESTRICTED_STRING_LIST: {
                 // FIXME: implement
 //                if (!variableDescription.canBeEmpty && value.empty)
-//                    throw new Exception("variable " + name + " can not have empty value");
+//                    throw new EvalVariableException("variable " + name + " can not have empty value");
 
                 for (int i = 0; i < value.length; i++)
                 {
                     if (variableDescription.valueRange.countUntil(value[i]) < 0)
-                        throw new Exception(name ~ " assignment rvalue must be one of the strings: " ~ to!string(variableDescription.valueRange));
+                        throw new EvalVariableException(name ~ " assignment rvalue must be one of the strings: " ~ to!string(variableDescription.valueRange));
                 }
 
                 break;
@@ -212,11 +216,12 @@ private:
                 // FIXME: implement
                 // NOTE: currently all rvalues in PEG grammar stored as list for convenience
                 //if (!typeUtils.isString(value) && !typeUtils.isArray(value))
-                //    throw new Exception(name + " assignment value type mismatch: '" + typeUtils.typeOf(value) + "' but string expected");
+                //    throw new EvalVariableException(name + " assignment value type mismatch: '" + typeUtils.typeOf(value) + "' but string expected");
 
                 break;
             }
             case VariableType.STRING_LIST: {
+                // Mothing to check in this case
                 break;
             }
             case VariableType.OBJECT_LIST: {
@@ -224,7 +229,7 @@ private:
                 break;
             }
             default: {
-                throw new Exception("Unsupported variable type " ~ to!string(variableDescription.type));
+                throw new EvalVariableException("Unsupported variable type " ~ to!string(variableDescription.type));
             }
         }
     }
@@ -376,7 +381,7 @@ public:
         else if (isUserDefinedVariable(name))
             m_userVariables.remove(name);
         else
-            throw new Exception("Undefined variable '" ~ name ~ "'");
+            throw new EvalVariableException("Undefined variable '" ~ name ~ "'");
     }
 
     // var = value
@@ -440,7 +445,7 @@ public:
 	do
 	{
         if (!isBuiltinVariable(name) && !isUserDefinedVariable(name))
-            throw new Exception("Variable '" ~ name ~ "' must be defined before usage of the '-=' operator");
+            throw new EvalVariableException("Variable '" ~ name ~ "' must be defined before usage of the '-=' operator");
 
         validateAssignmentOperands(name, value);
 
