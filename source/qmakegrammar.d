@@ -78,8 +78,8 @@ enum QMakeProjectRvalue =
 
     Leftover(StopPattern)         <- ~(LeftoverChar(StopPattern)+)
     LeftoverStopChar(StopPattern) <- LineTerminator / ExpandStatement / BACKSLASH / StopPattern
-    LeftoverChar(StopPattern)     <- / !LeftoverStopChar(StopPattern) SourceCharacter
-                                     / BACKSLASH EscapeSequence
+    LeftoverChar(StopPattern)     <- / EscapeSequence
+                                     / !LeftoverStopChar(StopPattern) SourceCharacter
 
     RegularExpression         <- ~(RegularExpressionChar+)
     RegularExpressionStopChar <- LineTerminator
@@ -140,15 +140,16 @@ enum QMakeProjectFunctionArguments =
     DoubleEnquotedFunctionArgument(delim)   <- doublequote EnquotedFunctionArgumentChain(delim, doublequote)? doublequote
     SingleEnquotedFunctionArgument(delim)   <- quote EnquotedFunctionArgumentChain(delim, quote)? quote
     EnquotedFunctionArgumentChain(delim, Q) <- FunctionArgumentImpl_2(delim, Q) FunctionArgumentImpl_2(delim, Q)*
-    FunctionArgumentImpl_2(delim, Q)        <- / RvalueAtom
+    FunctionArgumentImpl_2(delim, Q)        <- / EscapeSequence
+                                               / RvalueAtom
                                                / EnquotedFunctionArgument(delim)
                                                / FunctionArgumentString(delim)
                                                / Leftover(Q)
 
     FunctionArgumentString(delim)         <- ~(FunctionArgumentStringChar(delim)+)
     FunctionArgumentStringStopChar(delim) <- :(delim / LineTerminator / ExpandStatement / quote / doublequote / BACKSLASH / EndOfFunction)
-    FunctionArgumentStringChar(delim)     <- !FunctionArgumentStringStopChar(delim) SourceCharacter
-                                           / BACKSLASH EscapeSequence
+    FunctionArgumentStringChar(delim)     <- / EscapeSequence
+                                             / !FunctionArgumentStringStopChar(delim) SourceCharacter
 
     # NOTE: function arguments can contain "("/")" themselves, so we need special rule to detect function argument list end
     EndOfFunction <- ")" :space* (
@@ -288,9 +289,9 @@ enum QMakeProjectEnquotedString =
     # Enquoted string: can contain any character except of quote
     EnquotedString            <- DoubleEnquotedString / SingleEnquotedString
     DoubleEnquotedString      <- doublequote ~(NonDoubleQuoteCharacter*) doublequote
-    NonDoubleQuoteCharacter   <- !(doublequote / BACKSLASH / LineTerminator) SourceCharacter / BACKSLASH EscapeSequence
+    NonDoubleQuoteCharacter   <- !(BACKSLASH / doublequote / LineTerminator) SourceCharacter / EscapeSequence
     SingleEnquotedString      <- quote ~(NonSingleQuoteCharacter*) quote
-    NonSingleQuoteCharacter   <- !(quote / BACKSLASH / LineTerminator) SourceCharacter / BACKSLASH EscapeSequence
+    NonSingleQuoteCharacter   <- !(BACKSLASH / quote / LineTerminator) SourceCharacter / EscapeSequence
 `;
 
 enum QMakeProjectIdentifier =
@@ -311,7 +312,7 @@ enum QMakeProjectIdentifier =
 
 enum QMakeProjectEscapeSequence =
 `
-    EscapeSequence <-
+    EscapeSequence <- BACKSLASH (
         / quote
         / doublequote
         / BACKSLASH
@@ -337,7 +338,7 @@ enum QMakeProjectEscapeSequence =
         / "["
         / "]"
         / "{"
-        / "}"
+        / "}")
 `;
 
 enum QMakeProjectTerminals =
