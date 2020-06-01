@@ -107,6 +107,11 @@ struct ProVariable
 // --------------------------------------------------------------------------------------------------------------------------------------------------
 private:
 
+string[] initBooleanRange()
+{
+    return ["true", "false"];
+}
+
 string[] initConfigVariableValue()
 {
     // FIXME: platform autodetect
@@ -122,6 +127,7 @@ string[] initConfigVariableRange()
 {
     // FIXME: CONFIG variable can be extended with user-defined values! this list is uncomplete
     return [
+        "",
         // build_pass feature
         "no_autoqmake",
         // cmake
@@ -267,6 +273,26 @@ shared static this()
 
     ProVariable[string] temp1; // mutable buffer
 
+    temp1["build_pass"] = ProVariable("build_pass", VariableType.BOOLEAN, initBooleanRange(), ["false"]);
+    temp1["host_build"] = ProVariable("host_build", VariableType.BOOLEAN, initBooleanRange(), ["false"]);
+    temp1["cross_compile"] = ProVariable("cross_compile", VariableType.BOOLEAN, initBooleanRange(), ["false"]);
+    temp1["CROSS_COMPILE"] = ProVariable("CROSS_COMPILE", VariableType.STRING, [], []);
+    temp1["GCC_MACHINE_DUMP"] = ProVariable("GCC_MACHINE_DUMP", VariableType.STRING, [], []);
+
+    // Device simulator configuration, e.g. iPhone simulator
+    temp1["simulator.sdk"] = ProVariable("simulator.sdk", VariableType.STRING, [], []);
+    temp1["simulator.target"] = ProVariable("simulator.target", VariableType.STRING, [], []);
+    temp1["simulator.dir_affix"] = ProVariable("simulator.dir_affix", VariableType.STRING, [], []);
+    temp1["simulator.CONFIG"] = ProVariable("simulator.CONFIG", VariableType.STRING_LIST, [], []);
+    temp1["simulator.deployment_identifier"] = ProVariable("simulator.deployment_identifier", VariableType.STRING, [], []);
+
+    // Device configuration, e.g. for iOS-based as iPhone
+    temp1["device.sdk"] = ProVariable("device.sdk", VariableType.STRING, [], []);
+    temp1["device.target"] = ProVariable("device.target", VariableType.STRING, [], []);
+    temp1["device.dir_affix"] = ProVariable("device.dir_affix", VariableType.STRING, [], []);
+    temp1["device.CONFIG"] = ProVariable("device.CONFIG", VariableType.STRING_LIST, [], []);
+    temp1["device.deployment_identifier"] = ProVariable("device.deployment_identifier", VariableType.STRING, [], []);
+
     temp1["DIR_SEPARATOR"] = ProVariable("DIR_SEPARATOR", VariableType.STRING, [], []);
     temp1["DIRLIST_SEPARATOR"] = ProVariable("DIRLIST_SEPARATOR", VariableType.STRING, [], []);
     temp1["QMAKE_DIR_SEP"] = ProVariable("QMAKE_DIR_SEP", VariableType.STRING, [], []);
@@ -374,12 +400,15 @@ shared static this()
 	temp1["UI_DIR"] = ProVariable("UI_DIR", VariableType.STRING, [], []);
 	temp1["VERSION"] = ProVariable("VERSION", VariableType.STRING, [], []);
     
+    temp1["QMAKE_ACTOOL"] = ProVariable("QMAKE_ACTOOL", VariableType.STRING,  [], []);
     temp1["QMAKE_AR"] = ProVariable("QMAKE_AR", VariableType.STRING_LIST, [], []);
     temp1["QMAKE_AR_LTCG"] = ProVariable("QMAKE_AR_LTCG", VariableType.STRING_LIST, [], []);
     temp1["QMAKE_CC"] = ProVariable("QMAKE_CC", VariableType.STRING, [], []);
     temp1["QMAKE_CD"] = ProVariable("QMAKE_CD", VariableType.STRING, [], []);
     temp1["QMAKE_CFLAGS_AESNI"] = ProVariable("QMAKE_CFLAGS_AESNI", VariableType.STRING_LIST, [], []);
     temp1["QMAKE_CFLAGS_APP"] = ProVariable("QMAKE_CFLAGS_APP", VariableType.STRING_LIST, [], []);
+    temp1["QMAKE_CFLAGS_APPLICATION_EXTENSION"] = ProVariable("QMAKE_CFLAGS_APPLICATION_EXTENSION", VariableType.STRING, [], []);
+    temp1["QMAKE_CFLAGS_ARCH_HASWELL"] = ProVariable("QMAKE_CFLAGS_ARCH_HASWELL", VariableType.STRING_LIST, [], []);
     temp1["QMAKE_CFLAGS_AVX"] = ProVariable("QMAKE_CFLAGS_AVX", VariableType.STRING_LIST, [], []);
     temp1["QMAKE_CFLAGS_AVX2"] = ProVariable("QMAKE_CFLAGS_AVX2", VariableType.STRING_LIST, [], []);
     temp1["QMAKE_CFLAGS_AVX512BW"] = ProVariable("QMAKE_CFLAGS_AVX512BW", VariableType.STRING_LIST, [], []);
@@ -391,11 +420,15 @@ shared static this()
     temp1["QMAKE_CFLAGS_AVX512PF"] = ProVariable("QMAKE_CFLAGS_AVX512PF", VariableType.STRING_LIST, [], []);
     temp1["QMAKE_CFLAGS_AVX512VBMI"] = ProVariable("QMAKE_CFLAGS_AVX512VBMI", VariableType.STRING_LIST, [], []);
     temp1["QMAKE_CFLAGS_AVX512VL"] = ProVariable("QMAKE_CFLAGS_AVX512VL", VariableType.STRING_LIST, [], []);
+    temp1["QMAKE_CFLAGS_C11"] = ProVariable("QMAKE_CFLAGS_C11", VariableType.STRING_LIST, [], []);
+    temp1["QMAKE_CFLAGS_C99"] = ProVariable("QMAKE_CFLAGS_C99", VariableType.STRING_LIST, [], []);
     temp1["QMAKE_CFLAGS_DEBUG"] = ProVariable("QMAKE_CFLAGS_DEBUG", VariableType.STRING_LIST, [], []);
     temp1["QMAKE_CFLAGS_DEPS"] = ProVariable("QMAKE_CFLAGS_DEPS", VariableType.STRING_LIST, [], []);
     temp1["QMAKE_CFLAGS_DISABLE_LTCG"] = ProVariable("QMAKE_CFLAGS_DISABLE_LTCG", VariableType.STRING_LIST, [], []);
     temp1["QMAKE_CFLAGS_EXCEPTIONS_OFF"] = ProVariable("QMAKE_CFLAGS_EXCEPTIONS_OFF", VariableType.STRING_LIST, [], []);
     temp1["QMAKE_CFLAGS_F16C"] = ProVariable("QMAKE_CFLAGS_F16C", VariableType.STRING_LIST, [], []);
+    temp1["QMAKE_CFLAGS_GNUC11"] = ProVariable("QMAKE_CFLAGS_GNUC11", VariableType.STRING_LIST, [], []);
+    temp1["QMAKE_CFLAGS_GNUC99"] = ProVariable("QMAKE_CFLAGS_GNUC99", VariableType.STRING_LIST, [], []);
     temp1["QMAKE_CFLAGS_HIDESYMS"] = ProVariable("QMAKE_CFLAGS_HIDESYMS", VariableType.STRING_LIST, [], []);
     temp1["QMAKE_CFLAGS_ISYSTEM"] = ProVariable("QMAKE_CFLAGS_ISYSTEM", VariableType.STRING_LIST, [], []);
     temp1["QMAKE_CFLAGS_LTCG"] = ProVariable("QMAKE_CFLAGS_LTCG", VariableType.STRING_LIST, [], []);
@@ -429,6 +462,7 @@ shared static this()
     temp1["QMAKE_CHK_EXISTS"] = ProVariable("QMAKE_CHK_EXISTS", VariableType.STRING_LIST, [], []);
     temp1["QMAKE_COMMON_SANITIZE_CFLAGS"] = ProVariable("QMAKE_COMMON_SANITIZE_CFLAGS", VariableType.STRING_LIST, [], []);
     temp1["QMAKE_COMMON_SANITIZE_CXXFLAGS"] = ProVariable("QMAKE_COMMON_SANITIZE_CXXFLAGS", VariableType.STRING_LIST, [], []);
+    temp1["QMAKE_COMPILER_DEFINES"] = ProVariable("QMAKE_COMPILER_DEFINES", VariableType.STRING_LIST, [], []);
     temp1["QMAKE_COPY"] = ProVariable("QMAKE_COPY", VariableType.STRING_LIST, [], []);
     temp1["QMAKE_COPY_DIR"] = ProVariable("QMAKE_COPY_DIR", VariableType.STRING_LIST, [], []);
     temp1["QMAKE_COPY_FILE"] = ProVariable("QMAKE_COPY_FILE", VariableType.STRING_LIST, [], []);
@@ -463,8 +497,11 @@ shared static this()
     temp1["QMAKE_DEL_DIR"] = ProVariable("QMAKE_DEL_DIR", VariableType.STRING_LIST, [], []);
     temp1["QMAKE_DEL_FILE"] = ProVariable("QMAKE_DEL_FILE", VariableType.STRING_LIST, [], []);
     temp1["QMAKE_DEL_TREE"] = ProVariable("QMAKE_DEL_TREE", VariableType.STRING_LIST, [], []);
+    temp1["QMAKE_DSYMUTIL"] = ProVariable("QMAKE_DSYMUTIL", VariableType.STRING, [], []);
+    temp1["QMAKE_EXTENSIONS_AUX_SHLIB"] = ProVariable("QMAKE_EXTENSIONS_AUX_SHLIB", VariableType.STRING, [], []);
     temp1["QMAKE_EXTENSION_SHLIB"] = ProVariable("QMAKE_EXTENSION_SHLIB", VariableType.STRING_LIST, [], []);
     temp1["QMAKE_EXTENSION_STATICLIB"] = ProVariable("QMAKE_EXTENSION_STATICLIB", VariableType.STRING_LIST, [], []);
+    temp1["QMAKE_FIX_RPATH"] = ProVariable("QMAKE_FIX_RPATH", VariableType.STRING_LIST, [], []);
     temp1["QMAKE_GZIP"] = ProVariable("QMAKE_GZIP", VariableType.STRING_LIST, [], []);
     temp1["QMAKE_INCDIR"] = ProVariable("QMAKE_INCDIR", VariableType.STRING_LIST, [], []);
     temp1["QMAKE_INCDIR_EGL"] = ProVariable("QMAKE_INCDIR_EGL", VariableType.STRING_LIST, [], []);
@@ -486,10 +523,13 @@ shared static this()
     temp1["QMAKE_LFLAGS_CXX14"] = ProVariable("QMAKE_LFLAGS_CXX14", VariableType.STRING_LIST, [], []);
     temp1["QMAKE_LFLAGS_CXX1Z"] = ProVariable("QMAKE_LFLAGS_CXX1Z", VariableType.STRING_LIST, [], []);
     temp1["QMAKE_LFLAGS_DEBUG"] = ProVariable("QMAKE_LFLAGS_DEBUG", VariableType.STRING_LIST, [], []);
+    temp1["QMAKE_LFLAGS_COMPAT_VERSION"] = ProVariable("QMAKE_LFLAGS_COMPAT_VERSION", VariableType.STRING, [], []);
     temp1["QMAKE_LFLAGS_DYNAMIC_LIST"] = ProVariable("QMAKE_LFLAGS_DYNAMIC_LIST", VariableType.STRING_LIST, [], []);
     temp1["QMAKE_LFLAGS_EXCEPTIONS_OFF"] = ProVariable("QMAKE_LFLAGS_EXCEPTIONS_OFF", VariableType.STRING_LIST, [], []);
     temp1["QMAKE_LFLAGS_GCSECTIONS"] = ProVariable("QMAKE_LFLAGS_GCSECTIONS", VariableType.STRING_LIST, [], []);
     temp1["QMAKE_LFLAGS_GDB_INDEX"] = ProVariable("QMAKE_LFLAGS_GDB_INDEX", VariableType.STRING_LIST, [], []);
+    temp1["QMAKE_LFLAGS_HEADERPAD"] = ProVariable("QMAKE_LFLAGS_HEADERPAD", VariableType.STRING_LIST, [], []);
+    temp1["QMAKE_LFLAGS_INCREMENTAL"] = ProVariable("QMAKE_LFLAGS_INCREMENTAL", VariableType.STRING_LIST, [], []);
     temp1["QMAKE_LFLAGS_LTCG"] = ProVariable("QMAKE_LFLAGS_LTCG", VariableType.STRING_LIST, [], []);
     temp1["QMAKE_LFLAGS_NEW_DTAGS"] = ProVariable("QMAKE_LFLAGS_NEW_DTAGS", VariableType.STRING_LIST, [], []);
     temp1["QMAKE_LFLAGS_NOUNDEF"] = ProVariable("QMAKE_LFLAGS_NOUNDEF", VariableType.STRING_LIST, [], []);
@@ -503,6 +543,7 @@ shared static this()
     temp1["QMAKE_LFLAGS_SONAME"] = ProVariable("QMAKE_LFLAGS_SONAME", VariableType.STRING_LIST, [], []);
     temp1["QMAKE_LFLAGS_THREAD"] = ProVariable("QMAKE_LFLAGS_THREAD", VariableType.STRING_LIST, [], []);
     temp1["QMAKE_LFLAGS_USE_GOLD"] = ProVariable("QMAKE_LFLAGS_USE_GOLD", VariableType.STRING_LIST, [], []);
+    temp1["QMAKE_LFLAGS_VERSION"] = ProVariable("QMAKE_LFLAGS_VERSION", VariableType.STRING, [], []);
     temp1["QMAKE_LFLAGS_VERSION_SCRIPT"] = ProVariable("QMAKE_LFLAGS_VERSION_SCRIPT", VariableType.STRING_LIST, [], []);
     temp1["QMAKE_LIBDIR"] = ProVariable("QMAKE_LIBDIR", VariableType.STRING_LIST, [], []);
     temp1["QMAKE_LIBDIR_EGL"] = ProVariable("QMAKE_LIBDIR_EGL", VariableType.STRING_LIST, [], []);
@@ -540,6 +581,7 @@ shared static this()
     temp1["QMAKE_RANLIB"] = ProVariable("QMAKE_RANLIB", VariableType.STRING_LIST, [], []);
     temp1["QMAKE_RANLIB_LTCG"] = ProVariable("QMAKE_RANLIB_LTCG", VariableType.STRING_LIST, [], []);
     temp1["QMAKE_REL_RPATH_BASE"] = ProVariable("QMAKE_REL_RPATH_BASE", VariableType.STRING_LIST, [], []);
+    temp1["QMAKE_RESOURCE"] = ProVariable("QMAKE_RESOURCE", VariableType.STRING, [], []);
     temp1["QMAKE_SANITIZE_ADDRESS_CFLAGS"] = ProVariable("QMAKE_SANITIZE_ADDRESS_CFLAGS", VariableType.STRING_LIST, [], []);
     temp1["QMAKE_SANITIZE_ADDRESS_CXXFLAGS"] = ProVariable("QMAKE_SANITIZE_ADDRESS_CXXFLAGS", VariableType.STRING_LIST, [], []);
     temp1["QMAKE_SANITIZE_ADDRESS_LFLAGS"] = ProVariable("QMAKE_SANITIZE_ADDRESS_LFLAGS", VariableType.STRING_LIST, [], []);
@@ -566,6 +608,18 @@ shared static this()
     temp1["QMAKE_YACC_HEADER"] = ProVariable("QMAKE_YACC_HEADER", VariableType.STRING_LIST, [], []);
     temp1["QMAKE_YACC_SOURCE"] = ProVariable("QMAKE_YACC_SOURCE", VariableType.STRING_LIST, [], []);
     temp1["QMAKE_ZIP"] = ProVariable("QMAKE_ZIP", VariableType.STRING_LIST, [], []);
+
+    // macOS-specific
+    temp1["QMAKE_APPLE_DEVICE_ARCHS"] = ProVariable("QMAKE_APPLE_DEVICE_ARCHS", VariableType.STRING_LIST, [], []);
+    temp1["QMAKE_XCODE_GCC_VERSION"] = ProVariable("QMAKE_XCODE_GCC_VERSION", VariableType.STRING, [], []);
+    temp1["QMAKE_MACOSX_DEPLOYMENT_TARGET"] = ProVariable("QMAKE_MACOSX_DEPLOYMENT_TARGET", VariableType.STRING, [], []);
+    temp1["QT_MAC_SDK_VERSION_MIN"] = ProVariable("QT_MAC_SDK_VERSION_MIN", VariableType.STRING, [], []);
+    temp1["QT_MAC_SDK_VERSION_MAX"] = ProVariable("QT_MAC_SDK_VERSION_MAX", VariableType.STRING, [], []);
+    temp1["QMAKE_MAC_SDK"] = ProVariable("QMAKE_MAC_SDK", VariableType.STRING, [], []);
+    temp1["QMAKE_OBJCFLAGS_PRECOMPILE"] = ProVariable("QMAKE_OBJCFLAGS_PRECOMPILE", VariableType.STRING_LIST, [], []);
+    temp1["QMAKE_OBJCFLAGS_USE_PRECOMPILE"] = ProVariable("QMAKE_OBJCFLAGS_USE_PRECOMPILE", VariableType.STRING_LIST, [], []);
+    temp1["QMAKE_OBJCXXFLAGS_USE_PRECOMPILE"] = ProVariable("QMAKE_OBJCXXFLAGS_USE_PRECOMPILE", VariableType.STRING, [], []);
+    temp1["QMAKE_OBJCXXFLAGS_PRECOMPILE"] = ProVariable("QMAKE_OBJCXXFLAGS_PRECOMPILE", VariableType.STRING_LIST, [], []);
 
     temp1.rehash; // for faster lookups
     builtinVariables = assumeUnique(temp1);

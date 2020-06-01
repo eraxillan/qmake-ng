@@ -91,36 +91,24 @@ struct ProFunction
 immutable ProFunction[string] builtinTestFunctions;
 immutable ProFunction[string] builtinReplaceFunctions;
 
-// Helpers
-private:
-
-static string[] returnBoolString(const bool b)
-{
-    return b ? [STR_TRUE] : [STR_FALSE];
-}
-
 static bool isActiveConfig(const string config, const string specName,
-        const string[] configVarValues, const bool useRegex = false)
+    const string[] configVarValues, const bool useRegex = false)
 {
-    // Magic types for easy flipping
+    import std.regex;
+
+    // Obvious check: true/false
     if (config == STR_TRUE)
         return true;
     if (config == STR_FALSE)
         return false;
 
-    // FIXME: implement "host_build { ... }" scope statement in parser first
-    /+
+    // FIXME: implement `host_build` builtin variable support
     if (config == STR_HOSTBUILD)
-        return m_hostBuild;
-    +/
+        return false; // m_hostBuild;
 
     if (useRegex && (config.canFind('*') || config.canFind('?')))
     {
-        // FIXME: need testing!
-        bool b = true;
-        if (b)
-            assert(0);
-
+        // NOTE: Phobos regex are case-sensitive by default
         auto re = regex(wildcardToRegex(config));
 
         // mkspecs
@@ -146,6 +134,15 @@ static bool isActiveConfig(const string config, const string specName,
     }
 
     return false;
+}
+
+
+// Helpers
+private:
+
+static string[] returnBoolString(const bool b)
+{
+    return b ? [STR_TRUE] : [STR_FALSE];
 }
 
 shared static this()
@@ -465,15 +462,13 @@ shared static this()
                 trace(arguments);
                 assert(arguments.length == 1 || arguments.length == 2);
 
-                // FIXME: add spec to built-in variables and remove this hardcode
-                const string specName = "linux-g++";
-
                 string[] configValue = context.getVariableRawValue("CONFIG");
                 immutable(bool) isConfigValueEmpty = configValue.empty || configValue[0].empty;
                 assert(!isConfigValueEmpty);
                 trace("CONFIG variable value:");
                 trace(configValue);
 
+                const string specName = context.getVariableRawValue("QMAKESPEC")[0];
                 if (arguments.length == 1)
                 {
                     immutable bool b = isActiveConfig(arguments[0], specName, configValue, false);
@@ -514,6 +509,13 @@ shared static this()
                                   (ref ProExecutionContext context, ref PersistentPropertyStorage persistentStorage, const string[] arguments) {
         import source.project : Project;
 
+        trace("checking value of NG_EXTENSION__NON_RECURSIVE...");
+        if (context.getVariableRawValue("NG_EXTENSION__NON_RECURSIVE")[0] == "true")
+        {
+            warning("TEST MODE: non-recursive load enabled, skip loading feature ", "`", arguments[0], "`");
+            return ["true"];
+        }
+
         assert(arguments.length >= 1);
         if (arguments.length > 1)
             error("Optional 'include' test functions arguments are not implemented yet");
@@ -553,6 +555,13 @@ shared static this()
     temp["load"] = ProFunction(FunctionBaseInfo("load", 1, 0), FunctionTypeInfo(false, [VariableType.STRING], VariableType.BOOLEAN),
                                (ref ProExecutionContext context, ref PersistentPropertyStorage persistentStorage, const string[] arguments) {
         import source.project : Project;
+
+        trace("checking value of NG_EXTENSION__NON_RECURSIVE...");
+        if (context.getVariableRawValue("NG_EXTENSION__NON_RECURSIVE")[0] == "true")
+        {
+            warning("TEST MODE: non-recursive load enabled, skip loading feature ", "`", arguments[0], "`");
+            return ["true"];
+        }
 
         assert(arguments.length >= 1);
         if (arguments.length > 1)

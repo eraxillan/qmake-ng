@@ -135,7 +135,7 @@ public:
     void traceIncludeEnd(const string fileName)
     {
         decreaseIndentation();
-        m_includeLogFile.writeln(m_ws ~ "load subproject end: " ~ fileName);
+        m_includeLogFile.writeln(m_ws ~ "load subproject   end: " ~ fileName);
     }
 
     void traceLoadBegin(const string fileName)
@@ -147,7 +147,7 @@ public:
     void traceLoadEnd(const string fileName)
     {
         decreaseIndentation();
-        m_includeLogFile.writeln(m_ws ~ "load feature end: " ~ fileName);
+        m_includeLogFile.writeln(m_ws ~ "load feature   end: " ~ fileName);
     }
 
     void traceMkspecLoadBegin(const string fileName)
@@ -159,7 +159,7 @@ public:
     void traceMkspecLoadEnd(const string fileName)
     {
         decreaseIndentation();
-        m_includeLogFile.writeln(m_ws ~ "load mkspec end: " ~ fileName);
+        m_includeLogFile.writeln(m_ws ~ "load mkspec   end: " ~ fileName);
     }
 
     void traceProjectLoadBegin(const string fileName)
@@ -171,24 +171,35 @@ public:
     void traceProjectLoadEnd(const string fileName)
     {
         decreaseIndentation();
-        m_includeLogFile.writeln(m_ws ~ "load project end: " ~ fileName);
+        m_includeLogFile.writeln(m_ws ~ "load project   end: " ~ fileName);
     }
 
-    void traceProjectVariableAssignment(const string name, const string[] value)
+    void traceProjectVariableAssignment(const string name, const string[] value, const bool isBuiltin)
     {
         if (name == "PWD")
             m_variableLogFile.writeln("\n===============================================================================================");
 
         {
+            string ws;
+            for (int i = 2; i < m_ws.length; i++) ws ~= " ";
+            const string builtinMark = ws ~ (isBuiltin ? "[builtin] " : "[user] ");
             if (value.empty)
-                m_variableLogFile.writeln(name ~ " = " ~ "<empty>");
+                m_variableLogFile.writeln(builtinMark ~ name ~ " = " ~ "<empty>");
             else if (value.length == 1)
-                m_variableLogFile.writeln(name ~ " = " ~ "'" ~ value[0] ~ "'");
+                m_variableLogFile.writeln(builtinMark ~ name ~ " = " ~ "'" ~ value[0] ~ "'");
             else
-                m_variableLogFile.writeln(name ~ " = ", value);
+                m_variableLogFile.writeln(builtinMark ~ name ~ " = ", value);
         }
 
         if (name == "_PRO_FILE_PWD_")
             m_variableLogFile.writeln("\n");
+    }
+
+    void traceProjectVariableUnset(const string name, const bool isBuiltin)
+    {
+        string ws;
+        for (int i = 2; i < m_ws.length; i++) ws ~= " ";
+        const string builtinMark = ws ~ (isBuiltin ? "[builtin] " : "[user] ");
+        m_variableLogFile.writeln(builtinMark ~ "unset " ~ name);
     }
 }

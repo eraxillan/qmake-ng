@@ -37,6 +37,7 @@ import qmakeparser;
 import source.preprocessor;
 import source.qmakeexception;
 import source.common_const;
+import source.logger;
 import source.utils.text_utils;
 import source.utils.io_utils;
 import source.project_variable;
@@ -51,14 +52,13 @@ class Project
 {
 private:
     // NOTE: variables defined in user-defined qmake functions must be local to them
-    alias ContextStack = QStack!ProExecutionContext;
-    ContextStack m_contextStack;
+    ProjectContextStack m_contextStack;
     PersistentPropertyStorage m_persistentStorage;
 
 public:
     this(ref ProExecutionContext context, ref PersistentPropertyStorage persistentStorage)
     {
-        m_contextStack = new ContextStack;
+        m_contextStack = new ProjectContextStack;
         m_contextStack.push(context);
 
         m_persistentStorage = persistentStorage;
@@ -139,7 +139,7 @@ public:
         return parseTree.successful;
     }
 
-    bool eval(const string fileName) /*const*/
+    bool eval(const string fileName, bool nonRecursive = false) /*const*/
     {
         trace("Trying to parse project file '" ~ fileName ~ "'...");
 
@@ -150,6 +150,7 @@ public:
             currentProjectFileName = m_contextStack.top().getVariableRawValue("_PRO_FILE_")[0];
             assert(isValidFilePath(currentProjectFileName));
         }
+
         // NOTE: use the previously eval'd state, because we can need already defined variables
         m_contextStack.top().setupPaths(fileName);
 
@@ -179,6 +180,11 @@ public:
 
         trace("Trying to evaluate project file '" ~ fileName ~ "'...");
 
+        NgLogger.get().traceProjectLoadBegin(fileName);
+
+        // Save non-recursive flag to context variable - to allow load/include functions get it's value
+        m_contextStack.top().assignVariable("NG_EXTENSION__NON_RECURSIVE", nonRecursive ? ["true"] : ["false"], VariableType.STRING);
+
         // Get the root project node (must be the only child of parse tree)
         auto projectNode = parseTree.children[0];
         foreach (ref child; projectNode.children)
@@ -199,6 +205,8 @@ public:
         // Restore parent project path variables
         if (!currentProjectFileName.empty)
             m_contextStack.top().setupPaths(currentProjectFileName);
+
+        NgLogger.get().traceProjectLoadEnd(fileName);
 
         return true;
     }
@@ -290,6 +298,7 @@ private:
     }
     do
     {
+        // FIXME: detect non-return functions and show a warning
         auto concreteDeclNode = declNode.children[0];
         assert(concreteDeclNode.children.length == 4);
         switch (concreteDeclNode.name)
@@ -309,7 +318,7 @@ private:
                 {
                     trace("Invoking user-defined replace function ", "`", name, "`");
 
-                    m_contextStack.push(context);
+                    m_contextStack.push(context.dup);
 
                     // Declare function arguments like $${1} etc.
                     for (int i = 0; i < arguments.length; i++)
@@ -325,9 +334,8 @@ private:
                     auto blockNode = functionBlock.children[0];
                     evalBlock(functionBlock);
                     
-                    //
                     // FIXME: merge all global already defined variables from internal function context
-                    //
+                    bool b001 = true; if (b001) assert(0);
                     const(string[]) result = m_contextStack.top().popFunctionResult();
                     m_contextStack.pop();
 
@@ -352,7 +360,7 @@ private:
 
                     const(string[]) result = ["true"];
 
-                    m_contextStack.push(context);
+                    m_contextStack.push(context.dup);
 
                     // Declare function arguments like $${1} etc.
                     for (int i = 0; i < arguments.length; i++)
@@ -361,12 +369,6 @@ private:
                         trace("Declare function argument variable `$${", argName, "}` = `", arguments[i], "`");
                         m_contextStack.top().assignVariable(argName, [arguments[i]], VariableType.STRING);
                     }
-                    // NOTE: return() call is optional in vanilla qmake;
-                    //       so we need to add an implicit `return(true)` for test functions
-                    //       and `return("")` for replace ones
-                    //
-                    // FIXME: implement this stuff
-                    //
 
                     assert(functionBlock.name == "QMakeProject.Block");
                     assert(functionBlock.children.length == 1);
@@ -374,10 +376,8 @@ private:
                     auto blockNode = functionBlock.children[0];
                     evalBlock(functionBlock);
 
-                    
-                    //
                     // FIXME: merge all global variables from internal function context
-                    //
+                    bool b001 = true; if (b001) assert(0);
                     m_contextStack.pop();
 
                     trace("User-defined test function result: ", result);
@@ -635,7 +635,8 @@ private:
         }
         else
         {
-            warning("empty rvalue detected, please use clear(var) test function call instead");
+            result.type = VariableType.STRING_LIST;
+            result.value = [""];
         }
 
         return result;
@@ -923,6 +924,7 @@ private:
             || functionNode.name == "QMakeProject.ContainsTestFunctionCall"
             || functionNode.name == "QMakeProject.ReturnFunctionCall"
             || functionNode.name == "QMakeProject.RequiresFunctionCall"
+            || functionNode.name == "QMakeProject.ErrorFunctionCall"
             || functionNode.name == "QMakeProject.FunctionCall"
         );
 
@@ -945,7 +947,9 @@ private:
             || functionNode.name == "QMakeProject.ContainsTestFunctionCall"
             || functionNode.name == "QMakeProject.ReturnFunctionCall"
             || functionNode.name == "QMakeProject.RequiresFunctionCall"
-            || functionNode.name == "QMakeProject.FunctionCall"
+            || functionNode.name == "QMakeProject.ErrorFunctionCall"
+            || functionNode.name == "QMakeProject.FunctionCall",
+            "Invalid function node " ~ functionNode.name
         );
 
         bool result = true;
@@ -984,6 +988,7 @@ private:
             || functionNode.name == "QMakeProject.ContainsTestFunctionCall"
             || functionNode.name == "QMakeProject.ReturnFunctionCall"
             || functionNode.name == "QMakeProject.RequiresFunctionCall"
+            || functionNode.name == "QMakeProject.ErrorFunctionCall"
             || functionNode.name == "QMakeProject.FunctionCall"
         );
         assert((functionType >= ProFunctionType.Replace)
@@ -1270,7 +1275,7 @@ private:
         trace("Actual function ", "`", functionName, "`", " arguments: ", actualArguments);
 
         // Invoke function
-        const(string[]) resultAsList = functionDescription.action(m_contextStack.top(), m_persistentStorage, actualArguments);
+        const(string[]) resultAsList = functionDescription.action(m_contextStack.top(), m_persistentStorage, actualArguments);  
         if (functionDescription.fti.returnType == VariableType.STRING_LIST)
         {
             trace("Function ", "`", functionName, "`", " returns list: ", resultAsList);
@@ -1368,7 +1373,16 @@ private:
                     assert(implNode.children.length == 1);
 
                     auto stringNode = implNode.children[0];
-                    if (stringNode.name.startsWith("QMakeProject.RvalueAtom"))
+                    if (stringNode.name == "QMakeProject.EscapeSequence")
+                    {
+                        assert(stringNode.matches.length == 2);
+                        assert(stringNode.matches[0] == STR_BACKSLASH);
+                        
+                        trace("Escape sequence expanded to ", "`", stringNode.matches[1], "`");
+                        tempResult ~= stringNode.matches[1];
+                        hasLeftovers = true;
+                    }
+                    else if (stringNode.name.startsWith("QMakeProject.RvalueAtom"))
                     {
                         RvalueEvalResult r = evalRvalueAtomNode(stringNode);
                         trace("Rvalue atom: ", "`", r.value, "`");
@@ -1425,43 +1439,11 @@ private:
         assert(boolAtomNode.matches.length == 1);
 
         string variableValue = boolAtomNode.matches[0];
-
-        // Boolean const "true"/"false" as in C++
-        if (variableValue == "true")
-        {
-            trace("'true' boolean constant --> condition is true");
-            return true;
-        }
-        if (variableValue == "false")
-        {
-            trace("'false' boolean constant --> condition is FALSE");
-            return false;
-        }
-
-        string[] platformValue = m_contextStack.top().getVariableRawValue("QMAKE_PLATFORM");
-        string[] configValue = m_contextStack.top().getVariableRawValue("CONFIG");
-        string[] specValue = m_contextStack.top().getVariableRawValue("QMAKESPEC");
-        immutable(string) spec = baseName(specValue[0]);
-        if (platformValue.countUntil(variableValue) >= 0)
-        {
-            trace("'", variableValue, "' belongs to QMAKE_PLATFORM --> condition is true");
-            return true;
-        }
-        if (configValue.countUntil(variableValue) >= 0)
-        {
-            trace("'", variableValue, "' belongs to CONFIG --> condition is true");
-            return true;
-        }
-
-        if (spec == variableValue)
-        {
-            trace("'", variableValue, "' belongs to QMAKESPEC --> condition is true");
-            return true;
-        }
-
-        trace("'", variableValue,
-                "' not belongs to QMAKE_PLATFORM/CONFIG/QMAKESPEC --> condition is FALSE");
-        return false;
+        const string specName = m_contextStack.top().getVariableRawValue("QMAKESPEC")[0];
+        const string[] configValues = m_contextStack.top().getVariableRawValue("CONFIG");
+        bool result = isActiveConfig(variableValue, specName, configValues, true);
+        tracef("Boolean variable '%s' is %s", variableValue, (result ? "true" : "false"));
+        return result;
     }
 
     RvalueEvalResult evalRvalueChain(ref ParseTree rvalueChainNode)
@@ -1596,14 +1578,12 @@ private:
                 }
                 case "QMakeProject.MakefileVariableExpandStatement":
                 {
-                    // FIXME: implement
-                    //bool b = true; if (b) assert(0);
+                    // FIXME: those kind of variables must be expanded before actual build
                     string variableName = expandNode.children[0].matches[0];
                     trace("Makefile variable name: ", variableName);
-                    //if (!m_context.isVariableDefined(variableName))
-                    //    throw new EvalLogicalException("Undefined project variable found");
                     result.type = VariableType.STRING;
-                    result.value = [variableName];
+                    // NOTE: variable expansion statement cannot contain whitespaces, so join() usage is safe here
+                    result.value = [expandNode.matches.join("")];
                     break;
                 }
                 case "QMakeProject.EnvironmentVariableExpandStatement":
