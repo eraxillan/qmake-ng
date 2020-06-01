@@ -1042,7 +1042,7 @@ private:
                 // Get function description
                 ProFunction functionDescription;
                 if (m_contextStack.top().hasTestFunctionDescription(functionName))
-                    functionDescription = m_contextStack.top().getTestFunctionDescription(functionName);
+                    m_contextStack.top().getTestFunctionDescription(functionName, functionDescription);
                 else
                     throw new EvalLogicalException("Unsupported function '" ~ functionName ~ "'");
                 
@@ -1230,13 +1230,13 @@ private:
         {
             case ProFunctionType.Replace:
                 if (m_contextStack.top().hasReplaceFunctionDescription(functionName))
-                    functionDescription = m_contextStack.top().getReplaceFunctionDescription(functionName);
+                    m_contextStack.top().getReplaceFunctionDescription(functionName, functionDescription);
                 else
                     throw new EvalLogicalException("Unsupported replace function '" ~ functionName ~ "'");
                 break;
             case ProFunctionType.Test:
                 if (m_contextStack.top().hasTestFunctionDescription(functionName))
-                    functionDescription = m_contextStack.top().getTestFunctionDescription(functionName);
+                    m_contextStack.top().getTestFunctionDescription(functionName, functionDescription);
                 else
                     throw new EvalLogicalException("Unsupported test function '" ~ functionName ~ "'");
                 break;

@@ -56,7 +56,7 @@ enum VariableType
     // TODO:
 //    FILE_PATH,
 //    DIR_PATH
-	COUNT
+//	COUNT
 }
 
 bool isStringType(const VariableType type)
@@ -69,6 +69,8 @@ bool isStringListType(const VariableType type)
 }
 
 // FIXME: implement read-only built-in variables
+// FIXME: invalid ctor by default
+// FIXME: special `undefined` initial value
 struct ProVariable
 {
 	string name;
